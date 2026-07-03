@@ -1,0 +1,170 @@
+// =============================================================================
+// API Response Types
+// =============================================================================
+
+export interface ApiResponse<T> {
+  success: boolean
+  message: string
+  data: T
+}
+
+export interface PaginatedResponse<T> {
+  success: boolean
+  message: string
+  data: {
+    data: T[]
+    meta: PaginationMeta
+    links: PaginationLinks
+  }
+}
+
+export interface PaginationMeta {
+  current_page: number
+  last_page: number
+  per_page: number
+  total: number
+  from: number
+  to: number
+}
+
+export interface PaginationLinks {
+  first: string | null
+  last: string | null
+  prev: string | null
+  next: string | null
+}
+
+// =============================================================================
+// Auth Types
+// =============================================================================
+
+export interface User {
+  uuid: string
+  name: string
+  email: string
+  phone: string | null
+  avatar: string | null
+  is_active: boolean
+  roles: string[]
+  permissions: string[]
+  created_at: string
+}
+
+export interface AuthResponse {
+  user: User
+  token: string
+}
+
+export interface LoginPayload {
+  email: string
+  password: string
+}
+
+export interface RegisterPayload {
+  name: string
+  email: string
+  password: string
+  password_confirmation: string
+  phone?: string
+}
+
+// =============================================================================
+// Lab Types
+// =============================================================================
+
+export interface Lab {
+  uuid: string
+  name: string
+  slug: string
+  description: string | null
+  is_active: boolean
+  branding: LabBranding
+  contact: LabContact | null
+  settings: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface LabBranding {
+  primary_color: string | null
+  secondary_color: string | null
+  logo: string | null
+  hero_image: string | null
+  favicon: string | null
+}
+
+export interface LabContact {
+  email: string | null
+  phone: string | null
+  address: string | null
+}
+
+// =============================================================================
+// Asset Types
+// =============================================================================
+
+export interface Asset {
+  uuid: string
+  lab_id: string
+  name: string
+  code: string
+  category: EnumField
+  brand: string | null
+  model: string | null
+  description: string | null
+  serial_number: string | null
+  status: EnumField
+  specifications: Record<string, unknown> | null
+  image: string | null
+  is_rentable: boolean
+  rental_price: string | null
+  purchase_price: string | null
+  purchase_date: string | null
+  created_at: string
+}
+
+// =============================================================================
+// Shared Types
+// =============================================================================
+
+export interface EnumField {
+  value: string
+  label: string
+}
+
+export interface SelectOption {
+  value: string
+  label: string
+}
+
+export interface Booking {
+  uuid: string
+  booking_code: string
+  lab_id: string
+  user: {
+    uuid: string
+    name: string
+    email: string
+  }
+  status: EnumField
+  payment_status: EnumField
+  checked_in_at: string | null
+  photo_project: {
+    uuid: string
+    status: EnumField
+  } | null
+  start_time: string
+  end_time: string
+  total_price: string
+  notes: string | null
+  created_at: string
+}
+
+export interface AppNotification {
+  uuid: string
+  type: string
+  title: string
+  body: string | null
+  data: Record<string, unknown> | null
+  read_at: string | null
+  created_at: string
+}
