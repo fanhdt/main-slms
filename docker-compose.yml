@@ -1,0 +1,362 @@
+# =============================================================================
+# SLMS - Docker Compose (Development)
+# =============================================================================
+# Services:
+#   nginx       - Reverse proxy (port 80)
+#   backend     - Laravel 12 PHP-FPM
+#   worker      - Laravel Queue Worker
+#   reverb      - Laravel Reverb WebSocket server
+#   scheduler   - Laravel task scheduler
+#   frontend    - Vue 3 Vite dev server
+#   postgres    - PostgreSQL 16
+#   redis       - Redis 7
+#   minio       - MinIO S3-compatible storage
+#   mailpit     - Local SMTP + Web UI for email testing
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Reverse Proxy
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: slms_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      # Mount backend public dir so nginx can serve /storage/* directly
+      - backend_storage:/var/www/html/public/storage:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - slms_network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Backend — Laravel 12 (PHP-FPM)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      target: development
+    container_name: slms_backend
+    volumes:
+      # Hot reload of application code in development
+      - ./backend:/var/www/html
+      # Persist storage (uploads, logs)
+      - backend_storage:/var/www/html/storage
+      # Exclude vendor from bind mount — use the one built inside image
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_KEY: "${APP_KEY}"
+      APP_URL: "http://localhost"
+
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: "${DB_DATABASE:-slms}"
+      DB_USERNAME: "${DB_USERNAME:-slms}"
+      DB_PASSWORD: "${DB_PASSWORD:-secret}"
+
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+
+      BROADCAST_CONNECTION: reverb
+      REVERB_APP_ID: "${REVERB_APP_ID:-slms}"
+      REVERB_APP_KEY: "${REVERB_APP_KEY:-slmskey}"
+      REVERB_APP_SECRET: "${REVERB_APP_SECRET:-slmssecret}"
+      REVERB_HOST: reverb
+      REVERB_PORT: 8080
+      REVERB_SCHEME: http
+
+      FILESYSTEM_DISK: s3
+      AWS_ACCESS_KEY_ID: "${MINIO_ROOT_USER:-slmsadmin}"
+      AWS_SECRET_ACCESS_KEY: "${MINIO_ROOT_PASSWORD:-slmspassword}"
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_BUCKET: "${MINIO_BUCKET:-slms}"
+      AWS_ENDPOINT: "http://minio:9000"
+      AWS_USE_PATH_STYLE_ENDPOINT: "true"
+
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      MAIL_FROM_ADDRESS: "noreply@slms.local"
+      MAIL_FROM_NAME: "SLMS"
+
+      XDEBUG_MODE: debug
+      XDEBUG_SESSION: 1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - slms_network
+    restart: unless-stopped
+    extra_hosts:
+      # Allows xdebug to reach host machine IDE
+      - "host.docker.internal:host-gateway"
+
+  # ---------------------------------------------------------------------------
+  # Queue Worker — dedicated container for Laravel queues
+  # Separate from backend so it can be scaled independently.
+  # ---------------------------------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      target: development
+    container_name: slms_worker
+    command: php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 --verbose
+    volumes:
+      - ./backend:/var/www/html
+      - backend_storage:/var/www/html/storage
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_KEY: "${APP_KEY}"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: "${DB_DATABASE:-slms}"
+      DB_USERNAME: "${DB_USERNAME:-slms}"
+      DB_PASSWORD: "${DB_PASSWORD:-secret}"
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+      REDIS_HOST: redis
+      FILESYSTEM_DISK: s3
+      AWS_ACCESS_KEY_ID: "${MINIO_ROOT_USER:-slmsadmin}"
+      AWS_SECRET_ACCESS_KEY: "${MINIO_ROOT_PASSWORD:-slmspassword}"
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_BUCKET: "${MINIO_BUCKET:-slms}"
+      AWS_ENDPOINT: "http://minio:9000"
+      AWS_USE_PATH_STYLE_ENDPOINT: "true"
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+    depends_on:
+      - backend
+      - redis
+    networks:
+      - slms_network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Scheduler — runs `php artisan schedule:work` (replaces cron in container)
+  # ---------------------------------------------------------------------------
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      target: development
+    container_name: slms_scheduler
+    command: php artisan schedule:work
+    volumes:
+      - ./backend:/var/www/html
+      - backend_storage:/var/www/html/storage
+    environment:
+      APP_ENV: local
+      APP_KEY: "${APP_KEY}"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: "${DB_DATABASE:-slms}"
+      DB_USERNAME: "${DB_USERNAME:-slms}"
+      DB_PASSWORD: "${DB_PASSWORD:-secret}"
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+      REDIS_HOST: redis
+    depends_on:
+      - backend
+      - redis
+    networks:
+      - slms_network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Reverb — Laravel WebSocket server (real-time notifications, presence)
+  # ---------------------------------------------------------------------------
+  reverb:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      target: development
+    container_name: slms_reverb
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080 --debug
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/var/www/html
+    environment:
+      APP_ENV: local
+      APP_KEY: "${APP_KEY}"
+      REVERB_APP_ID: "${REVERB_APP_ID:-slms}"
+      REVERB_APP_KEY: "${REVERB_APP_KEY:-slmskey}"
+      REVERB_APP_SECRET: "${REVERB_APP_SECRET:-slmssecret}"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_DATABASE: "${DB_DATABASE:-slms}"
+      DB_USERNAME: "${DB_USERNAME:-slms}"
+      DB_PASSWORD: "${DB_PASSWORD:-secret}"
+      REDIS_HOST: redis
+    depends_on:
+      - backend
+      - redis
+    networks:
+      - slms_network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Frontend — Vue 3 + Vite (hot module replacement)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+      target: development
+    container_name: slms_frontend
+    volumes:
+      - ./frontend:/app
+      # Exclude node_modules from bind mount
+      - /app/node_modules
+    environment:
+      VITE_API_BASE_URL: "http://localhost/api"
+      VITE_REVERB_APP_KEY: "${REVERB_APP_KEY:-slmskey}"
+      VITE_REVERB_HOST: "localhost"
+      VITE_REVERB_PORT: 8080
+      VITE_REVERB_SCHEME: "http"
+    networks:
+      - slms_network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: slms_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: "${DB_DATABASE:-slms}"
+      POSTGRES_USER: "${DB_USERNAME:-slms}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-secret}"
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Init scripts — run once on first container creation
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-slms} -d ${DB_DATABASE:-slms}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - slms_network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Redis 7
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: slms_redis
+    command: redis-server /usr/local/etc/redis/redis.conf
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - slms_network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # MinIO — S3-compatible object storage
+  # ---------------------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: slms_minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # MinIO Console Web UI
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-slmsadmin}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-slmspassword}"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - slms_network
+    restart: unless-stopped
+
+  # MinIO bucket provisioner — runs once to create default buckets
+  minio-setup:
+    image: minio/mc:latest
+    container_name: slms_minio_setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set slms http://minio:9000 ${MINIO_ROOT_USER:-slmsadmin} ${MINIO_ROOT_PASSWORD:-slmspassword};
+        mc mb --ignore-existing slms/${MINIO_BUCKET:-slms};
+        mc anonymous set download slms/${MINIO_BUCKET:-slms}/public;
+        echo 'MinIO buckets ready.';
+      "
+    networks:
+      - slms_network
+
+  # ---------------------------------------------------------------------------
+  # Mailpit — Local email testing (SMTP + Web UI)
+  # ---------------------------------------------------------------------------
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: slms_mailpit
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+    networks:
+      - slms_network
+    restart: unless-stopped
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  backend_storage:
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  slms_network:
+    driver: bridge
+    name: slms_network
