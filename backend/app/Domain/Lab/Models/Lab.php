@@ -85,4 +85,15 @@ class Lab extends Model
                 ->withPivot('role')
                 ->withTimestamps();
 }
+
+public function rentalRatePerHour(\App\Domain\Booking\Enums\BookingPurpose $purpose): float
+{
+    $rental = $this->settings['lab_rental'] ?? [];
+
+    return match ($purpose) {
+        \App\Domain\Booking\Enums\BookingPurpose::Academic     => 0,
+        \App\Domain\Booking\Enums\BookingPurpose::Organization => (float) ($rental['student_price_per_hour'] ?? 0),
+        \App\Domain\Booking\Enums\BookingPurpose::Public       => (float) ($rental['public_price_per_hour'] ?? 0),
+    };
+}
 }

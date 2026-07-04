@@ -39,6 +39,7 @@ export interface PaginationLinks {
 // =============================================================================
 
 export interface User {
+  id: number
   uuid: string
   name: string
   email: string
@@ -48,6 +49,7 @@ export interface User {
   roles: string[]
   permissions: string[]
   created_at: string
+  nim: string | null
 }
 
 export interface AuthResponse {
@@ -73,6 +75,7 @@ export interface RegisterPayload {
 // =============================================================================
 
 export interface Lab {
+  id: number
   uuid: string
   name: string
   slug: string
@@ -166,5 +169,22 @@ export interface AppNotification {
   body: string | null
   data: Record<string, unknown> | null
   read_at: string | null
+  created_at: string
+}
+
+export interface Service {
+  uuid: string
+  lab_id: number
+  name: string
+  type: EnumField
+  description: string | null
+  pricing_type: EnumField
+  price: string
+  duration: number | null
+  min_quantity: number
+  max_quantity: number | null
+  includes: string[] | null
+  image: string | null
+  is_active: boolean
   created_at: string
 }

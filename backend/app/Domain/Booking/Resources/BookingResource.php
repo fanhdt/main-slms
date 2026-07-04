@@ -14,10 +14,19 @@ class BookingResource extends JsonResource
         return [
             'uuid'           => $this->uuid,
             'booking_code'   => $this->booking_code,
+            'booking_type'   => [
+                'value' => $this->booking_type->value,
+                'label' => $this->booking_type->label(),
+            ],
+            'purpose'        => $this->purpose ? [
+                'value' => $this->purpose->value,
+                'label' => $this->purpose->label(),
+            ] : null,
             'lab_id'         => $this->lab?->uuid,
             'user'           => [
                 'uuid' => $this->user?->uuid,
                 'name' => $this->user?->name,
+                'nim'  => $this->user?->nim,
             ],
             'start_time'     => $this->start_time->toISOString(),
             'end_time'       => $this->end_time->toISOString(),
@@ -48,6 +57,8 @@ class BookingResource extends JsonResource
                 return $this->assets->map(fn ($bookingAsset) => [
                     'id'           => $bookingAsset->id,
                     'asset_id'     => $bookingAsset->asset_id,
+                    'asset_name'   => $bookingAsset->relationLoaded('asset') ? $bookingAsset->asset?->name : null,
+                    'rental_price' => $bookingAsset->relationLoaded('asset') ? $bookingAsset->asset?->rental_price : null,
                     'status'       => $bookingAsset->status,
                     'return_notes' => $bookingAsset->return_notes,
                 ]);

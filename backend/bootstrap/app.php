@@ -16,25 +16,29 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(fn () => null);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        $exceptions->shouldRenderJsonWhen(function ($request, $e) {
-            return $request->is('api/*') || $request->expectsJson();
-        });
+    $exceptions->shouldRenderJsonWhen(function ($request, $e) {
+        // Broadcasting auth pakai format Pusher, bukan format SLMS
+        if ($request->is('api/v1/broadcasting/*')) {
+            return false;
+        }
+        return $request->is('api/*') || $request->expectsJson();
+    });
 
-        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
-            if ($request->is('api/*')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthenticated.',
-                ], 401);
-            }
-        });
+    $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
+        if ($request->is('api/*') && !$request->is('api/v1/broadcasting/*')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+    });
 
-        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e, $request) {
-            if ($request->is('api/*')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You do not have permission to perform this action.',
-                ], 403);
-            }
-        });
-    })->create();
+    $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e, $request) {
+        if ($request->is('api/*') && !$request->is('api/v1/broadcasting/*')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have permission to perform this action.',
+            ], 403);
+        }
+    });
+})->create();

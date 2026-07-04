@@ -37,3 +37,5 @@ Route::post('/{uuid}/approval', [PhotoDeliveryController::class, 'resolveApprova
 // ^ customer action juga
 
 Route::get('/{uuid}/files/{fileUuid}/download', [PhotoDeliveryController::class, 'downloadFile']);
+
+Route::get('/{uuid}/download-all', [PhotoDeliveryController::class, 'downloadAll']);

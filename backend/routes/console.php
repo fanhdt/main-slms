@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('photo:expire')->daily();
+Schedule::command('photo:cleanup-expired-files')->daily();

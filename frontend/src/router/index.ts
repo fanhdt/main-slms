@@ -52,6 +52,22 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
 
+    // Asset Catalog — browse alat untuk disewa
+    {
+      path: '/booking/:slug/catalog',
+      name: 'asset-catalog',
+      component: () => import('@/features/booking/pages/AssetCatalogPage.vue'),
+      meta: { requiresAuth: true },
+    },
+
+    // Cart — review keranjang sebelum checkout
+    {
+      path: '/booking/:slug/cart',
+      name: 'booking-cart',
+      component: () => import('@/features/booking/pages/CartPage.vue'),
+      meta: { requiresAuth: true },
+    },
+
     // My Bookings
     {
       path: '/my-bookings',

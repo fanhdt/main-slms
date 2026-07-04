@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Domain\Booking\Enums\BookingType;
+use App\Domain\Booking\Enums\BookingPurpose;
 
 class Booking extends Model
 {
@@ -34,19 +36,23 @@ class Booking extends Model
         'checked_in_at',
         'total_price',
         'notes',
+        'booking_type',
+        'purpose',
     ];
 
     protected function casts(): array
-    {
-        return [
-            'start_time'     => 'datetime',
-            'end_time'       => 'datetime',
-            'checked_in_at'  => 'datetime',
-            'status'         => BookingStatus::class,
-            'payment_status' => PaymentStatus::class,
-            'total_price'    => 'decimal:2',
-        ];
-    }
+{
+    return [
+        'start_time'     => 'datetime',
+        'end_time'       => 'datetime',
+        'checked_in_at'  => 'datetime',
+        'status'         => BookingStatus::class,
+        'payment_status' => PaymentStatus::class,
+        'total_price'    => 'decimal:2',
+        'booking_type'   => BookingType::class,
+        'purpose'        => BookingPurpose::class,
+    ];
+}
 
     public function user(): BelongsTo
     {

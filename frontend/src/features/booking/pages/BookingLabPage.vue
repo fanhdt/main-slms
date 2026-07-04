@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import api from '@/lib/axios'
@@ -8,7 +8,9 @@ const route = useRoute()
 const router = useRouter()
 const slug = computed(() => route.params.slug as string)
 
-const activeTab = ref<'services' | 'packages'>('packages')
+// Layar utama: pilih salah satu dari 3 flow. null = belum pilih (tampilkan 3 kartu).
+const activeFlow = ref<'lab_rental' | 'asset_rental' | 'service' | null>(null)
+const serviceTab = ref<'services' | 'packages'>('packages')
 
 const { data: lab } = useQuery({
   queryKey: ['booking-lab', slug],
@@ -26,7 +28,7 @@ const { data: services } = useQuery({
     })
     return res.data.data.data
   },
-  enabled: computed(() => !!lab.value),
+  enabled: computed(() => activeFlow.value === 'service' && !!lab.value),
 })
 
 const { data: packages } = useQuery({
@@ -37,14 +39,29 @@ const { data: packages } = useQuery({
     })
     return res.data.data.data
   },
-  enabled: computed(() => !!lab.value),
+  enabled: computed(() => activeFlow.value === 'service' && !!lab.value),
 })
+
+function goToLabRental() {
+  router.push({
+    name: 'booking-form',
+    params: { slug: slug.value },
+    query: { bookingType: 'lab_rental' },
+  })
+}
+
+function goToAssetRental() {
+  router.push({
+    name: 'asset-catalog',
+    params: { slug: slug.value },
+  })
+}
 
 function selectPackage(pkg: any) {
   router.push({
     name: 'booking-form',
     params: { slug: slug.value },
-    query: { type: 'package', id: pkg.uuid },
+    query: { bookingType: 'service', type: 'package', id: pkg.uuid },
   })
 }
 
@@ -52,11 +69,11 @@ function selectService(service: any) {
   router.push({
     name: 'booking-form',
     params: { slug: slug.value },
-    query: { type: 'service', id: service.uuid },
+    query: { bookingType: 'service', type: 'service', id: service.uuid },
   })
 }
 
-function formatPrice(price: string) {
+function formatPrice(price: string | number) {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
@@ -67,97 +84,142 @@ function formatPrice(price: string) {
 
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
     <header
-      class="sticky top-0 z-10 border-b"
-      :style="{ backgroundColor: lab?.branding.primary_color ?? '#1a1a2e' }"
+      class="sticky top-0 z-10"
+      :style="{ backgroundColor: lab?.branding?.primary_color ?? '#1a1a2e' }"
     >
-      <div class="max-w-4xl mx-auto px-6 h-16 flex items-center gap-4">
+      <div class="max-w-3xl mx-auto px-6 h-16 flex items-center gap-4">
         <button
-          @click="router.push('/booking')"
+          @click="activeFlow ? (activeFlow = null) : router.back()"
           class="text-white/70 hover:text-white transition-colors"
         >
           ← Kembali
         </button>
-        <span class="text-white font-bold">{{ lab?.name }}</span>
+        <span class="text-white font-bold">{{ lab?.name ?? 'Booking' }}</span>
       </div>
     </header>
 
-    <div class="max-w-4xl mx-auto px-6 py-8">
-      <h1 class="text-2xl font-bold text-gray-900 mb-1">Pilih Layanan</h1>
-      <p class="text-gray-500 mb-6">Pilih paket atau layanan satuan yang kamu inginkan.</p>
+    <div class="max-w-3xl mx-auto px-6 py-8">
+      <!-- Layar pilih flow -->
+      <div v-if="!activeFlow" class="space-y-4">
+        <h2 class="text-xl font-bold text-gray-900 mb-2">Mau booking apa?</h2>
 
-      <!-- Tabs -->
-      <div class="flex gap-2 mb-6 border-b border-gray-200">
         <button
-          @click="activeTab = 'packages'"
-          class="px-4 py-3 text-sm font-medium border-b-2 transition-colors"
-          :class="
-            activeTab === 'packages'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          "
+          @click="goToLabRental"
+          class="w-full text-left bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-md p-5 transition-all flex items-center gap-4"
         >
-          Paket
+          <div
+            class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-2xl shrink-0"
+          >
+            🏢
+          </div>
+          <div class="flex-1">
+            <h3 class="font-semibold text-gray-900">Pinjam Lab</h3>
+            <p class="text-sm text-gray-500">
+              Pinjam ruangan/studio sesuai jadwal. Gratis untuk keperluan akademik.
+            </p>
+          </div>
+          <span class="text-gray-300">›</span>
         </button>
+
         <button
-          @click="activeTab = 'services'"
-          class="px-4 py-3 text-sm font-medium border-b-2 transition-colors"
-          :class="
-            activeTab === 'services'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          "
+          @click="goToAssetRental"
+          class="w-full text-left bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-md p-5 transition-all flex items-center gap-4"
         >
-          Layanan Satuan
+          <div
+            class="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center text-2xl shrink-0"
+          >
+            📷
+          </div>
+          <div class="flex-1">
+            <h3 class="font-semibold text-gray-900">Sewa Alat</h3>
+            <p class="text-sm text-gray-500">Sewa kamera, properti, dan peralatan lainnya.</p>
+          </div>
+          <span class="text-gray-300">›</span>
+        </button>
+
+        <button
+          @click="activeFlow = 'service'"
+          class="w-full text-left bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-md p-5 transition-all flex items-center gap-4"
+        >
+          <div
+            class="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center text-2xl shrink-0"
+          >
+            🎨
+          </div>
+          <div class="flex-1">
+            <h3 class="font-semibold text-gray-900">Jasa & Paket</h3>
+            <p class="text-sm text-gray-500">
+              Fotografi, editing, cetak foto, dan paket bundling (prewedding, dll).
+            </p>
+          </div>
+          <span class="text-gray-300">›</span>
         </button>
       </div>
 
-      <!-- Packages -->
-      <div v-if="activeTab === 'packages'" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div v-if="!packages?.length" class="col-span-2 text-center py-12 text-gray-400">
-          Belum ada paket tersedia.
+      <!-- Layar Jasa & Paket (tab lama) -->
+      <div v-else-if="activeFlow === 'service'">
+        <div class="flex gap-2 mb-6">
+          <button
+            @click="serviceTab = 'packages'"
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            :class="
+              serviceTab === 'packages'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white border border-gray-200 text-gray-600'
+            "
+          >
+            Paket
+          </button>
+          <button
+            @click="serviceTab = 'services'"
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            :class="
+              serviceTab === 'services'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white border border-gray-200 text-gray-600'
+            "
+          >
+            Layanan Satuan
+          </button>
         </div>
-        <button
-          v-for="pkg in packages"
-          :key="pkg.uuid"
-          @click="selectPackage(pkg)"
-          class="text-left bg-white rounded-xl border border-gray-200 p-5 hover:border-blue-300 hover:shadow-md transition-all"
-        >
-          <h3 class="font-semibold text-gray-900">{{ pkg.name }}</h3>
-          <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ pkg.description }}</p>
-          <div class="mt-3 flex items-center justify-between">
-            <span class="font-bold text-lg text-gray-900">
-              {{ formatPrice(pkg.final_price ?? pkg.price) }}
-            </span>
-            <span class="text-xs text-blue-600 font-medium">Pilih →</span>
-          </div>
-        </button>
-      </div>
 
-      <!-- Services -->
-      <div v-if="activeTab === 'services'" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div v-if="!services?.length" class="col-span-2 text-center py-12 text-gray-400">
-          Belum ada layanan tersedia.
+        <div v-if="serviceTab === 'packages'" class="grid gap-4">
+          <button
+            v-for="pkg in packages"
+            :key="pkg.uuid"
+            @click="selectPackage(pkg)"
+            class="text-left bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-md p-5 transition-all"
+          >
+            <h3 class="font-semibold text-gray-900">{{ pkg.name }}</h3>
+            <p class="text-sm text-gray-500 mt-1">{{ pkg.description }}</p>
+            <p class="font-bold text-gray-900 mt-2">{{ formatPrice(pkg.price - pkg.discount) }}</p>
+          </button>
+          <p v-if="!packages?.length" class="text-sm text-gray-400 text-center py-8">
+            Belum ada paket tersedia.
+          </p>
         </div>
-        <button
-          v-for="service in services"
-          :key="service.uuid"
-          @click="selectService(service)"
-          class="text-left bg-white rounded-xl border border-gray-200 p-5 hover:border-blue-300 hover:shadow-md transition-all"
-        >
-          <h3 class="font-semibold text-gray-900">{{ service.name }}</h3>
-          <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ service.description }}</p>
-          <div class="mt-3 flex items-center justify-between">
-            <div>
-              <span class="font-bold text-lg text-gray-900">
-                {{ formatPrice(service.price) }}
-              </span>
-              <span class="text-xs text-gray-400 block">{{ service.pricing_type?.label }}</span>
-            </div>
-            <span class="text-xs text-blue-600 font-medium">Pilih →</span>
-          </div>
-        </button>
+
+        <div v-else class="grid gap-4">
+          <button
+            v-for="service in services"
+            :key="service.uuid"
+            @click="selectService(service)"
+            class="text-left bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-md p-5 transition-all"
+          >
+            <h3 class="font-semibold text-gray-900">{{ service.name }}</h3>
+            <p class="text-sm text-gray-500 mt-1">{{ service.description }}</p>
+            <p class="font-bold text-gray-900 mt-2">
+              {{ formatPrice(service.price) }}
+              <span class="text-sm font-normal text-gray-400"
+                >/ {{ service.pricing_type?.label }}</span
+              >
+            </p>
+          </button>
+          <p v-if="!services?.length" class="text-sm text-gray-400 text-center py-8">
+            Belum ada layanan tersedia.
+          </p>
+        </div>
       </div>
     </div>
   </div>

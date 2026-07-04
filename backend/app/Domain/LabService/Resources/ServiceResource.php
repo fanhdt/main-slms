@@ -12,6 +12,7 @@ class ServiceResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            'id'           => $this->id, // NEW — dibutuhkan form Package buat referensi numerik
             'uuid'         => $this->uuid,
             'lab_id'       => $this->lab?->uuid,
             'name'         => $this->name,

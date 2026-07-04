@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Broadcast;
 
 /*
 |--------------------------------------------------------------------------
@@ -26,7 +27,10 @@ Route::prefix('v1')->group(function () {
     // ---- Protected routes (butuh Sanctum token) ----
     Route::middleware(['auth:sanctum'])->group(function () {
 
-        Broadcast::routes(['middleware' => ['auth:sanctum']]);
+        // Broadcasting auth untuk Reverb
+        Route::post('/broadcasting/auth', function () {
+            return Broadcast::auth(request());
+        });
 
         // Auth
         Route::prefix('auth')->group(base_path('routes/api/auth-protected.php'));

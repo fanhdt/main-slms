@@ -22,17 +22,17 @@ class NotificationController extends ApiController
             $request->all()
         );
 
-        return $this->success(
-            $notifications->through(fn ($n) => [
-                'uuid'       => $n->uuid,
-                'type'       => $n->type,
-                'title'      => $n->title,
-                'body'       => $n->body,
-                'data'       => $n->data,
-                'read_at'    => $n->read_at?->toISOString(),
-                'created_at' => $n->created_at->toISOString(),
-            ])->response()->getData(true)
-        );
+        $notifications->getCollection()->transform(fn ($n) => [
+            'uuid'       => $n->uuid,
+            'type'       => $n->type,
+            'title'      => $n->title,
+            'body'       => $n->body,
+            'data'       => $n->data,
+            'read_at'    => $n->read_at?->toISOString(),
+            'created_at' => $n->created_at->toISOString(),
+        ]);
+
+        return $this->success($notifications);
     }
 
     public function unreadCount(Request $request): JsonResponse

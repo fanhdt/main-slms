@@ -51,6 +51,7 @@ class User extends Authenticatable
         'name',
         'email',
         'phone',
+        'nim',
         'avatar',
         'password',
         'is_active',

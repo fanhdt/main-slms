@@ -20,7 +20,7 @@ const { data: bookings } = useQuery({
     const lab = labStore.activeLab
     if (!lab) return null
     const res = await api.get('/bookings', {
-      params: { lab_id: lab.uuid },
+      params: { lab_id: lab.id },
     })
     return res.data.data
   },
@@ -33,7 +33,7 @@ const { data: assets } = useQuery({
     const lab = labStore.activeLab
     if (!lab) return null
     const res = await api.get('/assets', {
-      params: { lab_id: lab.uuid },
+      params: { lab_id: lab.id },
     })
     return res.data.data
   },

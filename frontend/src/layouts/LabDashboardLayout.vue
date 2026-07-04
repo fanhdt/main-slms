@@ -4,6 +4,7 @@ import { RouterView, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import { useLabStore } from '@/features/lab/stores/useLabStore'
 import { useBranding } from '@/composables/useBranding'
+import { useNotifications } from '@/composables/useNotifications'
 import NotificationBell from '@/components/NotificationBell.vue'
 import { toast } from 'vue-sonner'
 
@@ -132,7 +133,7 @@ const showBackButton = computed(() => {
       <div class="p-4 border-t border-gray-200">
         <div class="flex items-center gap-3 mb-3">
           <div
-            class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+            class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
             :style="primaryBgStyle"
           >
             <span class="text-xs font-medium text-white">
@@ -163,7 +164,7 @@ const showBackButton = computed(() => {
         <h1 class="text-lg font-semibold text-gray-900 flex-1">
           {{ labName }}
         </h1>
-             <NotificationBell />
+        <NotificationBell />
         <span
           class="text-sm font-medium px-3 py-1 rounded-full bg-gray-100"
           :style="primaryTextStyle"

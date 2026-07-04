@@ -14,20 +14,17 @@ class PackageService extends BaseService
 {
     public function paginate(array $filters = []): LengthAwarePaginator
     {
-        $query = Package::query()->with(['lab', 'items.service']);
+        $query = Package::query()->with(['lab', 'items.service', 'items.asset']);
 
         if (isset($filters['lab_id'])) {
             $query->where('lab_id', $filters['lab_id']);
         }
-
         if (isset($filters['is_active'])) {
             $query->where('is_active', $filters['is_active']);
         }
-
         if (isset($filters['is_custom'])) {
             $query->where('is_custom', $filters['is_custom']);
         }
-
         if (isset($filters['search'])) {
             $query->where('name', 'ilike', '%' . $filters['search'] . '%');
         }
@@ -37,11 +34,11 @@ class PackageService extends BaseService
 
     public function findByUuid(string $uuid): Package
     {
-        $package = Package::with(['lab', 'items.service'])
+        $package = Package::with(['lab', 'items.service', 'items.asset'])
             ->where('uuid', $uuid)
             ->first();
 
-        if (! $package) {
+        if (!$package) {
             throw ApiException::notFound('Package');
         }
 
@@ -55,17 +52,9 @@ class PackageService extends BaseService
             unset($data['items']);
 
             $package = Package::create($data);
+            $this->syncItems($package, $items);
 
-            // Simpan items jika ada
-            foreach ($items as $item) {
-                $package->items()->create([
-                    'service_id' => $item['service_id'],
-                    'quantity'   => $item['quantity'] ?? 1,
-                    'notes'      => $item['notes'] ?? null,
-                ]);
-            }
-
-            return $package->load(['lab', 'items.service']);
+            return $package->load(['lab', 'items.service', 'items.asset']);
         });
     }
 
@@ -77,24 +66,16 @@ class PackageService extends BaseService
             $items = $data['items'] ?? null;
             unset($data['items']);
 
-            if (! empty($data)) {
+            if (!empty($data)) {
                 $package->update($data);
             }
 
-            // Update items jika dikirim — replace semua
             if ($items !== null) {
                 $package->items()->delete();
-
-                foreach ($items as $item) {
-                    $package->items()->create([
-                        'service_id' => $item['service_id'],
-                        'quantity'   => $item['quantity'] ?? 1,
-                        'notes'      => $item['notes'] ?? null,
-                    ]);
-                }
+                $this->syncItems($package, $items);
             }
 
-            return $package->fresh(['lab', 'items.service']);
+            return $package->fresh(['lab', 'items.service', 'items.asset']);
         });
     }
 
@@ -102,5 +83,18 @@ class PackageService extends BaseService
     {
         $package = $this->findByUuid($uuid);
         $package->delete();
+    }
+
+    private function syncItems(Package $package, array $items): void
+    {
+        foreach ($items as $item) {
+            $package->items()->create([
+                'service_id'        => $item['service_id'] ?? null,
+                'asset_id'          => $item['asset_id'] ?? null,
+                'quantity'          => $item['quantity'] ?? 1,
+                'duration_minutes'  => $item['duration_minutes'] ?? null,
+                'notes'             => $item['notes'] ?? null,
+            ]);
+        }
     }
 }

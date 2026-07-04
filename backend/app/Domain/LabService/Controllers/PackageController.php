@@ -9,6 +9,7 @@ use App\Domain\LabService\Resources\PackageResource;
 use App\Domain\LabService\Services\PackageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class PackageController extends ApiController
 {
@@ -34,25 +35,7 @@ class PackageController extends ApiController
 
     public function store(Request $request): JsonResponse
     {
-        $data = $request->validate([
-            'lab_id'      => ['required', 'integer', 'exists:labs,id'],
-            'name'        => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'price'       => ['required', 'numeric', 'min:0'],
-            'discount'    => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'duration'    => ['nullable', 'integer', 'min:1'],
-            'includes'    => ['nullable', 'array'],
-            'addons'      => ['nullable', 'array'],
-            'image'       => ['nullable', 'string'],
-            'is_active'   => ['nullable', 'boolean'],
-            'is_custom'   => ['nullable', 'boolean'],
-            
-            // Validasi untuk items (relasi ke service)
-            'items'       => ['required', 'array', 'min:1'],
-            'items.*.service_id' => ['required', 'integer', 'exists:services,id'],
-            'items.*.quantity'   => ['nullable', 'integer', 'min:1'],
-            'items.*.notes'      => ['nullable', 'string'],
-        ]);
+        $data = $this->validateWithItems($request);
 
         $package = $this->packageService->create($data);
 
@@ -61,24 +44,7 @@ class PackageController extends ApiController
 
     public function update(Request $request, string $uuid): JsonResponse
     {
-        $data = $request->validate([
-            'name'        => ['sometimes', 'string', 'max:255'],
-            'description' => ['sometimes', 'nullable', 'string'],
-            'price'       => ['sometimes', 'numeric', 'min:0'],
-            'discount'    => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:100'],
-            'duration'    => ['sometimes', 'nullable', 'integer', 'min:1'],
-            'includes'    => ['sometimes', 'nullable', 'array'],
-            'addons'      => ['sometimes', 'nullable', 'array'],
-            'image'       => ['sometimes', 'nullable', 'string'],
-            'is_active'   => ['sometimes', 'boolean'],
-            'is_custom'   => ['sometimes', 'boolean'],
-            
-            // Validasi update items (replace all)
-            'items'       => ['sometimes', 'array', 'min:1'],
-            'items.*.service_id' => ['required_with:items', 'integer', 'exists:services,id'],
-            'items.*.quantity'   => ['sometimes', 'nullable', 'integer', 'min:1'],
-            'items.*.notes'      => ['sometimes', 'nullable', 'string'],
-        ]);
+        $data = $this->validateWithItems($request, isUpdate: true);
 
         $package = $this->packageService->update($uuid, $data);
 
@@ -90,5 +56,48 @@ class PackageController extends ApiController
         $this->packageService->delete($uuid);
 
         return $this->successMessage('Package berhasil dihapus.');
+    }
+
+    private function validateWithItems(Request $request, bool $isUpdate = false): array
+    {
+        $itemsRule = $isUpdate ? 'sometimes|array|min:1' : 'required|array|min:1';
+
+        $validator = Validator::make($request->all(), [
+            'lab_id'      => [$isUpdate ? 'sometimes' : 'required', 'integer', 'exists:labs,id'],
+            'name'        => [$isUpdate ? 'sometimes' : 'required', 'string', 'max:255'],
+            'description' => ['sometimes', 'nullable', 'string'],
+            'price'       => [$isUpdate ? 'sometimes' : 'required', 'numeric', 'min:0'],
+            'discount'    => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:100'],
+            'duration'    => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'includes'    => ['sometimes', 'nullable', 'array'],
+            'addons'      => ['sometimes', 'nullable', 'array'],
+            'image'       => ['sometimes', 'nullable', 'string'],
+            'is_active'   => ['sometimes', 'boolean'],
+            'is_custom'   => ['sometimes', 'boolean'],
+
+            'items'                     => $itemsRule,
+            'items.*.service_id'        => ['nullable', 'integer', 'exists:services,id'],
+            'items.*.asset_id'          => ['nullable', 'integer', 'exists:assets,id'],
+            'items.*.quantity'          => ['nullable', 'integer', 'min:1'],
+            'items.*.duration_minutes'  => ['nullable', 'integer', 'min:1'],
+            'items.*.notes'             => ['nullable', 'string'],
+        ]);
+
+        $validator->after(function ($validator) use ($request) {
+            foreach ((array) $request->input('items', []) as $index => $item) {
+                $hasService = !empty($item['service_id']);
+                $hasAsset = !empty($item['asset_id']);
+
+                if ($hasService === $hasAsset) {
+                    // dua-duanya kosong ATAU dua-duanya terisi — sama-sama invalid
+                    $validator->errors()->add(
+                        "items.{$index}",
+                        'Tiap item harus pilih salah satu: Jasa atau Alat (tidak boleh keduanya/kosong).'
+                    );
+                }
+            }
+        });
+
+        return $validator->validate();
     }
 }

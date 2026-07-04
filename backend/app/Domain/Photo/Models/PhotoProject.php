@@ -33,6 +33,7 @@ class PhotoProject extends Model
         'customer_note',
         'editor_note',
         'expires_at',
+        'files_purged_at',
     ];
 
     protected function casts(): array

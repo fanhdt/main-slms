@@ -324,6 +324,8 @@ class PhotoDeliveryService extends BaseService
         return $project;
     }
 
+    
+
     /**
      * @param  UploadedFile[]  $files
      * @return PhotoFile[]
@@ -368,4 +370,29 @@ class PhotoDeliveryService extends BaseService
             return $created;
         });
     }
+
+    public function purgeExpiredFiles(PhotoProject $project): int
+{
+    if ($project->status !== PhotoProjectStatus::Expired) {
+        throw ApiException::unprocessable('Project belum berstatus expired.');
+    }
+
+    if ($project->files_purged_at !== null) {
+        return 0; // sudah pernah di-purge, jangan diulang
+    }
+
+    $files = $project->files;
+    $deletedCount = 0;
+
+    foreach ($files as $file) {
+        if (Storage::disk($file->disk)->exists($file->path)) {
+            Storage::disk($file->disk)->delete($file->path);
+            $deletedCount++;
+        }
+    }
+
+    $project->update(['files_purged_at' => now()]);
+
+    return $deletedCount;
+}
 }

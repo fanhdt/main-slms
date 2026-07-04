@@ -11,11 +11,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class BookingAsset extends Model
 {
     protected $fillable = [
-        'booking_id',
-        'asset_id',
-        'status',
-        'return_notes',
-    ];
+    'asset_id',
+    'rental_days',
+    'subtotal',
+    'status',
+    'return_notes',
+];
 
     public function booking(): BelongsTo
     {

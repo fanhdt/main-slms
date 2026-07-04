@@ -13,6 +13,8 @@ use App\Domain\Photo\Resources\PhotoProjectResource;
 use App\Domain\Photo\Services\PhotoDeliveryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use ZipArchive;
+use Illuminate\Support\Facades\Storage;
 
 class PhotoDeliveryController extends ApiController
 {
@@ -120,5 +122,45 @@ class PhotoDeliveryController extends ApiController
             'url'      => $file->getTemporaryUrl(30),
             'filename' => $file->filename,
         ]);
+    }
+
+    /**
+     * Download semua file final sekaligus dalam 1 file ZIP.
+     * GET /photo-projects/{uuid}/download-all
+     */
+    public function downloadAll(string $uuid)
+    {
+        $project = $this->photoService->findByUuid($uuid, ['files', 'booking']);
+        $project = $this->photoService->checkExpiry($project);
+
+        if ($project->status->value !== 'delivered') {
+            return $this->error('File belum tersedia untuk didownload atau sudah kadaluarsa.', 422);
+        }
+
+        $finalFiles = $project->files->where('type', 'final');
+        if ($finalFiles->isEmpty()) {
+            return $this->notFound('Tidak ada file final untuk didownload.');
+        }
+
+        $tmpDir = storage_path('app/tmp');
+        if (!is_dir($tmpDir)) {
+            mkdir($tmpDir, 0755, true);
+        }
+
+        $zipPath = $tmpDir . '/photo-' . $project->uuid . '-' . time() . '.zip';
+
+        $zip = new ZipArchive();
+        $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+
+        foreach ($finalFiles as $file) {
+            $contents = Storage::disk($file->disk)->get($file->path);
+            $zip->addFromString($file->filename, $contents);
+        }
+
+        $zip->close();
+
+        $downloadName = 'foto-' . $project->booking->booking_code . '.zip';
+
+        return response()->download($zipPath, $downloadName)->deleteFileAfterSend(true);
     }
 }

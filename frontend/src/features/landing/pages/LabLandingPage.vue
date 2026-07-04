@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import api from '@/lib/axios'
+import AvailabilityCalendar from '@/components/AvailabilityCalendar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -159,6 +160,11 @@ function formatPrice(price: string) {
         </div>
       </section>
 
+      <section class="max-w-5xl mx-auto px-6 py-10">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">Jadwal Ketersediaan Lab</h2>
+        <AvailabilityCalendar :slug="slug" :interactive="false" class="max-w-md" />
+      </section>
+
       <!-- ================================================================
            SERVICES SECTION
       ================================================================ -->
@@ -175,6 +181,16 @@ function formatPrice(price: string) {
               :key="service.uuid"
               class="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md transition-shadow"
             >
+              <span
+                v-if="service.type?.value === 'photography'"
+                class="absolute top-4 right-4 text-[11px] font-medium px-2 py-1 rounded-full flex items-center gap-1"
+                :style="{
+                  backgroundColor: lab.branding.secondary_color + '15',
+                  color: lab.branding.secondary_color ?? '#e94560',
+                }"
+              >
+                🖼 Dapat Galeri Foto
+              </span>
               <div
                 class="w-12 h-12 rounded-xl flex items-center justify-center mb-4 text-2xl"
                 :style="{ backgroundColor: lab.branding.primary_color + '15' }"

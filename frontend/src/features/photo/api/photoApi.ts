@@ -58,4 +58,8 @@ export const photoApi = {
       `/photo-projects/${uuid}/files/${fileUuid}/download`,
     )
   },
+
+  downloadAll(uuid: string) {
+    return api.get(`/photo-projects/${uuid}/download-all`, { responseType: 'blob' })
+  },
 }
