@@ -2,11 +2,13 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
+import { useBookingFlowMode } from '@/composables/useBookingFlowMode'
 import api from '@/lib/axios'
 
 const route = useRoute()
 const router = useRouter()
 const slug = computed(() => route.params.slug as string)
+const { isStaffMode, withMode, goBack } = useBookingFlowMode()
 
 // Layar utama: pilih salah satu dari 3 flow. null = belum pilih (tampilkan 3 kartu).
 const activeFlow = ref<'lab_rental' | 'asset_rental' | 'service' | null>(null)
@@ -46,7 +48,7 @@ function goToLabRental() {
   router.push({
     name: 'booking-form',
     params: { slug: slug.value },
-    query: { bookingType: 'lab_rental' },
+    query: withMode({ bookingType: 'lab_rental' }),
   })
 }
 
@@ -54,6 +56,7 @@ function goToAssetRental() {
   router.push({
     name: 'asset-catalog',
     params: { slug: slug.value },
+    query: withMode(),
   })
 }
 
@@ -61,7 +64,7 @@ function selectPackage(pkg: any) {
   router.push({
     name: 'booking-form',
     params: { slug: slug.value },
-    query: { bookingType: 'service', type: 'package', id: pkg.uuid },
+    query: withMode({ bookingType: 'service', type: 'package', id: pkg.uuid }),
   })
 }
 
@@ -69,7 +72,7 @@ function selectService(service: any) {
   router.push({
     name: 'booking-form',
     params: { slug: slug.value },
-    query: { bookingType: 'service', type: 'service', id: service.uuid },
+    query: withMode({ bookingType: 'service', type: 'service', id: service.uuid }),
   })
 }
 
@@ -86,16 +89,24 @@ function formatPrice(price: string | number) {
   <div class="min-h-screen bg-gray-50">
     <header
       class="sticky top-0 z-10"
-      :style="{ backgroundColor: lab?.branding?.primary_color ?? '#1a1a2e' }"
+      :style="{
+        backgroundColor: isStaffMode ? '#111827' : (lab?.branding?.primary_color ?? '#1a1a2e'),
+      }"
     >
       <div class="max-w-3xl mx-auto px-6 h-16 flex items-center gap-4">
         <button
-          @click="activeFlow ? (activeFlow = null) : router.back()"
+          @click="activeFlow ? (activeFlow = null) : goBack(slug)"
           class="text-white/70 hover:text-white transition-colors"
         >
           ← Kembali
         </button>
-        <span class="text-white font-bold">{{ lab?.name ?? 'Booking' }}</span>
+          <span class="text-white font-bold">{{ lab?.name ?? 'Booking' }}</span>
+       <span
+         v-if="isStaffMode"
+         class="ml-auto text-xs font-medium text-white/70 border border-white/20 rounded-full px-2.5 py-0.5"
+      >
+         Mode Admin
+       </span>
       </div>
     </header>
 

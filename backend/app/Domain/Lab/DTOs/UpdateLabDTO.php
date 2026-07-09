@@ -17,6 +17,7 @@ readonly class UpdateLabDTO
         public ?array  $contact = null,
         public ?array  $settings = null,
         public ?bool   $isActive = null,
+        public readonly ?bool $isPhotographyLab = null, 
     ) {}
 
     public static function fromRequest(array $data): self
@@ -32,6 +33,7 @@ readonly class UpdateLabDTO
             contact:        $data['contact'] ?? null,
             settings:       $data['settings'] ?? null,
             isActive:       $data['is_active'] ?? null,
+            isPhotographyLab: $data['is_photography_lab'] ?? null,
         );
     }
 
@@ -53,6 +55,7 @@ readonly class UpdateLabDTO
             'contact'         => $this->contact,
             'settings'        => $this->settings,
             'is_active'       => $this->isActive,
+            'is_photography_lab'  => $this->isPhotographyLab,
         ], fn ($value) => $value !== null);
     }
 }

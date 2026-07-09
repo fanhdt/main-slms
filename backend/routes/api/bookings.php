@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [\App\Domain\Booking\Controllers\BookingController::class, 'index'])
-    ->middleware('can:bookings.view');
+    ->middleware(['can:bookings.view', 'lab.access']);
 
 Route::get('/my', [\App\Domain\Booking\Controllers\BookingController::class, 'myBookings']);
 
@@ -13,6 +13,12 @@ Route::get('/my', [\App\Domain\Booking\Controllers\BookingController::class, 'my
 Route::post('/checkin', [\App\Domain\Booking\Controllers\BookingController::class, 'checkin'])
     ->middleware('can:bookings.checkin');
 
+// Cancel oleh pemilik booking sendiri — beda dari updateStatus (approval staff).
+// Tidak pakai middleware `can:` karena ini bukan permission staff, tapi validasi
+// kepemilikan dilakukan di service layer (lihat cancelByOwner()).
+Route::post('/{uuid}/cancel', [\App\Domain\Booking\Controllers\BookingController::class, 'cancel'])
+     ->middleware('auth:sanctum'); 
+     
 Route::get('/{uuid}', [\App\Domain\Booking\Controllers\BookingController::class, 'show'])
     ->middleware('can:bookings.view');
 
@@ -28,3 +34,5 @@ Route::patch('/{uuid}/payment-status', [\App\Domain\Booking\Controllers\BookingC
 // Tambah aset fisik ke dalam booking (Saat Check-in)
 Route::post('/{uuid}/assets', [\App\Domain\Booking\Controllers\BookingController::class, 'addAsset'])
     ->middleware('can:bookings.update');
+// Payment Gateaway
+Route::post('/{uuid}/pay', [\App\Domain\Payment\Controllers\PaymentController::class, 'createSnapToken']);

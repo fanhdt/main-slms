@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import { availabilityApi, type DaySlot } from '@/features/booking/api/availabilityApi'
+import { useAvailabilityColor } from '@/composables/useAvailabilityColor'
 
 const props = withDefaults(
   defineProps<{
@@ -88,6 +89,7 @@ const pendingSlotIndexRange = computed(() => {
 })
 
 function isPast(dateStr: string) {
+  if (!minDateValue.value) return false
   return dateStr < minDateValue.value
 }
 
@@ -129,7 +131,8 @@ function canExtendTo(duration: number): boolean {
   const startIdx = dayData.value.slots.findIndex((s) => s.start === pendingSlot.value!.start)
   if (startIdx === -1) return false
   for (let i = startIdx; i < startIdx + duration; i++) {
-    if (!dayData.value.slots[i] || !dayData.value.slots[i].available) return false
+    const slot = dayData.value.slots[i]
+    if (!slot || !slot.available) return false
   }
   return true
 }
@@ -167,12 +170,7 @@ function confirmSelection() {
   pendingSlot.value = null
   emit('confirm-slot', payload)
 }
-
-const statusColor: Record<string, string> = {
-  available: 'bg-green-50 hover:bg-green-100 text-green-700',
-  partial: 'bg-yellow-50 hover:bg-yellow-100 text-yellow-700',
-  full: 'bg-red-50 text-red-400 cursor-not-allowed',
-}
+const { cellColor } = useAvailabilityColor()
 
 function slotClass(slot: DaySlot, index: number) {
   if (confirmedSlot.value && slot.start === confirmedSlot.value.start) {
@@ -191,7 +189,7 @@ function slotClass(slot: DaySlot, index: number) {
 }
 
 onMounted(() => {
-  selectedDate.value = minDateValue.value
+  selectedDate.value = minDateValue.value ?? null
 })
 </script>
 
@@ -232,7 +230,7 @@ onMounted(() => {
           :class="[
             !cell.date && 'invisible',
             cell.date && isPast(cell.date) && 'text-gray-300 cursor-not-allowed',
-            cell.date && !isPast(cell.date) && statusColor[cell.status ?? 'available'],
+            cell.date && !isPast(cell.date) && cellColor(cell.status),
             cell.date === selectedDate && 'ring-2 ring-blue-500',
           ]"
         >
@@ -348,9 +346,7 @@ onMounted(() => {
           <div>
             <p class="text-xs text-green-700 font-medium">Jadwal terkonfirmasi</p>
             <p class="text-sm text-green-900 font-semibold">
-              {{ confirmedSlot.start }} – {{ confirmedSlot.end }} ({{
-                confirmedSlot.durationHours
-              }}
+              {{ confirmedSlot.start }} – {{ confirmedSlot.end }} ({{ confirmedSlot.durationHours }}
               jam)
             </p>
           </div>

@@ -3,16 +3,22 @@
 declare(strict_types=1);
 
 namespace App\Domain\User\Models;
+
 use App\Domain\Lab\Models\Lab;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Core\Traits\HasUuid;
+use App\Core\Traits\HasImageUrl;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Permission\Traits\HasRoles;
+use App\Domain\Auth\Notifications\ResetPasswordNotification;
+use App\Domain\Auth\Notifications\VerifyEmailNotification;
 use Laravel\Sanctum\HasApiTokens;
 
 /**
@@ -35,16 +41,16 @@ use Laravel\Sanctum\HasApiTokens;
  * @property \Carbon\Carbon $updated_at
  * @property \Carbon\Carbon|null $deleted_at
  */
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens;
     use HasFactory;
     use HasRoles;
+    use HasImageUrl;
     use HasUuid;
     use LogsActivity;
     use Notifiable;
     use SoftDeletes;
-   
 
     protected $fillable = [
         'uuid',
@@ -52,6 +58,7 @@ class User extends Authenticatable
         'email',
         'phone',
         'nim',
+        'rfid_uid',
         'avatar',
         'password',
         'is_active',
@@ -71,10 +78,6 @@ class User extends Authenticatable
         ];
     }
 
-    /**
-     * Konfigurasi activity log.
-     * Field sensitif seperti password tidak di-log.
-     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -84,27 +87,46 @@ class User extends Authenticatable
             ->useLogName('user');
     }
 
-    /**
-     * Scope untuk user aktif.
-     */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        return $this->getImageUrlFrom($this->avatar);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
 
     public function labs(): BelongsToMany
-{
-    return $this->belongsToMany(Lab::class, 'user_labs')
-                ->withPivot('role')
-                ->withTimestamps();
-}
-
-public function hasLabAccess(int $labId): bool
-{
-    if ($this->hasRole('super_admin')) {
-        return true;
+    {
+        return $this->belongsToMany(Lab::class, 'user_labs')
+                    ->withPivot('role')
+                    ->withTimestamps();
+                    
     }
 
-    return $this->labs()->where('lab_id', $labId)->exists();
+    public function bookings(): HasMany
+{
+    return $this->hasMany(\App\Domain\Booking\Models\Booking::class);
 }
+
+    public function hasLabAccess(int $labId): bool
+    {
+        if ($this->hasRole('super_admin')) {
+            return true;
+        }
+
+        return $this->labs()->where('lab_id', $labId)->exists();
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
+    }
+
+    // NEW — override notifikasi verifikasi email, biar link-nya ke frontend Vue
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new VerifyEmailNotification());
+    }
 }

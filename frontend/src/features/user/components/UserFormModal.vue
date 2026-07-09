@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useMutation, useQueryClient } from '@tanstack/vue-query'
+import { ref, watch, nextTick, computed } from 'vue'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { userApi } from '@/features/user/api/userApi'
+import { labApi } from '@/features/lab/api/labApi'
 import BaseModal from '@/components/BaseModal.vue'
 import { toast } from 'vue-sonner'
 import type { User } from '@/types'
@@ -67,6 +68,96 @@ watch(
   { immediate: true },
 )
 
+// === Role yang butuh di-scope ke lab tertentu ===
+const LAB_SCOPED_ROLES = ['lab_admin', 'operator', 'photographer', 'editor']
+const needsLabAccess = computed(() => LAB_SCOPED_ROLES.includes(form.value.role))
+// lab_admin cuma boleh pegang 1 lab; role staff lain boleh lebih dari 1
+const isSingleLabRole = computed(() => form.value.role === 'lab_admin')
+
+// === Daftar semua lab (buat opsi checkbox/radio) ===
+const { data: allLabs } = useQuery({
+  queryKey: ['labs-for-user-form'],
+  queryFn: async () => {
+    const res = await labApi.getAll({ per_page: 100 })
+    return res.data.data.data
+  },
+  enabled: computed(() => props.show),
+})
+
+// === Lab yang sudah di-assign ke user ini (kalau edit) ===
+const initialLabUuids = ref<string[]>([])
+const selectedLabUuids = ref<string[]>([])
+
+const { refetch: refetchUserLabs } = useQuery({
+  queryKey: ['user-labs', props.user?.uuid],
+  queryFn: async () => {
+    if (!props.user) return []
+    const res = await userApi.getUserLabs(props.user.uuid)
+    return res.data.data.data
+  },
+  enabled: computed(() => isEdit.value && !!props.user),
+})
+
+watch(
+  () => props.user,
+  async (user) => {
+    if (user) {
+      const { data } = await refetchUserLabs()
+      const uuids = (data ?? []).map((l) => l.uuid)
+      initialLabUuids.value = uuids
+      selectedLabUuids.value = [...uuids]
+    } else {
+      initialLabUuids.value = []
+      selectedLabUuids.value = []
+    }
+  },
+  { immediate: true },
+)
+
+function toggleLab(uuid: string) {
+  if (isSingleLabRole.value) {
+    // radio behavior: selalu jadi 1 pilihan saja
+    selectedLabUuids.value = [uuid]
+    return
+  }
+  const idx = selectedLabUuids.value.indexOf(uuid)
+  if (idx === -1) {
+    selectedLabUuids.value.push(uuid)
+  } else {
+    selectedLabUuids.value.splice(idx, 1)
+  }
+}
+
+// Kalau role berubah jadi lab_admin sementara sudah ada >1 lab dicentang, potong jadi 1
+watch(
+  () => form.value.role,
+  () => {
+    if (isSingleLabRole.value && selectedLabUuids.value.length > 1) {
+      // non-null assertion: sudah dicek length > 1 di atas, jadi index 0 pasti ada
+      selectedLabUuids.value = [selectedLabUuids.value[0]!]
+    }
+  },
+)
+
+// === Sinkronkan akses lab (dipakai untuk create & edit, ikut 1 aksi Simpan/Update) ===
+async function syncLabAccess(userUuid: string) {
+  if (!needsLabAccess.value) return
+
+  const toAdd = selectedLabUuids.value.filter((u) => !initialLabUuids.value.includes(u))
+  const toRemove = initialLabUuids.value.filter((u) => !selectedLabUuids.value.includes(u))
+
+  for (const labUuid of toAdd) {
+    await userApi.assignLab(userUuid, labUuid, form.value.role)
+  }
+  for (const labUuid of toRemove) {
+    await userApi.revokeLab(userUuid, labUuid)
+  }
+}
+
+const rfidInput = ref('')
+const rfidInputRef = ref<HTMLInputElement | null>(null)
+const showRfidSection = ref(false)
+
 const { mutate: saveUser, isPending } = useMutation({
   mutationFn: async () => {
     if (isEdit.value && props.user) {
@@ -80,37 +171,68 @@ const { mutate: saveUser, isPending } = useMutation({
         data.password = form.value.password
         data.password_confirmation = form.value.password_confirmation
       }
-      return userApi.update(props.user.uuid, data)
+      const res = await userApi.update(props.user.uuid, data)
+      await syncLabAccess(props.user.uuid)
+      return res
     } else {
-      return userApi.create(form.value)
+      const res = await userApi.create(form.value)
+      const newUuid = (res.data.data as User).uuid
+      await syncLabAccess(newUuid)
+      return res
     }
   },
   onSuccess: () => {
     queryClient.invalidateQueries({ queryKey: ['users'] })
-    toast.success(isEdit.value ? 'User berhasil diupdate.' : 'User berhasil dibuat.')
+    toast.success(isEdit.value ? 'User & akses lab berhasil diupdate.' : 'User berhasil dibuat.')
     emit('close')
   },
   onError: (error: any) => {
     const errs = error.response?.data?.errors
     if (errs) {
       errors.value = Object.fromEntries(
-        Object.entries(errs).map(([k, v]) => [k, (v as string[])[0]]),
+        Object.entries(errs).map(([k, v]) => [k, (v as string[])[0] ?? '']),
       )
     } else {
       toast.error(error.response?.data?.message ?? 'Terjadi kesalahan.')
     }
   },
 })
+
+const { mutate: saveRfid, isPending: isSavingRfid } = useMutation({
+  mutationFn: () => {
+    if (!props.user) throw new Error('User belum dipilih.')
+    return userApi.assignRfid(props.user.uuid, rfidInput.value)
+  },
+  onSuccess: () => {
+    toast.success('Kartu RFID berhasil dikaitkan.')
+    rfidInput.value = ''
+    showRfidSection.value = false
+  },
+  onError: (error: any) => {
+    toast.error(error.response?.data?.message ?? 'Gagal mengaitkan kartu.')
+  },
+})
+
+function openRfidScan() {
+  showRfidSection.value = true
+  nextTick(() => rfidInputRef.value?.focus())
+}
+
+function handleRfidScan() {
+  if (rfidInput.value) {
+    saveRfid()
+  }
+}
 </script>
 
 <template>
   <BaseModal
     :show="show"
     :title="isEdit ? 'Edit User' : 'Tambah User'"
-    size="md"
+    size="lg"
     @close="$emit('close')"
   >
-    <form @submit.prevent="saveUser" class="space-y-4">
+    <form @submit.prevent="() => saveUser()" class="space-y-4">
       <!-- Nama -->
       <div class="space-y-1.5">
         <label class="text-sm font-medium text-gray-700">Nama Lengkap</label>
@@ -165,6 +287,53 @@ const { mutate: saveUser, isPending } = useMutation({
         </select>
       </div>
 
+      <!-- Akses Laboratorium — cuma muncul kalau role butuh scope ke lab -->
+      <div v-if="needsLabAccess" class="space-y-2 border-t border-gray-100 pt-4">
+        <label class="text-sm font-medium text-gray-700">
+          Akses Laboratorium
+          <span v-if="isSingleLabRole" class="text-xs text-gray-400 font-normal"
+            >(pilih 1 lab)</span
+          >
+        </label>
+        <p class="text-xs text-gray-400">
+          {{
+            isSingleLabRole
+              ? 'Lab Admin hanya bisa mengelola 1 laboratorium.'
+              : 'Pilih lab mana saja yang boleh dikelola/diakses user ini.'
+          }}
+        </p>
+
+        <div
+          class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-3"
+        >
+          <label
+            v-for="lab in allLabs"
+            :key="lab.uuid"
+            class="flex items-center gap-2 text-sm cursor-pointer"
+          >
+            <input
+              v-if="isSingleLabRole"
+              type="radio"
+              name="lab-access-radio"
+              :checked="selectedLabUuids.includes(lab.uuid)"
+              @change="toggleLab(lab.uuid)"
+              class="w-4 h-4 border-gray-300"
+            />
+            <input
+              v-else
+              type="checkbox"
+              :checked="selectedLabUuids.includes(lab.uuid)"
+              @change="toggleLab(lab.uuid)"
+              class="w-4 h-4 rounded border-gray-300"
+            />
+            {{ lab.name }}
+          </label>
+          <p v-if="!allLabs?.length" class="text-xs text-gray-400 col-span-2">
+            Belum ada lab terdaftar.
+          </p>
+        </div>
+      </div>
+
       <!-- Password -->
       <div class="space-y-1.5">
         <label class="text-sm font-medium text-gray-700">
@@ -189,6 +358,35 @@ const { mutate: saveUser, isPending } = useMutation({
           placeholder="••••••••"
           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+      </div>
+
+      <!-- Kaitkan Kartu RFID — cuma muncul saat edit -->
+      <div v-if="isEdit" class="space-y-2 border-t border-gray-100 pt-4">
+        <div class="flex items-center justify-between">
+          <label class="text-sm font-medium text-gray-700">
+            Kartu RFID
+            <span v-if="props.user?.rfid_uid" class="text-xs text-green-600 font-normal ml-1">
+              ✓ Terdaftar
+            </span>
+          </label>
+          <button type="button" @click="openRfidScan" class="text-xs text-blue-600 hover:underline">
+            {{ props.user?.rfid_uid ? 'Ganti Kartu' : 'Kaitkan Kartu' }}
+          </button>
+        </div>
+
+        <div v-if="showRfidSection" class="space-y-2">
+          <input
+            ref="rfidInputRef"
+            v-model="rfidInput"
+            @keyup.enter="handleRfidScan"
+            type="text"
+            placeholder="Tempelkan kartu ke reader..."
+            class="w-full px-3 py-2 border-2 border-dashed border-blue-300 rounded-lg text-sm text-center focus:outline-none focus:border-blue-500"
+          />
+          <p class="text-xs text-gray-400 text-center">
+            {{ isSavingRfid ? 'Menyimpan...' : 'Tempelkan kartu RFID mahasiswa ke reader' }}
+          </p>
+        </div>
       </div>
 
       <!-- Status -->

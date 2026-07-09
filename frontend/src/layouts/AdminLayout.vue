@@ -1,17 +1,38 @@
 <script setup lang="ts">
-import { RouterView, useRouter } from 'vue-router'
+import { onMounted, ref, watch, computed } from 'vue'
+import { RouterView, useRouter, useRoute } from 'vue-router'
+import {
+  LayoutDashboard,
+  FlaskConical,
+  Users,
+  LogOut,
+  Menu,
+  X,
+  ChevronRight,
+  Ticket,
+  ArrowLeftRight,
+} from 'lucide-vue-next'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import { useLabStore } from '@/features/lab/stores/useLabStore'
-import { onMounted } from 'vue'
 import { toast } from 'vue-sonner'
 
 const authStore = useAuthStore()
 const labStore = useLabStore()
 const router = useRouter()
+const route = useRoute()
+
+const mobileNavOpen = ref(false)
 
 onMounted(async () => {
-  await labStore.fetchLabs()
+  await labStore.fetchManagedLabs()
 })
+
+watch(
+  () => route.fullPath,
+  () => {
+    mobileNavOpen.value = false
+  },
+)
 
 async function handleLogout() {
   await authStore.logout()
@@ -22,96 +43,207 @@ async function handleLogout() {
 function enterLab(slug: string) {
   router.push(`/dashboard/lab/${slug}`)
 }
+
+const navItems = [
+  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+  { to: '/admin/labs', label: 'Laboratorium', icon: FlaskConical },
+  { to: '/admin/users', label: 'Pengguna', icon: Users },
+]
+
+// Breadcrumb dinamis dari route yang sudah ada — tidak menambah route baru
+const PAGE_TITLES: Record<string, string> = {
+  'admin-dashboard': 'Dashboard',
+  'admin-labs': 'Laboratorium',
+  'admin-users': 'Pengguna',
+}
+
+const currentPageTitle = computed(() => PAGE_TITLES[route.name as string] ?? 'Dashboard')
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 flex">
-    <aside class="w-64 bg-gray-900 flex flex-col">
-      <!-- Logo -->
-      <div class="h-16 flex items-center px-6 border-b border-gray-700">
-        <span class="text-xl font-bold text-white">SLMS</span>
-        <span class="text-xs text-gray-400 ml-2">Super Admin</span>
+  <div class="min-h-screen flex" style="background: var(--surface-0)">
+    <Transition
+      enter-active-class="transition duration-150"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-100"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="mobileNavOpen"
+        class="fixed inset-0 z-30 lg:hidden"
+        style="background: rgba(0, 0, 0, 0.4)"
+        @click="mobileNavOpen = false"
+      />
+    </Transition>
+
+    <!-- ============================================================
+         SIDEBAR
+    ============================================================= -->
+    <aside
+      class="w-64 shrink-0 flex flex-col fixed inset-y-0 left-0 z-40 transition-transform duration-200 lg:static lg:translate-x-0"
+      :class="mobileNavOpen ? 'translate-x-0' : '-translate-x-full'"
+      style="background: var(--surface-2); border-right: 0.5px solid var(--border)"
+    >
+      <!-- Brand -->
+      <div
+        class="h-16 flex items-center justify-between px-5 shrink-0"
+        style="border-bottom: 0.5px solid var(--border)"
+      >
+        <div class="flex items-center gap-2.5">
+          <div
+            class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0"
+            style="background: var(--fill-accent)"
+          >
+            S
+          </div>
+          <div class="leading-tight">
+            <p class="font-semibold text-sm" style="color: var(--text-primary)">SLMS</p>
+            <p class="text-[11px]" style="color: var(--text-muted)">Super Admin</p>
+          </div>
+        </div>
+        <button class="lg:hidden" @click="mobileNavOpen = false" aria-label="Tutup menu">
+          <X :size="18" style="color: var(--text-secondary)" />
+        </button>
       </div>
 
-      <!-- Global Menu -->
-      <nav class="px-4 py-4 space-y-1">
-        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">Global</p>
-        <RouterLink
-          to="/admin"
-          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
-          active-class="bg-gray-800 text-white"
-          :exact="true"
+      <!-- Main nav -->
+      <nav class="px-3 py-4 space-y-0.5">
+        <p
+          class="text-[11px] font-semibold uppercase tracking-wide px-3 mb-2"
+          style="color: var(--text-muted)"
         >
-          🏠 Dashboard
-        </RouterLink>
+          Global
+        </p>
         <RouterLink
-          to="/admin/labs"
-          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
-          active-class="bg-gray-800 text-white"
+          v-for="item in navItems"
+          :key="item.to"
+          :to="item.to"
+          :exact="item.exact"
+          class="nav-item"
+          active-class="nav-active"
         >
-          🏛 Laboratorium
-        </RouterLink>
-        <RouterLink
-          to="/admin/users"
-          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
-          active-class="bg-gray-800 text-white"
-        >
-          👥 Pengguna
+          <component :is="item.icon" :size="17" class="shrink-0" />
+          <span class="truncate">{{ item.label }}</span>
         </RouterLink>
       </nav>
 
-      <!-- Lab Shortcuts -->
-      <div class="px-4 py-2 border-t border-gray-700 flex-1">
-        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2 mt-2">
+      <!-- Masuk ke lab -->
+      <div class="px-3 py-2 flex-1 overflow-y-auto" style="border-top: 0.5px solid var(--border)">
+        <p
+          class="text-[11px] font-semibold uppercase tracking-wide px-3 mb-2 mt-3"
+          style="color: var(--text-muted)"
+        >
           Masuk ke Lab
         </p>
-        <div class="space-y-1">
+        <div v-if="labStore.managedLabs.length" class="space-y-0.5">
           <button
-            v-for="lab in labStore.labs"
+            v-for="lab in labStore.managedLabs"
             :key="lab.uuid"
             @click="enterLab(lab.slug)"
-            class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors text-left"
+            class="nav-item w-full text-left"
           >
-            <div
-              class="w-4 h-4 rounded-full flex-shrink-0"
-              :style="{ backgroundColor: lab.branding.primary_color ?? '#ccc' }"
+            <span
+              class="w-3.5 h-3.5 rounded shrink-0"
+              :style="{ backgroundColor: lab.branding.primary_color ?? 'var(--fill-accent)' }"
             />
             <span class="truncate">{{ lab.name }}</span>
           </button>
         </div>
+        <p v-else class="text-xs px-3 py-2" style="color: var(--text-muted)">
+          Belum ada lab yang bisa dimasuki.
+        </p>
       </div>
 
-      <!-- User Info -->
-      <div class="p-4 border-t border-gray-700">
-        <div class="flex items-center gap-3 mb-3">
-          <div class="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
-            <span class="text-xs font-medium text-white">
+      <!-- Footer: profile & actions -->
+      <div class="p-3 space-y-0.5" style="border-top: 0.5px solid var(--border)">
+        <RouterLink to="/booking" class="nav-item">
+          <Ticket :size="17" class="shrink-0" />
+          <span class="truncate">Booking Pribadi</span>
+        </RouterLink>
+
+        <RouterLink
+          to="/profile"
+          class="flex items-center gap-3 px-2.5 py-2 rounded-[var(--radius)] transition-colors hover:bg-[var(--surface-1)]"
+        >
+          <div
+            class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
+            style="background: var(--fill-accent)"
+          >
+            <img
+              v-if="authStore.user?.avatar"
+              :src="authStore.user.avatar"
+              :alt="authStore.user.name"
+              class="w-full h-full object-cover"
+            />
+            <span v-else class="text-xs font-medium text-white">
               {{ authStore.user?.name?.charAt(0).toUpperCase() }}
             </span>
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-white truncate">
+            <p class="text-sm font-medium truncate" style="color: var(--text-primary)">
               {{ authStore.user?.name }}
             </p>
-            <p class="text-xs text-gray-400">Super Admin</p>
+            <p class="text-xs" style="color: var(--text-muted)">Super Admin</p>
           </div>
-        </div>
-        <button
-          @click="handleLogout"
-          class="w-full text-left text-sm text-red-400 hover:text-red-300 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
-        >
-          Logout
+        </RouterLink>
+
+        <button @click="handleLogout" class="nav-item w-full" style="color: var(--text-danger)">
+          <LogOut :size="16" class="shrink-0" />
+          <span>Logout</span>
         </button>
       </div>
     </aside>
 
+    <!-- ============================================================
+         MAIN
+    ============================================================= -->
     <div class="flex-1 flex flex-col min-w-0">
-      <header class="h-16 bg-white border-b border-gray-200 flex items-center px-6">
-        <h1 class="text-lg font-semibold text-gray-900">Global Admin Panel</h1>
+      <header
+        class="h-16 shrink-0 flex items-center gap-3 px-4 lg:px-6"
+        style="background: var(--surface-2); border-bottom: 0.5px solid var(--border)"
+      >
+        <button class="lg:hidden" @click="mobileNavOpen = true" aria-label="Buka menu">
+          <Menu :size="20" style="color: var(--text-secondary)" />
+        </button>
+
+        <div class="flex items-center gap-1.5 text-sm">
+          <span style="color: var(--text-muted)">Admin</span>
+          <ChevronRight :size="14" style="color: var(--text-muted)" />
+          <span class="font-medium" style="color: var(--text-primary)">
+            {{ currentPageTitle }}
+          </span>
+        </div>
       </header>
-      <main class="flex-1 p-6 overflow-auto">
+      <main class="flex-1 p-4 lg:p-6 overflow-auto">
         <RouterView />
       </main>
     </div>
   </div>
 </template>
+
+<style scoped>
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.nav-item:hover {
+  background: var(--surface-1);
+}
+
+.nav-active {
+  background: var(--bg-accent);
+  color: var(--text-accent) !important;
+}
+</style>

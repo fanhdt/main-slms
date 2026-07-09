@@ -96,7 +96,7 @@ const { mutate: saveAsset, isPending } = useMutation({
     const errs = error.response?.data?.errors
     if (errs) {
       errors.value = Object.fromEntries(
-        Object.entries(errs).map(([k, v]) => [k, (v as string[])[0]]),
+        Object.entries(errs).map(([k, v]) => [k, (v as string[])[0] ?? '']),
       )
     } else {
       toast.error(error.response?.data?.message ?? 'Terjadi kesalahan.')
@@ -112,7 +112,7 @@ const { mutate: saveAsset, isPending } = useMutation({
     size="lg"
     @close="$emit('close')"
   >
-    <form @submit.prevent="saveAsset" class="space-y-4">
+    <form @submit.prevent="() => saveAsset()" class="space-y-4">
       <div class="grid grid-cols-2 gap-4">
         <!-- Nama -->
         <div class="col-span-2 space-y-1.5">

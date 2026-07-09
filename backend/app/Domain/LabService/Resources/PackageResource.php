@@ -23,7 +23,7 @@ class PackageResource extends JsonResource
             'duration'    => $this->duration,
             'includes'    => $this->includes,
             'addons'      => $this->addons,
-            'image'       => $this->image,
+            'image'       => $this->image_url,
             'is_active'   => $this->is_active,
             'is_custom'   => $this->is_custom,
             'items'       => $this->whenLoaded('items', function () {

@@ -10,6 +10,7 @@ use App\Domain\User\DTOs\CreateUserDTO;
 use App\Domain\User\DTOs\UpdateUserDTO;
 use App\Domain\User\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
+use App\Domain\Booking\Services\BookingService;
 
 class UserService extends BaseService
 {
@@ -120,5 +121,46 @@ class UserService extends BaseService
         $user->syncRoles([$role]);
 
         return $user->fresh('roles');
+    }
+
+    public function paginateLabCustomers(int $labId, array $filters = []): LengthAwarePaginator
+{
+    $query = User::query()
+        ->role('customer')
+        ->whereHas('bookings', fn ($q) => $q->where('lab_id', $labId));
+
+    if (isset($filters['search'])) {
+        $query->where(function ($q) use ($filters) {
+            $q->where('name', 'ilike', '%' . $filters['search'] . '%')
+              ->orWhere('email', 'ilike', '%' . $filters['search'] . '%');
+        });
+    }
+
+    return $query->latest()->paginate($filters['per_page'] ?? 15);
+}
+
+     public function assignRfid(string $uuid, string $rfidUid): User
+    {
+        $user = $this->findByUuid($uuid); // sesuaikan nama method find yang sudah ada di class ini
+
+        $user->update(['rfid_uid' => $rfidUid]);
+
+        return $user->fresh();
+    }
+
+    /**
+     * Cari user berdasarkan UID kartu RFID.
+     *
+     * @throws ApiException
+     */
+    public function findByRfid(string $rfidUid): User
+    {
+        $user = User::where('rfid_uid', $rfidUid)->first();
+
+        if (!$user) {
+            throw ApiException::notFound('Kartu RFID ini belum terdaftar ke akun manapun');
+        }
+
+        return $user;
     }
 }

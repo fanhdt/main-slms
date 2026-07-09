@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 
+// Index & show dibuka untuk customer browsing katalog alat sebelum sewa.
 Route::get('/', [\App\Domain\Asset\Controllers\AssetController::class, 'index']);
 Route::get('/{uuid}', [\App\Domain\Asset\Controllers\AssetController::class, 'show']);
+
 Route::post('/', [\App\Domain\Asset\Controllers\AssetController::class, 'store'])
     ->middleware('can:assets.create');
 Route::put('/{uuid}', [\App\Domain\Asset\Controllers\AssetController::class, 'update'])

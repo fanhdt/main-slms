@@ -14,6 +14,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->redirectGuestsTo(fn () => null);
+
+        $middleware->alias([
+        'lab.access' => \App\Http\Middleware\EnsureLabAccess::class,
+    ]);
+
     })
     ->withExceptions(function (Exceptions $exceptions) {
     $exceptions->shouldRenderJsonWhen(function ($request, $e) {

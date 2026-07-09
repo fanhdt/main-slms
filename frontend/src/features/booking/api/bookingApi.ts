@@ -25,4 +25,8 @@ export const bookingApi = {
   checkin(code: string) {
     return api.post<ApiResponse<Booking>>('/bookings/checkin', { code })
   },
+
+  cancel(uuid: string) {
+    return api.post(`/bookings/${uuid}/cancel`)
+  },
 }

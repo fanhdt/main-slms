@@ -9,23 +9,24 @@ use App\Core\Services\BaseService;
 use App\Domain\Lab\DTOs\CreateLabDTO;
 use App\Domain\Lab\DTOs\UpdateLabDTO;
 use App\Domain\Lab\Models\Lab;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
 
 class LabService extends BaseService
 {
-    /**
-     * Ambil semua lab dengan pagination dan filter.
-     */
+    private const IMAGE_TYPES = ['logo', 'hero_image', 'favicon'];
+
     public function paginate(array $filters = []): LengthAwarePaginator
     {
         $query = Lab::query();
 
-        // Filter by status aktif
         if (isset($filters['is_active'])) {
             $query->where('is_active', $filters['is_active']);
         }
 
-        // Search by nama
         if (isset($filters['search'])) {
             $query->where('name', 'ilike', '%' . $filters['search'] . '%');
         }
@@ -34,8 +35,6 @@ class LabService extends BaseService
     }
 
     /**
-     * Ambil satu lab berdasarkan UUID.
-     *
      * @throws ApiException
      */
     public function findByUuid(string $uuid): Lab
@@ -50,8 +49,6 @@ class LabService extends BaseService
     }
 
     /**
-     * Ambil satu lab berdasarkan slug (untuk public landing page).
-     *
      * @throws ApiException
      */
     public function findBySlug(string $slug): Lab
@@ -65,9 +62,6 @@ class LabService extends BaseService
         return $lab;
     }
 
-    /**
-     * Buat lab baru.
-     */
     public function create(CreateLabDTO $dto): Lab
     {
         return Lab::create([
@@ -82,12 +76,11 @@ class LabService extends BaseService
             'contact'         => $dto->contact,
             'settings'        => $dto->settings,
             'is_active'       => $dto->isActive,
+            
         ]);
     }
 
     /**
-     * Update lab berdasarkan UUID.
-     *
      * @throws ApiException
      */
     public function update(string $uuid, UpdateLabDTO $dto): Lab
@@ -103,9 +96,47 @@ class LabService extends BaseService
         return $lab->fresh();
     }
 
+    public function updateRentalRates(string $uuid, array $rates): Lab
+    {
+        $lab = $this->findByUuid($uuid);
+
+        $settings = $lab->settings ?? [];
+        $settings['lab_rental'] = [
+            'student_price_per_hour' => (float) $rates['student_price_per_hour'],
+            'public_price_per_hour'  => (float) $rates['public_price_per_hour'],
+        ];
+
+        $lab->update(['settings' => $settings]);
+
+        return $lab->fresh();
+    }
+
     /**
-     * Hapus lab (soft delete).
+     * Upload/ganti gambar branding lab (logo, hero_image, atau favicon) ke MinIO/S3.
+     * File lama otomatis dihapus dari disk kalau ada penggantian.
      *
+     * @throws ApiException
+     */
+    public function updateImage(string $uuid, string $type, UploadedFile $file): Lab
+    {
+        $lab = $this->findByUuid($uuid);
+
+        $oldPath = $lab->{$type};
+        if ($oldPath) {
+            Storage::disk(Lab::IMAGE_DISK)->delete($oldPath);
+        }
+
+        $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
+        $path = "labs/{$lab->uuid}/{$type}/{$filename}";
+
+        Storage::disk(Lab::IMAGE_DISK)->put($path, file_get_contents($file->getRealPath()));
+
+        $lab->update([$type => $path]);
+
+        return $lab->fresh();
+    }
+
+    /**
      * @throws ApiException
      */
     public function delete(string $uuid): void
@@ -115,9 +146,6 @@ class LabService extends BaseService
     }
 
     /**
-     * Ambil hanya data branding lab (untuk frontend).
-     * Endpoint public — tidak perlu auth.
-     *
      * @throws ApiException
      */
     public function getBranding(string $slug): array
@@ -128,9 +156,9 @@ class LabService extends BaseService
             'name'            => $lab->name,
             'primary_color'   => $lab->primary_color,
             'secondary_color' => $lab->secondary_color,
-            'logo'            => $lab->logo,
-            'hero_image'      => $lab->hero_image,
-            'favicon'         => $lab->favicon,
+            'logo'            => $lab->logo_url,
+            'hero_image'      => $lab->hero_image_url,
+            'favicon'         => $lab->favicon_url,
         ];
     }
 }

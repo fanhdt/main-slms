@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
+import { useBookingFlowMode } from '@/composables/useBookingFlowMode'
 import api from '@/lib/axios'
 import { useCartStore } from '@/features/booking/stores/useCartStore'
 import { toast } from 'vue-sonner'
@@ -10,6 +11,7 @@ const route = useRoute()
 const router = useRouter()
 const cartStore = useCartStore()
 const slug = computed(() => route.params.slug as string)
+const { isStaffMode, withMode, goBack } = useBookingFlowMode()
 
 const { data: lab } = useQuery({
   queryKey: ['booking-lab', slug],
@@ -38,7 +40,7 @@ function checkout() {
   router.push({
     name: 'booking-form',
     params: { slug: slug.value },
-    query: { bookingType: 'asset_rental' },
+    query: withMode({ bookingType: 'asset_rental' }),
   })
 }
 
@@ -55,10 +57,12 @@ function formatPrice(price: number) {
   <div class="min-h-screen bg-gray-50">
     <header
       class="sticky top-0 z-10"
-      :style="{ backgroundColor: lab?.branding?.primary_color ?? '#1a1a2e' }"
+      :style="{
+        backgroundColor: isStaffMode ? '#111827' : (lab?.branding?.primary_color ?? '#1a1a2e'),
+      }"
     >
       <div class="max-w-2xl mx-auto px-6 h-16 flex items-center gap-4">
-        <button @click="router.back()" class="text-white/70 hover:text-white transition-colors">
+        <button @click="goBack(slug)" class="text-white/70 hover:text-white transition-colors">
           ← Kembali
         </button>
         <span class="text-white font-bold">Keranjang Sewa</span>
@@ -69,7 +73,7 @@ function formatPrice(price: number) {
       <div v-if="items.length === 0" class="text-center py-16">
         <p class="text-gray-400 mb-4">Keranjang kamu masih kosong.</p>
         <button
-          @click="router.push({ name: 'asset-catalog', params: { slug } })"
+          @click="router.push({ name: 'asset-catalog', params: { slug }, query: withMode() })"
           class="px-5 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
         >
           Pilih Alat untuk Disewa

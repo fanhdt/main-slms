@@ -38,6 +38,9 @@ class Booking extends Model
         'notes',
         'booking_type',
         'purpose',
+        'snap_token',
+        'midtrans_order_id',
+        'paid_at'
     ];
 
     protected function casts(): array

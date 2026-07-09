@@ -26,7 +26,7 @@ export function initEcho(token: string): Echo<'reverb'> {
     broadcaster: 'reverb',
     key: import.meta.env.VITE_REVERB_APP_KEY,
     wsHost: import.meta.env.VITE_REVERB_HOST,
-    wsPort: 80, // lewat Nginx port 80
+    wsPort: 80,
     wssPort: 443,
     forceTLS: false,
     enabledTransports: ['ws', 'wss'],

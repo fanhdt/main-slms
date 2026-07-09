@@ -105,4 +105,13 @@ class BookingController extends ApiController
 
         return $this->success(new BookingResource($booking), 'Check-in berhasil.');
     }
+
+
+
+  public function cancel(Request $request, string $uuid): JsonResponse
+   {
+     $booking = $this->bookingService->cancelByOwner($uuid, $request->user()->id);
+
+     return $this->success(new BookingResource($booking), 'Booking berhasil dibatalkan.');
+   }
 }

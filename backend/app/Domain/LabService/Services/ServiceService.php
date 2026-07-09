@@ -8,6 +8,9 @@ use App\Core\Exceptions\ApiException;
 use App\Core\Services\BaseService;
 use App\Domain\LabService\Models\Service;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Http\UploadedFile;
 
 class ServiceService extends BaseService
 {
@@ -63,9 +66,28 @@ class ServiceService extends BaseService
         return $service->fresh('lab');
     }
 
+    public function updateImage(string $uuid, UploadedFile $file): Service
+    {
+        $service = $this->findByUuid($uuid);
+
+        if ($service->image) {
+            Storage::disk(Service::IMAGE_DISK)->delete($service->image);
+        }
+
+        $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
+        $path = "services/{$service->uuid}/{$filename}";
+
+        Storage::disk(Service::IMAGE_DISK)->put($path, file_get_contents($file->getRealPath()));
+
+        $service->update(['image' => $path]);
+
+        return $service->fresh();
+    }
+
     public function delete(string $uuid): void
     {
         $service = $this->findByUuid($uuid);
         $service->delete();
     }
+
 }

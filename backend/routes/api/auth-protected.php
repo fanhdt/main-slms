@@ -14,3 +14,7 @@ Route::post('logout', [\App\Domain\Auth\Controllers\AuthController::class, 'logo
 Route::get('me', [\App\Domain\Auth\Controllers\AuthController::class, 'me']);
 Route::put('me', [\App\Domain\Auth\Controllers\AuthController::class, 'updateProfile']);
 Route::put('me/password', [\App\Domain\Auth\Controllers\AuthController::class, 'changePassword']);
+Route::post('me/avatar', [\App\Domain\Auth\Controllers\AuthController::class, 'updateAvatar']);
+Route::delete('me', [\App\Domain\Auth\Controllers\AuthController::class, 'deleteAccount']);
+
+

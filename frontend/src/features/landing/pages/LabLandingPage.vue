@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import api from '@/lib/axios'
 import AvailabilityCalendar from '@/components/AvailabilityCalendar.vue'
+import PhotographerPortfolioSection from '@/features/portfolio/components/PhotographerPortfolioSection.vue'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Mail, Phone, MapPin, Images, Camera } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -62,8 +65,9 @@ function formatPrice(price: string) {
 <template>
   <div class="min-h-screen bg-white">
     <!-- Loading -->
-    <div v-if="isLoading" class="min-h-screen flex items-center justify-center">
-      <div class="text-gray-500">Memuat...</div>
+    <div v-if="isLoading" class="min-h-screen flex flex-col items-center justify-center gap-4 px-6">
+      <Skeleton class="h-10 w-64" />
+      <Skeleton class="h-6 w-96 max-w-full" />
     </div>
 
     <template v-else-if="lab">
@@ -82,6 +86,13 @@ function formatPrice(price: string) {
             </a>
             <a href="#packages" class="text-white/70 hover:text-white text-sm transition-colors">
               Paket
+            </a>
+            <a
+              v-if="lab.is_photography_lab"
+              href="#portfolio"
+              class="text-white/70 hover:text-white text-sm transition-colors"
+            >
+              Portofolio
             </a>
             <a href="#contact" class="text-white/70 hover:text-white text-sm transition-colors">
               Kontak
@@ -107,7 +118,6 @@ function formatPrice(price: string) {
         class="min-h-screen flex items-center justify-center pt-16 relative overflow-hidden"
         :style="{ backgroundColor: lab.branding.primary_color ?? '#1a1a2e' }"
       >
-        <!-- Background pattern -->
         <div class="absolute inset-0 opacity-5">
           <div
             class="absolute inset-0"
@@ -120,13 +130,14 @@ function formatPrice(price: string) {
 
         <div class="max-w-4xl mx-auto px-6 text-center relative z-10">
           <div
-            class="inline-block text-xs font-semibold px-3 py-1 rounded-full mb-6"
+            class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full mb-6"
             :style="{
               backgroundColor: lab.branding.secondary_color + '30',
               color: lab.branding.secondary_color ?? '#e94560',
             }"
           >
-            ✦ Professional Photography Studio
+            <Camera class="size-3.5" />
+            Professional Photography Studio
           </div>
 
           <h1 class="text-5xl md:text-7xl font-black text-white leading-tight mb-6">
@@ -145,8 +156,8 @@ function formatPrice(price: string) {
             >
               Book Sekarang
             </button>
-            <a
-              href="#services"
+            
+              <a href="#services"
               class="px-8 py-4 rounded-xl font-semibold text-white/80 border border-white/20 hover:bg-white/10 transition-colors text-lg"
             >
               Lihat Layanan
@@ -154,7 +165,6 @@ function formatPrice(price: string) {
           </div>
         </div>
 
-        <!-- Scroll indicator -->
         <div class="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/40 animate-bounce">
           ↓
         </div>
@@ -179,7 +189,7 @@ function formatPrice(price: string) {
             <div
               v-for="service in services"
               :key="service.uuid"
-              class="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md transition-shadow"
+              class="relative bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md transition-shadow"
             >
               <span
                 v-if="service.type?.value === 'photography'"
@@ -189,13 +199,20 @@ function formatPrice(price: string) {
                   color: lab.branding.secondary_color ?? '#e94560',
                 }"
               >
-                🖼 Dapat Galeri Foto
+                <Images class="size-3" />
+                Dapat Galeri Foto
               </span>
               <div
-                class="w-12 h-12 rounded-xl flex items-center justify-center mb-4 text-2xl"
-                :style="{ backgroundColor: lab.branding.primary_color + '15' }"
+                class="w-full h-40 rounded-xl overflow-hidden mb-4 flex items-center justify-center"
+                :style="!service.image ? { backgroundColor: lab.branding.primary_color + '15' } : {}"
               >
-                📸
+                <img
+                  v-if="service.image"
+                  :src="service.image"
+                  :alt="service.name"
+                  class="w-full h-full object-cover"
+                />
+                <Camera v-else class="size-8" :style="{ color: lab.branding.primary_color ?? '#1a1a2e' }" />
               </div>
               <h3 class="font-semibold text-gray-900 text-lg">{{ service.name }}</h3>
               <p class="text-gray-500 text-sm mt-1 line-clamp-2">{{ service.description }}</p>
@@ -242,16 +259,11 @@ function formatPrice(price: string) {
               class="rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-shadow"
               :style="{ borderColor: lab.branding.primary_color ?? '#1a1a2e' }"
             >
-              <!-- Package Header -->
-              <div
-                class="p-6 text-white"
-                :style="{ backgroundColor: lab.branding.primary_color ?? '#1a1a2e' }"
-              >
+              <div class="p-6 text-white" :style="{ backgroundColor: lab.branding.primary_color ?? '#1a1a2e' }">
                 <h3 class="text-xl font-bold">{{ pkg.name }}</h3>
                 <p class="text-white/60 text-sm mt-1">{{ pkg.description }}</p>
               </div>
 
-              <!-- Package Body -->
               <div class="p-6">
                 <div class="mb-4">
                   <p class="text-3xl font-black text-gray-900">
@@ -262,14 +274,13 @@ function formatPrice(price: string) {
                   </p>
                   <span
                     v-if="pkg.discount > 0"
-                    class="text-xs font-medium px-2 py-0.5 rounded-full text-white"
+                    class="text-xs font-medium px-2 py-0.5 rounded-full text-white inline-block mt-1"
                     :style="{ backgroundColor: lab.branding.secondary_color ?? '#e94560' }"
                   >
                     Hemat {{ pkg.discount }}%
                   </span>
                 </div>
 
-                <!-- Includes -->
                 <ul v-if="pkg.includes?.length" class="space-y-2 mb-6">
                   <li
                     v-for="item in pkg.includes"
@@ -297,30 +308,36 @@ function formatPrice(price: string) {
       </section>
 
       <!-- ================================================================
+           PORTFOLIO SECTION
+      ================================================================ -->
+      <PhotographerPortfolioSection
+        v-if="lab.is_photography_lab"
+        :lab-id="lab.id"
+        :primary-color="lab.branding.primary_color"
+        :secondary-color="lab.branding.secondary_color"
+      />
+
+      <!-- ================================================================
            CONTACT SECTION
       ================================================================ -->
-      <section
-        id="contact"
-        class="py-20"
-        :style="{ backgroundColor: lab.branding.primary_color ?? '#1a1a2e' }"
-      >
+      <section id="contact" class="py-20" :style="{ backgroundColor: lab.branding.primary_color ?? '#1a1a2e' }">
         <div class="max-w-4xl mx-auto px-6 text-center">
           <h2 class="text-3xl font-bold text-white mb-2">Hubungi Kami</h2>
           <p class="text-white/60 mb-10">Ada pertanyaan? Jangan ragu untuk menghubungi kami</p>
 
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
             <div v-if="lab.contact?.email" class="bg-white/10 rounded-2xl p-5 text-white">
-              <div class="text-2xl mb-2">📧</div>
+              <Mail class="size-6 mb-2 mx-auto text-white/80" />
               <p class="text-sm text-white/60">Email</p>
               <p class="font-medium">{{ lab.contact.email }}</p>
             </div>
             <div v-if="lab.contact?.phone" class="bg-white/10 rounded-2xl p-5 text-white">
-              <div class="text-2xl mb-2">📞</div>
+              <Phone class="size-6 mb-2 mx-auto text-white/80" />
               <p class="text-sm text-white/60">Telepon</p>
               <p class="font-medium">{{ lab.contact.phone }}</p>
             </div>
             <div v-if="lab.contact?.address" class="bg-white/10 rounded-2xl p-5 text-white">
-              <div class="text-2xl mb-2">📍</div>
+              <MapPin class="size-6 mb-2 mx-auto text-white/80" />
               <p class="text-sm text-white/60">Alamat</p>
               <p class="font-medium">{{ lab.contact.address }}</p>
             </div>
@@ -337,8 +354,14 @@ function formatPrice(price: string) {
       </section>
 
       <!-- Footer -->
-      <footer class="bg-gray-900 py-6 text-center text-gray-500 text-sm">
-        © {{ new Date().getFullYear() }} {{ lab.name }} — Powered by SLMS
+      <footer class="bg-gray-900 py-6 text-center text-gray-500 text-sm space-y-2">
+        <p>© {{ new Date().getFullYear() }} {{ lab.name }} — Powered by SLMS</p>
+        <RouterLink
+          :to="{ name: 'lab-rfid-kiosk', params: { slug } }"
+          class="inline-block text-xs text-gray-600 hover:text-gray-400 transition-colors"
+        >
+          Mode Kios RFID
+        </RouterLink>
       </footer>
     </template>
   </div>

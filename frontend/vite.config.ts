@@ -8,8 +8,9 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig({
   server: {
-    host: 'localhost', 
+    host: 'localhost',
     port: 5173,
+    allowedHosts: ['.ngrok-free.dev', '.ngrok-free.app'],
   },
 
   plugins: [vue(), vueDevTools(), tailwindcss()],
@@ -18,4 +19,4 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
-})
+}) 

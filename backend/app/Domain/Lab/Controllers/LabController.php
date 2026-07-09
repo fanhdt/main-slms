@@ -9,10 +9,12 @@ use App\Domain\Lab\DTOs\CreateLabDTO;
 use App\Domain\Lab\DTOs\UpdateLabDTO;
 use App\Domain\Lab\Requests\CreateLabRequest;
 use App\Domain\Lab\Requests\UpdateLabRequest;
+use App\Domain\Lab\Requests\UploadLabImageRequest;
 use App\Domain\Lab\Resources\LabResource;
 use App\Domain\Lab\Services\LabService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Core\Exceptions\ApiException;
 
 class LabController extends ApiController
 {
@@ -88,6 +90,35 @@ class LabController extends ApiController
         );
 
         return $this->success(new LabResource($lab), 'Branding berhasil diupdate.');
+    }
+
+    public function updateRentalRates(Request $request, string $uuid): JsonResponse
+{
+    $lab = $this->labService->findByUuid($uuid);
+
+    if (!$request->user()->hasRole('super_admin') && !$request->user()->hasLabAccess($lab->id)) {
+        throw ApiException::forbidden('Kamu tidak punya akses ke lab ini.');
+    }
+
+    $validated = $request->validate([
+        'student_price_per_hour' => ['required', 'numeric', 'min:0'],
+        'public_price_per_hour'  => ['required', 'numeric', 'min:0'],
+    ]);
+
+    $lab = $this->labService->updateRentalRates($uuid, $validated);
+
+    return $this->success(new LabResource($lab), 'Harga sewa lab berhasil diupdate.');
+}
+
+public function updateImage(UploadLabImageRequest $request, string $uuid): JsonResponse
+    {
+        $lab = $this->labService->updateImage(
+            $uuid,
+            $request->validated('type'),
+            $request->file('image')
+        );
+
+        return $this->success(new LabResource($lab), 'Gambar berhasil diupdate.');
     }
 
     /**

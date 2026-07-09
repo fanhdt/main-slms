@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import { useLabStore } from '@/features/lab/stores/useLabStore'
+import CustomerNavbar from '@/components/CustomerNavbar.vue'
 import { useQuery } from '@tanstack/vue-query'
 import api from '@/lib/axios'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ArrowRight, FlaskConical } from 'lucide-vue-next'
 
-const authStore = useAuthStore()
 const labStore = useLabStore()
 const router = useRouter()
 
@@ -14,43 +17,94 @@ onMounted(async () => {
   await labStore.fetchLabs()
 })
 
-function selectLab(slug: string) {
-  router.push(`/booking/${slug}`)
+// Ringkasan personal: booking pending & yang belum lunas
+const { data: summary } = useQuery({
+  queryKey: ['booking-summary'],
+  queryFn: async () => {
+    const res = await api.get('/bookings/my', { params: { per_page: 50 } })
+    return res.data.data.data as any[]
+  },
+})
+
+const pendingCount = computed(
+  () => summary.value?.filter((b) => b.status.value === 'pending').length ?? 0,
+)
+const unpaidCount = computed(
+  () => summary.value?.filter((b) => b.payment_status.value === 'unpaid').length ?? 0,
+)
+const nextBooking = computed(() => {
+  const upcoming = (summary.value ?? [])
+    .filter((b) => ['pending', 'approved'].includes(b.status.value))
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+  return upcoming[0] ?? null
+})
+
+function formatShortDate(date: string) {
+  return new Date(date).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
-async function handleLogout() {
-  await authStore.logout()
-  router.push({ name: 'login' })
+function selectLab(slug: string) {
+  router.push(`/booking/${slug}`)
 }
 </script>
 
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
-      <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <span class="text-xl font-bold text-gray-900">SLMS</span>
-        <div class="flex items-center gap-4">
-          <span class="text-sm text-gray-600">
-            {{ authStore.user?.name }}
-          </span>
-          <button @click="handleLogout" class="text-sm text-red-600 hover:text-red-700">
-            Logout
-          </button>
-        </div>
-      </div>
-    </header>
+    <CustomerNavbar back-to="/home" title="Pilih Laboratorium" />
 
-    <!-- Content -->
     <div class="max-w-6xl mx-auto px-6 py-12">
+      <!-- Ringkasan personal -->
+      <Card v-if="nextBooking || pendingCount > 0 || unpaidCount > 0" class="p-0 mb-8">
+        <CardContent class="p-5 flex flex-wrap items-center gap-4">
+          <div v-if="nextBooking" class="flex-1 min-w-50">
+            <p class="text-xs text-gray-400">Booking berikutnya</p>
+            <p class="text-sm font-semibold text-gray-900 mt-0.5">
+              {{ nextBooking.booking_code }} &middot;
+              {{ formatShortDate(nextBooking.start_time) }}
+            </p>
+          </div>
+
+          <Badge
+            v-if="pendingCount > 0"
+            variant="outline"
+            class="border-0 bg-amber-50 text-amber-700"
+          >
+            {{ pendingCount }} menunggu persetujuan
+          </Badge>
+
+          <Badge v-if="unpaidCount > 0" variant="outline" class="border-0 bg-red-50 text-red-700">
+            {{ unpaidCount }} belum dibayar
+          </Badge>
+
+          <RouterLink
+            to="/my-bookings"
+            class="ml-auto text-sm font-medium text-blue-600 hover:underline whitespace-nowrap flex items-center gap-1"
+          >
+            Lihat detail
+            <ArrowRight class="size-3.5" />
+          </RouterLink>
+        </CardContent>
+      </Card>
+
       <div class="text-center mb-12">
         <h1 class="text-3xl font-bold text-gray-900">Pilih Laboratorium</h1>
         <p class="text-gray-500 mt-2">Pilih laboratorium yang ingin kamu booking layanannya.</p>
       </div>
 
       <!-- Loading -->
-      <div v-if="labStore.loading" class="text-center py-20 text-gray-500">
-        Memuat laboratorium...
+      <div v-if="labStore.loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Skeleton v-for="i in 3" :key="i" class="h-56 w-full rounded-2xl" />
+      </div>
+
+      <!-- Empty -->
+      <div v-else-if="!labStore.labs.length" class="text-center py-16">
+        <FlaskConical class="size-8 mx-auto text-gray-300 mb-2" />
+        <p class="text-gray-400">Belum ada laboratorium tersedia.</p>
       </div>
 
       <!-- Lab Cards -->
@@ -74,13 +128,12 @@ async function handleLogout() {
                 {{ lab.name.charAt(0) }}
               </span>
             </div>
-            <div class="absolute top-3 right-3">
-              <span
-                class="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-200 font-medium"
-              >
-                Aktif
-              </span>
-            </div>
+            <Badge
+              variant="outline"
+              class="absolute top-3 right-3 border-0 bg-green-500/20 text-green-100"
+            >
+              Aktif
+            </Badge>
           </div>
 
           <!-- Body -->
@@ -102,8 +155,11 @@ async function handleLogout() {
                   :style="{ backgroundColor: lab.branding.secondary_color ?? '#ccc' }"
                 />
               </div>
-              <span class="text-xs text-blue-600 font-medium group-hover:underline">
-                Lihat Layanan →
+              <span
+                class="text-xs text-blue-600 font-medium group-hover:underline flex items-center gap-1"
+              >
+                Lihat Layanan
+                <ArrowRight class="size-3" />
               </span>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
+import { useLabStore } from '@/features/lab/stores/useLabStore'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -15,6 +16,12 @@ const router = createRouter({
       component: () => import('@/features/landing/pages/HomePage.vue'),
     },
 
+    {
+      path: '/lab/:slug/kiosk',
+      name: 'lab-rfid-kiosk',
+      component: () => import('@/features/user/pages/RfidKioskPage.vue'),
+    },
+
     // Landing Page per Lab (public)
     {
       path: '/lab/:slug',
@@ -22,6 +29,21 @@ const router = createRouter({
       component: () => import('@/features/landing/pages/LabLandingPage.vue'),
     },
 
+    // Profile
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('@/features/auth/pages/ProfilePage.vue'),
+      meta: { requiresAuth: true },
+    },
+
+    // Dashboard User
+    {
+      path: '/home',
+      name: 'user-dashboard',
+      component: () => import('@/features/dashboard/pages/UserDashboardPage.vue'),
+      meta: { requiresAuth: true },
+    },
     // Booking — untuk customer
     {
       path: '/booking',
@@ -103,6 +125,25 @@ const router = createRouter({
       meta: { requiresGuest: true },
     },
 
+    {
+      path: '/email-verified',
+      name: 'email-verified',
+      component: () => import('@/features/auth/pages/EmailVerifiedPage.vue'),
+    },
+
+    {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('@/features/auth/pages/ForgotPasswordPage.vue'),
+      meta: { requiresGuest: true },
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('@/features/auth/pages/ResetPasswordPage.vue'),
+      meta: { requiresGuest: true },
+    },
+
     // =========================================================
     // DASHBOARD — Pilih Lab
     // =========================================================
@@ -110,7 +151,7 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('@/features/dashboard/pages/LabSelectorPage.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresStaff: true },
     },
 
     // =========================================================
@@ -145,7 +186,7 @@ const router = createRouter({
     {
       path: '/dashboard/lab/:labSlug',
       component: () => import('@/layouts/LabDashboardLayout.vue'),
-      meta: { requiresAuth: true, requiresLabAccess: true },
+      meta: { requiresAuth: true, requiresStaff: true, requiresLabAccess: true },
       children: [
         {
           path: '',
@@ -192,6 +233,30 @@ const router = createRouter({
           name: 'lab-photo-project-detail',
           component: () => import('@/features/photo/pages/PhotoProjectDetailPage.vue'),
         },
+
+        {
+          path: 'photographers',
+          name: 'lab-photographers',
+          component: () => import('@/features/portfolio/pages/PhotographerListPage.vue'),
+        },
+
+        // Portfolio
+        {
+          path: 'portfolio',
+          name: 'lab-portfolio',
+          component: () => import('@/features/portfolio/pages/PortfolioListPage.vue'),
+        },
+
+        {
+          path: 'rfid-checkin',
+          name: 'lab-rfid-checkin',
+          component: () => import('@/features/user/pages/RfidLookupPage.vue'),
+        },
+        {
+          path: 'settings',
+          name: 'lab-settings',
+          component: () => import('@/features/lab/pages/LabSettingsPage.vue'),
+        },
       ],
     },
 
@@ -201,6 +266,8 @@ const router = createRouter({
       name: 'not-found',
       component: () => import('@/features/dashboard/pages/NotFoundPage.vue'),
     },
+
+    // RFID
   ],
 })
 
@@ -224,7 +291,7 @@ router.beforeEach(async (to) => {
       return { name: 'admin-dashboard' }
     }
     if (authStore.hasRole('customer')) {
-      return { name: 'booking' }
+      return { name: 'user-dashboard' }
     }
     return { name: 'dashboard' }
   }
@@ -234,6 +301,29 @@ router.beforeEach(async (to) => {
       return { name: 'dashboard' }
     }
   }
+
+  if (to.meta.requiresRole === 'super_admin') {
+    if (!authStore.hasRole('super_admin')) {
+      return { name: 'dashboard' }
+    }
+  }
+
+  // NEW — /dashboard (LabSelectorPage) & rute admin lab lain hanya untuk staff
+  if (to.meta.requiresStaff) {
+    if (!authStore.hasRole('lab_admin') && !authStore.hasRole('super_admin')) {
+      return { name: 'user-dashboard' }
+    }
+  }
+
+  if (to.meta.requiresLabAccess) {
+    const labStore = useLabStore()
+    if (!authStore.hasRole('super_admin')) {
+      if (!labStore.managedLabs.length) await labStore.fetchManagedLabs()
+      const allowed = labStore.managedLabs.some((l) => l.slug === to.params.labSlug)
+      if (!allowed) return { name: 'dashboard' }
+    }
+  }
+  // === SAMPAI SINI ===
 })
 
 export default router

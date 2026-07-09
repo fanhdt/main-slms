@@ -4,12 +4,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import api from '@/lib/axios'
 import { useCartStore } from '@/features/booking/stores/useCartStore'
+import { useBookingFlowMode } from '@/composables/useBookingFlowMode'
 import { toast } from 'vue-sonner'
 
 const route = useRoute()
 const router = useRouter()
 const cartStore = useCartStore()
 const slug = computed(() => route.params.slug as string)
+const { isStaffMode, withMode, goBack } = useBookingFlowMode()
 
 const { data: lab } = useQuery({
   queryKey: ['booking-lab', slug],
@@ -55,7 +57,7 @@ function toggleCart(asset: NonNullable<typeof assets.value>[number]) {
 }
 
 function goToCart() {
-  router.push({ name: 'booking-cart', params: { slug: slug.value } })
+  router.push({ name: 'booking-cart', params: { slug: slug.value }, query: withMode() })
 }
 
 function formatPrice(price: string | number) {
@@ -71,10 +73,12 @@ function formatPrice(price: string | number) {
   <div class="min-h-screen bg-gray-50">
     <header
       class="sticky top-0 z-10"
-      :style="{ backgroundColor: lab?.branding?.primary_color ?? '#1a1a2e' }"
+      :style="{
+        backgroundColor: isStaffMode ? '#111827' : (lab?.branding?.primary_color ?? '#1a1a2e'),
+      }"
     >
       <div class="max-w-4xl mx-auto px-6 h-16 flex items-center gap-4">
-        <button @click="router.back()" class="text-white/70 hover:text-white transition-colors">
+        <button @click="goBack(slug)" class="text-white/70 hover:text-white transition-colors">
           ← Kembali
         </button>
         <span class="text-white font-bold flex-1">Sewa Alat</span>

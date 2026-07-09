@@ -3,11 +3,13 @@ import { ref, computed } from 'vue'
 import type { Lab } from '@/types'
 import { labApi } from '@/features/lab/api/labApi'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
+import { toast } from 'vue-sonner'
 import api from '@/lib/axios'
 
 export const useLabStore = defineStore('lab', () => {
   const activeLab = ref<Lab | null>(null)
   const labs = ref<Lab[]>([])
+  const managedLabs = ref<Lab[]>([])
   const loading = ref(false)
 
   const branding = computed(() => activeLab.value?.branding ?? null)
@@ -16,22 +18,37 @@ export const useLabStore = defineStore('lab', () => {
 
   async function fetchLabs() {
     loading.value = true
-    const authStore = useAuthStore()
+    try {
+      const res = await labApi.getAll({ per_page: 100, is_active: true })
+      labs.value = res.data.data.data
+    } finally {
+      loading.value = false
+    }
+  }
 
+  /**
+   * Daftar lab yang user PUNYA AKSES ADMIN atasnya — SATU-SATUNYA sumber
+   * kebenaran untuk otorisasi (router guard requiresLabAccess) dan sidebar
+   * "masuk ke lab" di admin layout. Jangan pernah dicampur dengan fetchLabs().
+   */
+  async function fetchManagedLabs() {
+    loading.value = true
+    const authStore = useAuthStore()
     try {
       if (authStore.hasRole('super_admin')) {
-        // Super admin lihat semua lab
         const res = await labApi.getAll({ per_page: 100 })
-        labs.value = res.data.data.data
-      } else if (authStore.hasRole('customer') || authStore.hasRole('guest')) {
-        // Customer lihat semua lab aktif (public)
-        const res = await labApi.getAll({ per_page: 100, is_active: true })
-        labs.value = res.data.data.data
+        managedLabs.value = res.data.data.data
       } else {
-        // Staff — hanya lab yang mereka punya akses
+        if (!authStore.user?.uuid) {
+          console.warn('[fetchManagedLabs] authStore.user belum ter-load, skip fetch.')
+          return
+        }
         const res = await api.get(`/users/${authStore.user?.uuid}/labs`)
-        labs.value = res.data.data.data
+        managedLabs.value = res.data.data.data
       }
+    } catch (err: any) {
+      console.error('[fetchManagedLabs] gagal:', err)
+      toast.error('Gagal memuat daftar lab: ' + (err.response?.data?.message ?? err.message))
     } finally {
       loading.value = false
     }
@@ -67,12 +84,14 @@ export const useLabStore = defineStore('lab', () => {
   return {
     activeLab,
     labs,
+    managedLabs,
     loading,
     branding,
     primaryColor,
     secondaryColor,
     labName,
     fetchLabs,
+    fetchManagedLabs,
     setActiveLab,
     applyBranding,
     restoreFromStorage,

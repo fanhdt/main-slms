@@ -5,6 +5,7 @@ import { useMutation } from '@tanstack/vue-query'
 import { useLabStore } from '@/features/lab/stores/useLabStore'
 import { bookingApi } from '@/features/booking/api/bookingApi'
 import QRScanner from '@/features/booking/components/QRScanner.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
 import { toast } from 'vue-sonner'
 import api from '@/lib/axios'
 
@@ -76,18 +77,6 @@ function formatPrice(price: string) {
     minimumFractionDigits: 0,
   }).format(Number(price))
 }
-
-function statusColor(status: string) {
-  const colors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-700',
-    approved: 'bg-blue-100 text-blue-700',
-    ongoing: 'bg-purple-100 text-purple-700',
-    completed: 'bg-green-100 text-green-700',
-    canceled: 'bg-red-100 text-red-700',
-    rejected: 'bg-gray-100 text-gray-600',
-  }
-  return colors[status] ?? 'bg-gray-100 text-gray-600'
-}
 </script>
 
 <template>
@@ -147,12 +136,7 @@ function statusColor(status: string) {
             <p class="font-mono font-bold text-lg text-gray-900">
               {{ bookingData.booking_code ?? bookingData.code }}
             </p>
-            <span
-              class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-              :class="statusColor(bookingData.status.value)"
-            >
-              {{ bookingData.status.label }}
-            </span>
+            <StatusBadge :status="bookingData.status" type="booking" />
           </div>
 
           <!-- Customer -->

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\LabService\Models;
 
 use App\Core\Traits\BelongsToLab;
+use App\Core\Traits\HasImageUrl;
 use App\Core\Traits\HasUuid;
 use App\Domain\LabService\Enums\PricingType;
 use App\Domain\LabService\Enums\ServiceType;
@@ -17,8 +18,11 @@ class Service extends Model
 {
     use BelongsToLab;
     use HasFactory;
+    use HasImageUrl; // NEW
     use HasUuid;
     use SoftDeletes;
+
+    public const IMAGE_DISK = 's3'; // NEW
 
     protected $fillable = [
         'uuid',
@@ -55,5 +59,11 @@ class Service extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    // NEW
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->getImageUrlFrom($this->image);
     }
 }

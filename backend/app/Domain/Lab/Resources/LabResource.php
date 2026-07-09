@@ -12,22 +12,23 @@ class LabResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'              => $this->id,
-            'uuid'            => $this->uuid,
-            'name'            => $this->name,
-            'slug'            => $this->slug,
-            'description'     => $this->description,
-            'is_active'       => $this->is_active,
-            'branding'        => [
+            'id'          => $this->id,
+            'uuid'        => $this->uuid,
+            'name'        => $this->name,
+            'slug'        => $this->slug,
+            'description' => $this->description,
+            'is_active'           => $this->is_active,
+            'is_photography_lab'  => $this->is_photography_lab, 
+            'branding'    => [
                 'primary_color'   => $this->primary_color,
                 'secondary_color' => $this->secondary_color,
-                'logo'            => $this->logo,
-                'hero_image'      => $this->hero_image,
-                'favicon'         => $this->favicon,
+                'logo'            => $this->logo_url,       
+                'hero_image'      => $this->hero_image_url, 
+                'favicon'         => $this->favicon_url,   
             ],
-            'contact'         => $this->contact,
-            'settings'        => $this->settings,
-            'created_at'      => $this->created_at->toISOString(),
+            'contact'          => $this->contact,
+            'settings'         => $this->settings,
+            'created_at'       => $this->created_at->toISOString(),
             'lab_rental_rates' => [
                 'public_price_per_hour'  => $this->settings['lab_rental']['public_price_per_hour'] ?? 0,
                 'student_price_per_hour' => $this->settings['lab_rental']['student_price_per_hour'] ?? 0,

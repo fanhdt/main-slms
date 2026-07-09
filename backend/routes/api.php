@@ -50,6 +50,12 @@ Route::prefix('v1')->group(function () {
         Route::prefix('services')->group(base_path('routes/api/services.php'));
         Route::prefix('packages')->group(base_path('routes/api/packages.php'));
 
+
+        // Portfolio
+        Route::prefix('portfolios')->group(base_path('routes/api/portfolios.php'));
+
+        Route::prefix('photographers')->group(base_path('routes/api/photographers.php'));
+
         // Bookings
         Route::prefix('bookings')->group(base_path('routes/api/bookings.php'));
 
@@ -62,6 +68,9 @@ Route::prefix('v1')->group(function () {
         
 
     });
+
+    // Webhook Midtrans — publik, tidak pakai token (Midtrans tidak kirim Bearer token)
+    Route::post('/payments/notification', [\App\Domain\Payment\Controllers\PaymentController::class, 'notification']);
 
     
 

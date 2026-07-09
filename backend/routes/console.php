@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('photo:expire')->daily();
 Schedule::command('photo:cleanup-expired-files')->daily();
+Schedule::command('bookings:send-reminders')->hourly();

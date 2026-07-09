@@ -30,7 +30,7 @@ class ServiceResource extends JsonResource
             'min_quantity' => $this->min_quantity,
             'max_quantity' => $this->max_quantity,
             'includes'     => $this->includes,
-            'image'        => $this->image,
+            'image'        => $this->image_url,
             'is_active'    => $this->is_active,
             'created_at'   => $this->created_at->toISOString(),
         ];

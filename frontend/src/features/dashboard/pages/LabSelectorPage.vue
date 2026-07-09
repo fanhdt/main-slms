@@ -3,13 +3,18 @@ import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import { useLabStore } from '@/features/lab/stores/useLabStore'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { LayoutDashboard, Lock, Mail, ArrowRight } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
 const labStore = useLabStore()
 const router = useRouter()
 
 onMounted(async () => {
-  await labStore.fetchLabs()
+  await labStore.fetchManagedLabs()
 })
 
 function enterLab(slug: string) {
@@ -26,18 +31,23 @@ function goToAdmin() {
     <!-- Header -->
     <header class="bg-white border-b border-gray-200">
       <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <span class="text-xl font-bold text-gray-900">SLMS</span>
+        <div class="flex items-center gap-2.5">
+          <div
+            class="w-7 h-7 rounded-lg bg-gray-900 flex items-center justify-center text-xs font-bold text-white shrink-0"
+          >
+            S
+          </div>
+          <span class="text-lg font-bold text-gray-900">SLMS</span>
+        </div>
         <div class="flex items-center gap-4">
           <span class="text-sm text-gray-600">
-            Selamat datang, <span class="font-medium">{{ authStore.user?.name }}</span>
+            Selamat datang,
+            <span class="font-medium text-gray-900">{{ authStore.user?.name }}</span>
           </span>
-          <button
-            v-if="authStore.hasRole('super_admin')"
-            @click="goToAdmin"
-            class="text-sm bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
-          >
+          <Button v-if="authStore.hasRole('super_admin')" size="sm" @click="goToAdmin">
+            <LayoutDashboard class="size-4" />
             Admin Panel
-          </button>
+          </Button>
         </div>
       </div>
     </header>
@@ -51,22 +61,21 @@ function goToAdmin() {
       </div>
 
       <!-- Loading -->
-      <div v-if="labStore.loading" class="text-center text-gray-500 py-20">
-        <div class="text-4xl mb-4">⏳</div>
-        <p>Memuat laboratorium...</p>
+      <div v-if="labStore.loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Skeleton v-for="i in 3" :key="i" class="h-64 w-full rounded-2xl" />
       </div>
 
       <!-- Empty -->
-      <div v-else-if="!labStore.labs.length" class="text-center text-gray-500 py-20">
-        <div class="text-4xl mb-4">🔒</div>
+      <div v-else-if="!labStore.managedLabs.length" class="text-center py-20">
+        <Lock class="size-9 mx-auto text-gray-300 mb-3" />
         <p class="font-medium text-gray-700">Belum ada akses laboratorium</p>
-        <p class="text-sm mt-1">Hubungi administrator untuk mendapatkan akses.</p>
+        <p class="text-sm text-gray-500 mt-1">Hubungi administrator untuk mendapatkan akses.</p>
       </div>
 
       <!-- Lab Cards Grid -->
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <button
-          v-for="lab in labStore.labs"
+          v-for="lab in labStore.managedLabs"
           :key="lab.uuid"
           @click="enterLab(lab.slug)"
           class="group text-left bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200"
@@ -80,23 +89,20 @@ function goToAdmin() {
             <div v-if="lab.branding.logo">
               <img :src="lab.branding.logo" class="h-16 object-contain" />
             </div>
-            <div v-else class="text-center">
-              <div class="text-4xl font-bold text-white/20">
-                {{ lab.name.charAt(0) }}
-              </div>
+            <div v-else class="text-4xl font-bold text-white/20">
+              {{ lab.name.charAt(0) }}
             </div>
 
             <!-- Status badge -->
-            <div class="absolute top-3 right-3">
-              <span
-                class="text-xs px-2 py-0.5 rounded-full font-medium"
-                :class="
-                  lab.is_active ? 'bg-green-500/20 text-green-200' : 'bg-red-500/20 text-red-200'
-                "
-              >
-                {{ lab.is_active ? 'Aktif' : 'Nonaktif' }}
-              </span>
-            </div>
+            <Badge
+              variant="outline"
+              class="absolute top-3 right-3 border-0"
+              :class="
+                lab.is_active ? 'bg-green-500/20 text-green-100' : 'bg-red-500/20 text-red-100'
+              "
+            >
+              {{ lab.is_active ? 'Aktif' : 'Nonaktif' }}
+            </Badge>
           </div>
 
           <!-- Card Body -->
@@ -109,8 +115,12 @@ function goToAdmin() {
             </p>
 
             <!-- Contact info -->
-            <div v-if="lab.contact?.email" class="mt-3 text-xs text-gray-400">
-              📧 {{ lab.contact.email }}
+            <div
+              v-if="lab.contact?.email"
+              class="mt-3 flex items-center gap-1.5 text-xs text-gray-400"
+            >
+              <Mail class="size-3.5 shrink-0" />
+              <span class="truncate">{{ lab.contact.email }}</span>
             </div>
 
             <!-- Color dots -->
@@ -125,7 +135,12 @@ function goToAdmin() {
                   :style="{ backgroundColor: lab.branding.secondary_color ?? '#ccc' }"
                 />
               </div>
-              <span class="text-xs text-blue-600 font-medium group-hover:underline"> Masuk → </span>
+              <span
+                class="text-xs text-blue-600 font-medium group-hover:underline flex items-center gap-1"
+              >
+                Masuk
+                <ArrowRight class="size-3" />
+              </span>
             </div>
           </div>
         </button>

@@ -43,6 +43,7 @@ export interface User {
   uuid: string
   name: string
   email: string
+  rfid_uid: string | null
   phone: string | null
   avatar: string | null
   is_active: boolean
@@ -81,10 +82,31 @@ export interface Lab {
   slug: string
   description: string | null
   is_active: boolean
+  is_photography_lab: boolean
   branding: LabBranding
   contact: LabContact | null
   settings: Record<string, unknown> | null
+  lab_rental_rates: LabRentalRates | null
   created_at: string
+}
+
+export interface LabRentalRates {
+  student_price_per_hour: number
+  public_price_per_hour: number
+}
+
+export interface LabBranding {
+  primary_color: string | null
+  secondary_color: string | null
+  logo: string | null
+  hero_image: string | null
+  favicon: string | null
+}
+
+export interface LabContact {
+  email: string | null
+  phone: string | null
+  address: string | null
 }
 
 export interface LabBranding {

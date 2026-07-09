@@ -6,6 +6,7 @@ import BaseModal from '@/components/BaseModal.vue'
 import { toast } from 'vue-sonner'
 import type { Service } from '@/types'
 import { useLabStore } from '@/features/lab/stores/useLabStore'
+import { defaultCreateServiceForm } from '@/features/labservice/types'
 
 const props = defineProps<{
   show: boolean
@@ -19,25 +20,11 @@ const emit = defineEmits<{
 const queryClient = useQueryClient()
 const labStore = useLabStore()
 
-function defaultForm() {
-  return {
-    name: '',
-    type: 'photography',
-    description: '',
-    pricing_type: 'per_session',
-    price: '',
-    duration: '',
-    min_quantity: 1,
-    max_quantity: '',
-    includes_text: '', // 1 baris per item, di-convert ke array saat submit
-    is_active: true,
-    lab_id: labStore.activeLab?.id ?? 1,
-  }
-}
-
-const form = ref(defaultForm())
+const form = ref(defaultCreateServiceForm(labStore.activeLab?.id ?? 1))
 const errors = ref<Record<string, string>>({})
 const isEdit = ref(false)
+const imageInputRef = ref<HTMLInputElement | null>(null)
+const isUploadingImage = ref(false)
 
 watch(
   () => props.service,
@@ -57,9 +44,10 @@ watch(
         includes_text: (service.includes ?? []).join('\n'),
         is_active: service.is_active,
         lab_id: service.lab_id,
+        imagePreview: service.image ?? null,
       }
     } else {
-      form.value = defaultForm()
+      form.value = defaultCreateServiceForm(labStore.activeLab?.id ?? 1)
     }
   },
   { immediate: true },
@@ -100,13 +88,33 @@ const { mutate: saveService, isPending } = useMutation({
     const errs = error.response?.data?.errors
     if (errs) {
       errors.value = Object.fromEntries(
-        Object.entries(errs).map(([k, v]) => [k, (v as string[])[0]]),
+        Object.entries(errs).map(([k, v]) => [k, (v as string[])[0] ?? '']),
       )
     } else {
       toast.error(error.response?.data?.message ?? 'Terjadi kesalahan.')
     }
   },
 })
+
+async function handleImageChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file || !props.service) return
+
+  isUploadingImage.value = true
+  try {
+    const res = await serviceApi.updateImage(props.service.uuid, file)
+    const updatedService = res.data.data as Service
+    form.value.imagePreview = updatedService.image
+    queryClient.invalidateQueries({ queryKey: ['services'] })
+    toast.success('Gambar berhasil diupdate.')
+  } catch (err: any) {
+    toast.error(err.response?.data?.message ?? 'Gagal upload gambar.')
+  } finally {
+    isUploadingImage.value = false
+    input.value = ''
+  }
+}
 </script>
 
 <template>
@@ -116,7 +124,7 @@ const { mutate: saveService, isPending } = useMutation({
     size="lg"
     @close="$emit('close')"
   >
-    <form @submit.prevent="saveService" class="space-y-4">
+    <form @submit.prevent="() => saveService()" class="space-y-4">
       <div class="grid grid-cols-2 gap-4">
         <!-- Nama -->
         <div class="col-span-2 space-y-1.5">
@@ -234,6 +242,42 @@ const { mutate: saveService, isPending } = useMutation({
             placeholder="Free 1x revisi&#10;File digital&#10;Cetak 4R 20 lembar"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+        </div>
+
+        <!-- Gambar Layanan — cuma muncul saat edit -->
+        <div v-if="isEdit" class="col-span-2 border-t border-gray-100 pt-4 space-y-2">
+          <p class="text-sm font-medium text-gray-700">Gambar Layanan</p>
+          <div class="flex items-center gap-4">
+            <div
+              class="w-24 h-24 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center shrink-0"
+            >
+              <img
+                v-if="form.imagePreview"
+                :src="form.imagePreview"
+                alt="Gambar Layanan"
+                class="w-full h-full object-cover"
+              />
+              <span v-else class="text-xs text-gray-400 text-center px-2">Belum ada gambar</span>
+            </div>
+            <div>
+              <button
+                type="button"
+                @click="imageInputRef?.click()"
+                :disabled="isUploadingImage"
+                class="text-xs text-blue-600 hover:underline disabled:opacity-50"
+              >
+                {{ isUploadingImage ? 'Mengupload...' : 'Ganti Gambar' }}
+              </button>
+              <p class="text-xs text-gray-400 mt-1">JPG, PNG, atau WEBP. Maks 5MB.</p>
+              <input
+                ref="imageInputRef"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                class="hidden"
+                @change="handleImageChange"
+              />
+            </div>
+          </div>
         </div>
 
         <!-- Aktif -->

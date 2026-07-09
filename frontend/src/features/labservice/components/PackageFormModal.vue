@@ -170,7 +170,7 @@ const { mutate: savePackage, isPending } = useMutation({
     const errs = error.response?.data?.errors
     if (errs) {
       errors.value = Object.fromEntries(
-        Object.entries(errs).map(([k, v]) => [k, (v as string[])[0]]),
+        Object.entries(errs).map(([k, v]) => [k, (v as string[])[0] ?? '']),
       )
       toast.error('Cek kembali item paket — ada yang belum lengkap.')
     } else {
@@ -187,7 +187,7 @@ const { mutate: savePackage, isPending } = useMutation({
     size="lg"
     @close="$emit('close')"
   >
-    <form @submit.prevent="savePackage" class="space-y-4">
+    <form @submit.prevent="() => savePackage()" class="space-y-4">
       <div class="grid grid-cols-2 gap-4">
         <div class="col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Nama Package</label>

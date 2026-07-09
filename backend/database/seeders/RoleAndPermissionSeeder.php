@@ -74,6 +74,12 @@ class RoleAndPermissionSeeder extends Seeder
             // Settings
             'settings.view',
             'settings.update',
+
+            // Portfolio
+            'portfolios.view',
+            'portfolios.create',
+            'portfolios.update',
+            'portfolios.delete',
         ];
 
         foreach ($permissions as $permission) {
@@ -86,18 +92,22 @@ class RoleAndPermissionSeeder extends Seeder
         $superAdmin = Role::firstOrCreate(['name' => UserRole::SuperAdmin->value, 'guard_name' => 'web']);
         $superAdmin->givePermissionTo(Permission::all());
 
-        // Lab Admin — kelola lab sendiri
+        // Lab Admin — kelola lab sendiri.
+        // PENTING: lab_admin TIDAK boleh punya users.view / users.create / users.update /
+        // users.assign-role — itu wewenang super_admin saja. lab_admin cuma boleh
+        // users.delete (dipakai untuk hapus akun pelanggar/customer bermasalah di labnya),
+        // dan itupun dibatasi lagi di UserPolicy (lihat UserPolicy::delete).
         $labAdmin = Role::firstOrCreate(['name' => UserRole::LabAdmin->value, 'guard_name' => 'web']);
         $labAdmin->givePermissionTo([
             'labs.view', 'labs.update', 'labs.branding',
-            'users.view', 'users.create', 'users.update', 'users.assign-role',
+            'users.delete',
             'bookings.view', 'bookings.update', 'bookings.approve', 'bookings.cancel', 'bookings.checkin',
             'assets.view', 'assets.create', 'assets.update', 'assets.delete',
             'services.view', 'services.create', 'services.update', 'services.delete',
             'packages.view', 'packages.create', 'packages.update', 'packages.delete',
             'media.view', 'media.upload', 'media.delete', 'media.approve',
             'reports.view', 'reports.export',
-            'settings.view', 'settings.update',
+            'settings.view', 'settings.update','portfolios.view', 'portfolios.create', 'portfolios.update', 'portfolios.delete',
         ]);
 
         // Operator — operasional harian

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import { toast } from 'vue-sonner'
 import api from '@/lib/axios'
-
-const router = useRouter()
-const authStore = useAuthStore()
+import AuthLayout from '@/layouts/AuthLayout.vue'
+import AuthFooter from '@/features/auth/components/AuthFooter.vue'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Eye, EyeOff, MailCheck, User, Mail, Phone, Lock } from 'lucide-vue-next'
 
 const form = ref({
   name: '',
@@ -17,21 +18,18 @@ const form = ref({
 })
 const error = ref('')
 const loading = ref(false)
+const registered = ref(false)
+const resending = ref(false)
+const showPassword = ref(false)
+const showPasswordConfirm = ref(false)
 
 async function handleRegister() {
   error.value = ''
   loading.value = true
 
   try {
-    const response = await api.post('/auth/register', form.value)
-    const { user, token } = response.data.data
-
-    authStore.user = user
-    authStore.token = token
-    localStorage.setItem('token', token)
-
-    toast.success('Registrasi berhasil!')
-    router.push({ name: 'dashboard' })
+    await api.post('/auth/register', form.value)
+    registered.value = true
   } catch (err: any) {
     const errors = err.response?.data?.errors
     if (errors) {
@@ -43,91 +41,172 @@ async function handleRegister() {
     loading.value = false
   }
 }
+
+async function handleResend() {
+  resending.value = true
+  try {
+    const res = await api.post('/auth/email/resend', { email: form.value.email })
+    toast.success(res.data.message ?? 'Email verifikasi sudah dikirim ulang.')
+  } catch (err: any) {
+    toast.error(err.response?.data?.message ?? 'Gagal mengirim ulang email.')
+  } finally {
+    resending.value = false
+  }
+}
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-    <div class="w-full max-w-md">
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-        <!-- Header -->
-        <div class="text-center mb-8">
-          <h1 class="text-2xl font-bold text-gray-900">Daftar Akun</h1>
-          <p class="text-gray-500 mt-1 text-sm">Buat akun baru untuk mengakses SLMS</p>
+  <AuthLayout
+    :hide-header="registered"
+    :title="registered ? undefined : 'Buat Akun Baru'"
+    :subtitle="registered ? undefined : 'Daftar untuk mulai booking layanan lab'"
+  >
+    <!-- Success state -->
+    <div v-if="registered" class="space-y-4 text-center">
+      <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
+        <MailCheck :size="26" class="text-red-500" />
+      </div>
+      <h1 class="text-xl font-bold text-gray-900">Cek Email Kamu</h1>
+      <p class="text-sm text-gray-500">
+        Kami sudah kirim link verifikasi ke <b class="text-gray-700">{{ form.email }}</b
+        >. Klik link itu untuk mengaktifkan akun sebelum bisa login.
+      </p>
+
+      <Button
+        type="button"
+        variant="outline"
+        :disabled="resending"
+        class="h-12 w-full"
+        @click="handleResend"
+      >
+        {{ resending ? 'Mengirim...' : 'Kirim Ulang Email' }}
+      </Button>
+
+      <AuthFooter link-text="← Kembali ke Login" to="/login" />
+    </div>
+
+    <!-- Form -->
+    <form v-else @submit.prevent="handleRegister" class="space-y-4">
+      <div
+        v-if="error"
+        class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+      >
+        {{ error }}
+      </div>
+
+      <div class="space-y-1.5">
+        <Label for="register-name">Nama Lengkap<span class="text-red-500">*</span></Label>
+        <div class="relative">
+          <User
+            :size="17"
+            class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          />
+          <Input
+            id="register-name"
+            v-model="form.name"
+            type="text"
+            placeholder="John Doe"
+            class="h-12 pl-10"
+          />
+        </div>
+      </div>
+
+      <div class="space-y-1.5">
+        <Label for="register-email">Email<span class="text-red-500">*</span></Label>
+        <div class="relative">
+          <Mail
+            :size="17"
+            class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          />
+          <Input
+            id="register-email"
+            v-model="form.email"
+            type="email"
+            autocomplete="email"
+            placeholder="nama@email.com"
+            class="h-12 pl-10"
+          />
+        </div>
+      </div>
+
+      <div class="space-y-1.5">
+        <Label for="register-phone">No. Telepon</Label>
+        <div class="relative">
+          <Phone
+            :size="17"
+            class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          />
+          <Input
+            id="register-phone"
+            v-model="form.phone"
+            type="tel"
+            placeholder="08123456789"
+            class="h-12 pl-10"
+          />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="space-y-1.5">
+          <Label for="register-password">Kata Sandi<span class="text-red-500">*</span></Label>
+          <div class="relative">
+            <Lock
+              :size="16"
+              class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            />
+            <Input
+              id="register-password"
+              v-model="form.password"
+              :type="showPassword ? 'text' : 'password'"
+              autocomplete="new-password"
+              placeholder="••••••••"
+              class="h-12 pl-9 pr-11"
+            />
+            <button
+              type="button"
+              @click="showPassword = !showPassword"
+              class="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600"
+            >
+              <EyeOff v-if="showPassword" :size="17" />
+              <Eye v-else :size="17" />
+            </button>
+          </div>
         </div>
 
-        <!-- Form -->
-        <form @submit.prevent="handleRegister" class="space-y-4">
-          <div
-            v-if="error"
-            class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg"
+        <div class="space-y-1.5">
+          <Label for="register-password-confirm"
+            >Konfirmasi<span class="text-red-500">*</span></Label
           >
-            {{ error }}
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-gray-700">Nama Lengkap</label>
-            <input
-              v-model="form.name"
-              type="text"
-              placeholder="John Doe"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          <div class="relative">
+            <Lock
+              :size="16"
+              class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
             />
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-gray-700">Email</label>
-            <input
-              v-model="form.email"
-              type="email"
-              placeholder="john@example.com"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-gray-700">No. Telepon</label>
-            <input
-              v-model="form.phone"
-              type="tel"
-              placeholder="08123456789"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-gray-700">Password</label>
-            <input
-              v-model="form.password"
-              type="password"
-              placeholder="••••••••"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-gray-700">Konfirmasi Password</label>
-            <input
+            <Input
+              id="register-password-confirm"
               v-model="form.password_confirmation"
-              type="password"
+              :type="showPasswordConfirm ? 'text' : 'password'"
+              autocomplete="new-password"
               placeholder="••••••••"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              class="h-12 pl-9 pr-11"
             />
+            <button
+              type="button"
+              @click="showPasswordConfirm = !showPasswordConfirm"
+              class="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600"
+            >
+              <EyeOff v-if="showPasswordConfirm" :size="17" />
+              <Eye v-else :size="17" />
+            </button>
           </div>
-
-          <button
-            type="submit"
-            :disabled="loading"
-            class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2.5 px-4 rounded-lg text-sm transition-colors"
-          >
-            {{ loading ? 'Memproses...' : 'Daftar' }}
-          </button>
-
-          <p class="text-center text-sm text-gray-500">
-            Sudah punya akun?
-            <RouterLink to="/login" class="text-blue-600 hover:underline">Masuk</RouterLink>
-          </p>
-        </form>
+        </div>
       </div>
-    </div>
-  </div>
+
+      <Button type="submit" :disabled="loading" class="h-12 w-full">
+        {{ loading ? 'Memproses...' : 'Daftar' }}
+      </Button>
+
+      <AuthFooter text="Sudah punya akun?" link-text="Masuk" to="/login" />
+    </form>
+  </AuthLayout>
 </template>

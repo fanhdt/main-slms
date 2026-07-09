@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useQuery, useMutation } from '@tanstack/vue-query'
 import api from '@/lib/axios'
 import { toast } from 'vue-sonner'
+import { useBookingFlowMode } from '@/composables/useBookingFlowMode'
 import AvailabilityCalendar from '@/components/AvailabilityCalendar.vue'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import { useCartStore } from '@/features/booking/stores/useCartStore'
@@ -12,6 +13,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const cartStore = useCartStore()
+const { isStaffMode, goBack } = useBookingFlowMode()
 
 const slug = computed(() => route.params.slug as string)
 
@@ -165,7 +167,15 @@ const { mutate: submitBooking, isPending } = useMutation({
       cartStore.clearCart(slug.value)
     }
     toast.success('Booking berhasil dibuat!')
-    router.push({ name: 'booking-success', params: { slug: slug.value, code } })
+    if (isStaffMode.value) {
+      toast.success('Booking berhasil dibuat.')
+    } else {
+      router.push({
+        name: 'booking-success',
+        params: { slug: slug.value, code },
+        query: isStaffMode.value ? { mode: 'staff' } : undefined,
+      })
+    }
   },
   onError: (error: any) => {
     toast.error(error.response?.data?.message ?? 'Gagal membuat booking.')
@@ -235,7 +245,7 @@ const pageTitle = computed(() => {
       :style="{ backgroundColor: lab?.branding?.primary_color ?? '#1a1a2e' }"
     >
       <div class="max-w-2xl mx-auto px-6 h-16 flex items-center gap-4">
-        <button @click="router.back()" class="text-white/70 hover:text-white transition-colors">
+        <button @click="goBack(slug)" class="text-white/70 hover:text-white transition-colors">
           ← Kembali
         </button>
         <span class="text-white font-bold">{{ pageTitle }}</span>

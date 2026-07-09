@@ -278,6 +278,39 @@ class BookingService extends BaseService
         return $booking;
     }
 
+       public function cancelByOwner(string $uuid, int $userId): Booking
+   {
+     $booking = $this->findByUuid($uuid);
+
+     if ($booking->user_id !== $userId) {
+       throw ApiException::forbidden('Kamu tidak bisa membatalkan booking milik orang lain.');
+     }
+
+     if (!in_array($booking->status, [BookingStatus::Pending, BookingStatus::Approved], true)) {
+       throw ApiException::unprocessable(
+         "Booking dengan status \"{$booking->status->label()}\" tidak bisa dibatalkan lagi."
+       );
+     }
+
+     if (now()->greaterThanOrEqualTo($booking->start_time)) {
+       throw ApiException::unprocessable('Booking tidak bisa dibatalkan karena waktu mulai sudah lewat.');
+     }
+
+     $previousStatus = $booking->status->value;
+     $booking->update(['status' => BookingStatus::Canceled]);
+
+     // Notifikasi ke staff lab (bukan ke user, karena usernya sendiri yang cancel)
+     $this->notificationService->notifyLabStaff(
+       labId: $booking->lab_id,
+       type: 'BookingCanceledByUser',
+       title: 'Booking dibatalkan pengguna',
+       body: "{$booking->booking_code} dibatalkan oleh {$booking->user->name}.",
+       data: ['booking_uuid' => $booking->uuid],
+     );
+     event(new BookingStatusChanged($booking, $previousStatus));
+
+     return $booking;  }
+
     public function updatePaymentStatus(string $uuid, string $paymentStatus): Booking
     {
         $booking = $this->findByUuid($uuid);
@@ -348,7 +381,10 @@ class BookingService extends BaseService
             ->where('user_id', $userId);
 
         if (isset($filters['status'])) {
-            $query->where('status', $filters['status']);
+            $statuses = is_string($filters['status'])
+         ? explode(',', $filters['status'])
+         : (array) $filters['status'];
+       $query->whereIn('status', $statuses);
         }
 
         return $query->latest()->paginate($filters['per_page'] ?? 10);

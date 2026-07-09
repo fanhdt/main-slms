@@ -18,6 +18,14 @@ export const serviceApi = {
     return api.put<ApiResponse<Service>>(`/services/${uuid}`, data)
   },
 
+  updateImage(uuid: string, file: File) {
+    const formData = new FormData()
+    formData.append('image', file)
+    return api.post(`/services/${uuid}/image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
   delete(uuid: string) {
     return api.delete(`/services/${uuid}`)
   },

@@ -31,6 +31,7 @@ class UpdateLabRequest extends FormRequest
             'contact.address' => ['nullable', 'string'],
             'settings'        => ['sometimes', 'nullable', 'array'],
             'is_active'       => ['sometimes', 'boolean'],
+            'is_photography_lab' => ['sometimes', 'boolean'],
         ];
     }
 

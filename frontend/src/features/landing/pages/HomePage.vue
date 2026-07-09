@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import api from '@/lib/axios'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Images, CalendarCheck, ShieldCheck, ArrowRight, FlaskConical } from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -48,12 +50,9 @@ function goToAuth() {
           <a href="#tentang" class="text-gray-600 hover:text-gray-900 text-sm transition-colors">
             Tentang
           </a>
-          <button
-            @click="goToAuth"
-            class="text-sm font-medium px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors"
-          >
+          <Button size="sm" @click="goToAuth">
             {{ authStore.isAuthenticated ? 'Dashboard' : 'Masuk' }}
-          </button>
+          </Button>
         </div>
       </div>
     </nav>
@@ -120,7 +119,9 @@ function goToAuth() {
         </div>
 
         <!-- Loading -->
-        <div v-if="isLoading" class="text-center py-12 text-gray-400">Memuat laboratorium...</div>
+        <div v-if="isLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Skeleton v-for="i in 3" :key="i" class="h-64 w-full rounded-2xl" />
+        </div>
 
         <!-- Grid -->
         <div v-else-if="labs?.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -165,8 +166,10 @@ function goToAuth() {
                     :style="{ backgroundColor: lab.branding.secondary_color ?? '#ccc' }"
                   />
                 </div>
-                <span class="text-sm text-blue-600 font-medium group-hover:underline">
-                  Kunjungi →
+                <span
+                  class="text-sm text-blue-600 font-medium group-hover:underline flex items-center gap-1"
+                >
+                  Kunjungi <ArrowRight class="size-3.5" />
                 </span>
               </div>
             </div>
@@ -174,7 +177,10 @@ function goToAuth() {
         </div>
 
         <!-- Empty -->
-        <div v-else class="text-center py-12 text-gray-400">Belum ada laboratorium tersedia.</div>
+        <div v-else class="text-center py-12">
+          <FlaskConical class="size-8 mx-auto text-gray-300 mb-2" />
+          <p class="text-gray-400">Belum ada laboratorium tersedia.</p>
+        </div>
       </div>
     </section>
 
@@ -191,18 +197,24 @@ function goToAuth() {
         </p>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-8 mt-12">
-          <div>
-            <div class="text-4xl mb-3">📸</div>
+          <div class="flex flex-col items-center">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
+              <Images class="size-6 text-blue-600" />
+            </div>
             <h3 class="font-semibold text-gray-900">Multi Laboratorium</h3>
             <p class="text-sm text-gray-500 mt-1">Kelola berbagai jenis lab dalam satu platform</p>
           </div>
-          <div>
-            <div class="text-4xl mb-3">📅</div>
+          <div class="flex flex-col items-center">
+            <div class="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center mb-3">
+              <CalendarCheck class="size-6 text-purple-600" />
+            </div>
             <h3 class="font-semibold text-gray-900">Booking Mudah</h3>
             <p class="text-sm text-gray-500 mt-1">Sistem booking yang cepat dan transparan</p>
           </div>
-          <div>
-            <div class="text-4xl mb-3">🔒</div>
+          <div class="flex flex-col items-center">
+            <div class="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center mb-3">
+              <ShieldCheck class="size-6 text-green-600" />
+            </div>
             <h3 class="font-semibold text-gray-900">Aman & Terpercaya</h3>
             <p class="text-sm text-gray-500 mt-1">Data dan transaksi terjamin keamanannya</p>
           </div>

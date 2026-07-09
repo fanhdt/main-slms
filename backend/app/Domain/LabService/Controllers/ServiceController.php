@@ -7,6 +7,7 @@ namespace App\Domain\LabService\Controllers;
 use App\Core\Http\Controllers\ApiController;
 use App\Domain\LabService\Resources\ServiceResource;
 use App\Domain\LabService\Services\ServiceService;
+use App\Domain\LabService\Requests\UploadServiceImageRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -76,6 +77,13 @@ class ServiceController extends ApiController
         $service = $this->serviceService->update($uuid, $data);
 
         return $this->success(new ServiceResource($service), 'Service berhasil diupdate.');
+    }
+
+     public function updateImage(UploadServiceImageRequest $request, string $uuid): JsonResponse
+    {
+        $service = $this->serviceService->updateImage($uuid, $request->file('image'));
+
+        return $this->success(new ServiceResource($service), 'Gambar berhasil diupdate.');
     }
 
     public function destroy(string $uuid): JsonResponse

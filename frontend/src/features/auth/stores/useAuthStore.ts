@@ -38,6 +38,42 @@ export const useAuthStore = defineStore('auth', () => {
       loading.value = false
     }
   }
+  async function register(payload: {
+    name: string
+    email: string
+    password: string
+    password_confirmation: string
+    phone?: string
+  }) {
+    loading.value = true
+    try {
+      const response = await api.post('/auth/register', payload)
+      return { success: true, message: response.data.message }
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message ?? 'Registrasi gagal.',
+        errors: error.response?.data?.errors,
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function resendVerification(email: string) {
+    loading.value = true
+    try {
+      const response = await api.post('/auth/email/resend', { email })
+      return { success: true, message: response.data.message }
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message ?? 'Gagal mengirim ulang email verifikasi.',
+      }
+    } finally {
+      loading.value = false
+    }
+  }
 
   async function logout() {
     loading.value = true
@@ -67,6 +103,112 @@ export const useAuthStore = defineStore('auth', () => {
     return user.value?.roles.includes(role) ?? false
   }
 
+  // NEW — kirim link reset password ke email
+  async function forgotPassword(email: string) {
+    loading.value = true
+    try {
+      await api.post('/auth/forgot-password', { email })
+      return { success: true }
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message ?? 'Gagal mengirim link reset password.',
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // NEW — reset password pakai token dari email
+  async function resetPassword(payload: {
+    token: string
+    email: string
+    password: string
+    password_confirmation: string
+  }) {
+    loading.value = true
+    try {
+      await api.post('/auth/reset-password', payload)
+      return { success: true }
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message ?? 'Gagal mereset password.',
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateAvatar(file: File) {
+    loading.value = true
+    try {
+      const formData = new FormData()
+      formData.append('avatar', file)
+      const response = await api.post('/auth/me/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      user.value = response.data.data
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, message: error.response?.data?.message ?? 'Gagal upload avatar.' }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateProfile(payload: { name?: string; email?: string; phone?: string }) {
+    loading.value = true
+    try {
+      const response = await api.put('/auth/me', payload)
+      user.value = response.data.data
+      return { success: true }
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message ?? 'Gagal update profil.',
+        errors: error.response?.data?.errors,
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function deleteAccount(password: string) {
+    loading.value = true
+    try {
+      await api.delete('/auth/me', { data: { password } })
+      user.value = null
+      token.value = null
+      localStorage.removeItem('token')
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, message: error.response?.data?.message ?? 'Gagal menghapus akun.' }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function changePassword(payload: {
+    current_password: string
+    password: string
+    password_confirmation: string
+  }) {
+    loading.value = true
+    try {
+      await api.put('/auth/me/password', payload)
+      return { success: true }
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message ?? 'Gagal mengubah password.',
+        errors: error.response?.data?.errors,
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     user,
     token,
@@ -78,5 +220,13 @@ export const useAuthStore = defineStore('auth', () => {
     fetchUser,
     hasPermission,
     hasRole,
+    forgotPassword,
+    resetPassword,
+    register,
+    resendVerification,
+    updateProfile,
+    updateAvatar,
+    deleteAccount,
+    changePassword,
   }
 })
