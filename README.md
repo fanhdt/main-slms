@@ -117,53 +117,95 @@ Frontend disusun berbasis **fitur** (feature-based), sedangkan backend disusun b
 
 ## ⚙️ Installation
 
-> Panduan instalasi umum. Sesuaikan dengan environment lokal Anda.
+Project ini menggunakan **Docker Compose** untuk seluruh service (backend, frontend, database, queue, storage, dsb.) sehingga proses setup tidak memerlukan instalasi PHP/Node/Postgres secara manual di komputer.
 
-### 1. Clone Repository
+### Prasyarat
+
+- [Docker](https://www.docker.com/) & Docker Compose
+- `make` (biasanya sudah tersedia di Linux/macOS; untuk Windows gunakan WSL atau Git Bash)
+
+### 🚀 Cara Cepat (Direkomendasikan)
 
 ```bash
+# 1. Clone repository
 git clone https://github.com/fanhdt/slms.git
 cd slms
+
+# 2. Jalankan setup otomatis
+make setup
 ```
 
-### 2. Setup Backend
+Perintah `make setup` akan otomatis:
+
+1. Menyalin `.env.example` menjadi `.env`
+2. Build seluruh image Docker
+3. Menjalankan semua service (`docker compose up -d`)
+4. Generate application key Laravel
+5. Menjalankan migrasi database beserta seeder
+6. Menginstall dependencies frontend
+
+Setelah selesai, aplikasi dapat diakses melalui:
+
+| Layanan                 | URL                   |
+| ----------------------- | --------------------- |
+| Aplikasi (Nginx)        | http://localhost      |
+| Mailpit (Email Testing) | http://localhost:8025 |
+| MinIO Console (Storage) | http://localhost:9001 |
+
+### 🛠️ Perintah Umum Lainnya
+
+Project ini menyediakan `Makefile` untuk mempermudah operasional sehari-hari:
 
 ```bash
-cd backend
-composer install
+make up               # Menjalankan seluruh service
+make down             # Menghentikan seluruh service
+make restart          # Rebuild & restart seluruh service
+make logs             # Melihat log seluruh service
+make logs-backend     # Melihat log backend, worker, dan scheduler
+
+make shell-backend    # Masuk ke shell container backend
+make shell-frontend   # Masuk ke shell container frontend
+make shell-postgres   # Masuk ke psql container database
+
+make migrate          # Menjalankan migrasi database
+make seed             # Menjalankan database seeder
+make fresh            # Migrasi ulang dari awal + seeding
+
+make test             # Menjalankan test backend
+make lint-backend     # Menjalankan linting PHP (Pint)
+make lint-frontend    # Menjalankan linting frontend
+
+make artisan cmd="..."   # Menjalankan perintah artisan apa pun
+make npm cmd="..."       # Menjalankan perintah npm apa pun di frontend
+```
+
+> Jalankan `make help` kapan pun untuk melihat daftar lengkap perintah yang tersedia.
+
+### 🔧 Setup Manual (Alternatif)
+
+Jika tidak menggunakan `make`, langkah yang sama dapat dijalankan manual:
+
+```bash
 cp .env.example .env
-php artisan key:generate
-```
-
-### 3. Jalankan Docker (opsional, untuk service pendukung seperti storage/queue)
-
-```bash
+docker compose build
 docker compose up -d
+docker compose exec backend php artisan key:generate
+docker compose exec backend php artisan migrate --seed
+docker compose exec frontend npm install
 ```
 
-### 4. Migrasi & Seeder Database
+---
 
-```bash
-php artisan migrate
-php artisan db:seed
-```
+## 📐 System Design
 
-### 5. Jalankan Backend
+Dokumentasi perancangan sistem tersedia pada folder `docs/diagrams/`:
 
-```bash
-php artisan serve
-```
+- 🔄 Flowchart Alur Sistem
+- 🧑‍💻 Use Case Diagram
 
-### 6. Setup & Jalankan Frontend
-
-```bash
-cd ../frontend
-npm install
-cp .env.example .env
-npm run dev
-```
-
-Akses aplikasi melalui `http://localhost:5173` (frontend) yang terhubung ke API backend.
+> Diagram teknis lain (ERD, DFD) merupakan bagian dari dokumentasi
+> akademik skripsi dan tidak dipublikasikan secara detail di README ini
+> untuk menjaga keamanan struktur data sistem.
 
 ---
 
