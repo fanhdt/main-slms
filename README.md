@@ -8,7 +8,7 @@
   <img alt="Status" src="https://img.shields.io/badge/status-active--development-yellow">
   <img alt="Backend" src="https://img.shields.io/badge/backend-Laravel-red">
   <img alt="Frontend" src="https://img.shields.io/badge/frontend-Vue%203-42b883">
-  <img alt="License" src="https://img.shields.io/badge/license-MIT-blue">
+  <img alt="License" src="https://img.shields.io/badge/license-All%20Rights%20Reserved-lightgrey">
 </p>
 
 ---
@@ -16,6 +16,8 @@
 ## 📖 Project Description
 
 **SLMS (Smart Laboratory Management System)** adalah platform manajemen laboratorium multi-tenant yang dirancang untuk institusi pendidikan maupun unit usaha yang mengelola beberapa laboratorium sekaligus (misalnya lab fotografi, lab komputer, studio, dll).
+
+Proyek ini dikembangkan sebagai **Tugas Akhir (Skripsi)** dan direncanakan untuk diterapkan di **Universitas Pendidikan Indonesia (UPI) Kampus Cibiru** guna mendukung pengelolaan laboratorium secara digital dan terpusat.
 
 ### 🎯 Tujuan
 
@@ -37,6 +39,10 @@ Menyediakan satu sistem terpusat untuk mengelola booking, aset, layanan, dan pen
 ### 🔭 Ruang Lingkup
 
 Sistem mencakup landing page publik per-lab, alur booking (pinjam lab, sewa alat, jasa & paket), manajemen aset, layanan tambahan (termasuk delivery hasil foto), serta panel administrasi multi-level.
+
+### 🏫 Studi Kasus Implementasi
+
+Sistem ini direncanakan untuk diimplementasikan di lingkungan **UPI Kampus Cibiru**, sebagai bagian dari upaya digitalisasi pengelolaan laboratorium kampus.
 
 ---
 
@@ -101,8 +107,8 @@ Struktur direktori tingkat atas project:
 ```
 ├── frontend/       # Aplikasi Vue 3 (SPA)
 ├── backend/        # Aplikasi Laravel (REST API)
-├── docker/          # (jika ada) konfigurasi container
-└── docs/            # Dokumentasi tambahan
+├── docker/         # (jika ada) konfigurasi container
+└── docs/           # Dokumentasi tambahan & screenshots
 ```
 
 Frontend disusun berbasis **fitur** (feature-based), sedangkan backend disusun berbasis **domain** (domain-driven), untuk memudahkan skalabilitas dan pemeliharaan jangka panjang.
@@ -116,7 +122,7 @@ Frontend disusun berbasis **fitur** (feature-based), sedangkan backend disusun b
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/username/slms.git
+git clone https://github.com/fanhdt/slms.git
 cd slms
 ```
 
@@ -163,16 +169,16 @@ Akses aplikasi melalui `http://localhost:5173` (frontend) yang terhubung ke API 
 
 ## 📸 Screenshots
 
-> Tambahkan tangkapan layar aktual pada folder `docs/screenshots/` dan sesuaikan path di bawah ini.
+> Tangkapan layar aktual disimpan pada folder `docs/screenshots/`.
 
-| Halaman           | Preview                            |
-| ----------------- | ---------------------------------- |
-| Login             | `docs/screenshots/login.png`       |
-| Dashboard         | `docs/screenshots/dashboard.png`   |
-| Booking           | `docs/screenshots/booking.png`     |
-| Asset Management  | `docs/screenshots/asset.png`       |
-| Service & Package | `docs/screenshots/service.png`     |
-| Admin Panel       | `docs/screenshots/admin-panel.png` |
+| Halaman           | Preview                                            |
+| ----------------- | -------------------------------------------------- |
+| Login             | ![Login](./docs/screenshots/login.png)             |
+| Dashboard         | ![Dashboard](./docs/screenshots/dashboard.png)     |
+| Booking           | ![Booking](./docs/screenshots/booking.png)         |
+| Asset Management  | ![Asset](./docs/screenshots/asset.png)             |
+| Service & Package | ![Service](./docs/screenshots/service.png)         |
+| Admin Panel       | ![Admin Panel](./docs/screenshots/admin-panel.png) |
 
 ---
 
@@ -236,7 +242,7 @@ Akses aplikasi melalui `http://localhost:5173` (frontend) yang terhubung ke API 
 ## 📄 License
 
 Proyek ini dikembangkan sebagai bagian dari **Tugas Akhir (Skripsi)**
-di **Universitas Pendidikan Indonesia (UPI)**.
+di **Universitas Pendidikan Indonesia (UPI) Kampus Cibiru**.
 
 Hak cipta kode sumber ini dimiliki oleh penulis dan digunakan untuk
 keperluan akademik. Penggunaan, modifikasi, atau distribusi ulang
@@ -248,11 +254,14 @@ dari penulis.
 > Proyek ini dipublikasikan sebagai bagian dari dokumentasi akademik
 > dan portofolio, bukan untuk tujuan komersial.
 
+---
+
 ## 👤 Author
 
-**Nama Author**
+**Mochamad Irfan Hidayat**
 📧 Email: mochamadirfan0211@gmail.com
 🔗 GitHub: [@fanhdt](https://github.com/fanhdt)
+🏫 Universitas Pendidikan Indonesia — Kampus Cibiru
 
 ---
 
