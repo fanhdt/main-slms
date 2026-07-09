@@ -1,4 +1,4 @@
-# 🧪 SLMS — Smart Laboratory Management System
+#  SLMS — Smart Laboratory Management System
 
 <p align="center">
   <strong>Platform terpadu untuk mengelola laboratorium, aset, booking, dan layanan akademik secara efisien.</strong>
