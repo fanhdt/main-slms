@@ -119,7 +119,12 @@ const checkinNavItems = computed(() => [
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 flex">
+  <!--
+    Wrapper luar dikunci ke tinggi viewport (h-screen + overflow-hidden) supaya
+    scroll TIDAK terjadi di level halaman/body. Scroll dipindah ke dalam kolom
+    <main> saja, sementara <aside> tetap sticky/diam di tempatnya.
+  -->
+  <div class="h-screen bg-gray-50 flex overflow-hidden">
     <Transition
       enter-active-class="transition duration-150"
       enter-from-class="opacity-0"
@@ -137,15 +142,16 @@ const checkinNavItems = computed(() => [
     </Transition>
 
     <!-- ============================================================
-         SIDEBAR
+         SIDEBAR — sticky di desktop (diam saat konten discroll),
+         overlay fixed di mobile (perilaku lama tetap dipertahankan).
     ============================================================= -->
     <aside
-      class="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 fixed inset-y-0 left-0 z-40 transition-transform duration-200 lg:static lg:translate-x-0"
+      class="w-64 h-screen bg-white border-r border-gray-200 flex flex-col shrink-0 fixed inset-y-0 left-0 z-40 transition-transform duration-200 overflow-y-auto lg:sticky lg:top-0 lg:translate-x-0"
       :class="mobileNavOpen ? 'translate-x-0' : '-translate-x-full'"
     >
       <!-- Header Lab -->
       <div
-        class="h-16 flex items-center px-5 border-b border-gray-200 gap-3"
+        class="h-16 flex items-center px-5 border-b border-gray-200 gap-3 shrink-0"
         :style="primaryBgStyle"
       >
         <div class="flex-1 min-w-0">
@@ -229,7 +235,7 @@ const checkinNavItems = computed(() => [
       </nav>
 
       <!-- User Info -->
-      <div class="p-3 border-t border-gray-200 space-y-0.5">
+      <div class="p-3 border-t border-gray-200 space-y-0.5 shrink-0">
         <RouterLink to="/booking" class="nav-item">
           <Ticket :size="17" class="shrink-0" />
           <span class="truncate">Booking Pribadi</span>
@@ -271,11 +277,12 @@ const checkinNavItems = computed(() => [
     </aside>
 
     <!-- ============================================================
-         MAIN CONTENT
+         MAIN — satu-satunya kolom yang scroll (h-screen + overflow-y-auto).
+         Sidebar di sebelah kiri tetap diam karena posisinya sticky/fixed.
     ============================================================= -->
-    <div class="flex-1 flex flex-col min-w-0">
+    <div class="flex-1 h-screen flex flex-col min-w-0 overflow-y-auto">
       <header
-        class="h-16 bg-white border-b border-gray-200 flex items-center px-4 lg:px-6 gap-3 lg:gap-4"
+        class="h-16 bg-white border-b border-gray-200 flex items-center px-4 lg:px-6 gap-3 lg:gap-4 sticky top-0 z-20 shrink-0"
       >
         <button class="lg:hidden" @click="mobileNavOpen = true" aria-label="Buka menu">
           <Menu :size="20" class="text-gray-600" />
@@ -303,7 +310,7 @@ const checkinNavItems = computed(() => [
         </span>
       </header>
 
-      <main class="flex-1 p-4 lg:p-6 overflow-auto">
+      <main class="flex-1 p-4 lg:p-6">
         <RouterView />
       </main>
     </div>

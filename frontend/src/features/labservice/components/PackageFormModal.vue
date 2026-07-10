@@ -6,6 +6,9 @@ import BaseModal from '@/components/BaseModal.vue'
 import { toast } from 'vue-sonner'
 import { useLabStore } from '@/features/lab/stores/useLabStore'
 import api from '@/lib/axios'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Plus, Trash2, TriangleAlert } from 'lucide-vue-next'
 
 const props = defineProps<{
   show: boolean
@@ -123,8 +126,6 @@ function onTypeChange(item: ItemRow) {
 
 const { mutate: savePackage, isPending } = useMutation({
   mutationFn: async () => {
-    // Validasi ringan di frontend dulu, biar pesan errornya jelas
-    // sebelum sempat hit backend (backend tetap validasi ulang sebagai jaring pengaman kedua).
     const incomplete = form.value.items.some((it) => !it.service_id && !it.asset_id)
     if (incomplete) {
       throw {
@@ -145,8 +146,6 @@ const { mutate: savePackage, isPending } = useMutation({
       duration: form.value.duration ? Number(form.value.duration) : null,
       is_active: form.value.is_active,
       is_custom: form.value.is_custom,
-      // Tidak lagi bergantung pada `it.type` — kirim berdasarkan field mana
-      // yang benar-benar terisi, supaya tidak ada key yang hilang dari payload.
       items: form.value.items.map((it) => ({
         service_id: it.service_id || null,
         asset_id: it.asset_id || null,
@@ -187,7 +186,7 @@ const { mutate: savePackage, isPending } = useMutation({
     size="lg"
     @close="$emit('close')"
   >
-    <form @submit.prevent="() => savePackage()" class="space-y-4">
+    <form @submit.prevent="() => savePackage()" class="space-y-5">
       <div class="grid grid-cols-2 gap-4">
         <div class="col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Nama Package</label>
@@ -204,7 +203,7 @@ const { mutate: savePackage, isPending } = useMutation({
           <input
             v-model="form.price"
             type="number"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
@@ -215,7 +214,7 @@ const { mutate: savePackage, isPending } = useMutation({
             type="number"
             min="0"
             max="100"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
@@ -224,18 +223,21 @@ const { mutate: savePackage, isPending } = useMutation({
           <textarea
             v-model="form.description"
             rows="2"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
       </div>
 
+      <Separator />
+
       <!-- Item Paket -->
-      <div class="space-y-3 border-t border-gray-100 pt-4">
+      <div class="space-y-3">
         <div class="flex items-center justify-between">
           <h4 class="text-sm font-semibold text-gray-900">Item Paket (Jasa / Alat)</h4>
-          <button type="button" @click="addItem" class="text-xs text-blue-600 hover:underline">
-            + Tambah Item
-          </button>
+          <Button type="button" variant="link" size="sm" class="px-0" @click="addItem">
+            <Plus class="size-3.5" />
+            Tambah Item
+          </Button>
         </div>
 
         <div
@@ -248,7 +250,7 @@ const { mutate: savePackage, isPending } = useMutation({
             <select
               v-model="item.type"
               @change="onTypeChange(item)"
-              class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs"
+              class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="service">Jasa</option>
               <option value="asset">Alat</option>
@@ -258,7 +260,7 @@ const { mutate: savePackage, isPending } = useMutation({
               v-if="item.type === 'service'"
               :key="'service-' + index"
               v-model="item.service_id"
-              class="flex-1 px-2 py-1.5 border border-gray-300 rounded-lg text-xs"
+              class="flex-1 px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option :value="null">-- Pilih Jasa --</option>
               <option v-for="s in services" :key="s.id" :value="s.id">{{ s.name }}</option>
@@ -268,7 +270,7 @@ const { mutate: savePackage, isPending } = useMutation({
               v-else
               :key="'asset-' + index"
               v-model="item.asset_id"
-              class="flex-1 px-2 py-1.5 border border-gray-300 rounded-lg text-xs"
+              class="flex-1 px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option :value="null">-- Pilih Alat --</option>
               <option v-for="a in assets" :key="a.id" :value="a.id">{{ a.name }}</option>
@@ -276,15 +278,20 @@ const { mutate: savePackage, isPending } = useMutation({
 
             <button
               type="button"
+              title="Hapus item"
               @click="removeItem(index)"
-              class="text-red-500 hover:text-red-700 text-xs px-2"
+              class="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
             >
-              Hapus
+              <Trash2 class="size-3.5" />
             </button>
           </div>
 
-          <p v-if="!item.service_id && !item.asset_id" class="text-[11px] text-red-500">
-            ⚠ Pilih {{ item.type === 'service' ? 'Jasa' : 'Alat' }} dulu, dropdown di atas masih
+          <p
+            v-if="!item.service_id && !item.asset_id"
+            class="text-[11px] text-red-500 flex items-center gap-1"
+          >
+            <TriangleAlert class="size-3" />
+            Pilih {{ item.type === 'service' ? 'Jasa' : 'Alat' }} dulu, dropdown di atas masih
             kosong.
           </p>
 
@@ -294,26 +301,30 @@ const { mutate: savePackage, isPending } = useMutation({
               type="number"
               min="1"
               placeholder="Qty"
-              class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs"
+              class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <input
               v-model="item.duration_minutes"
               type="number"
               min="1"
               placeholder="Durasi (menit, opsional)"
-              class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs"
+              class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
 
-        <p v-if="services?.length === 0" class="text-xs text-amber-600">
-          ⚠ Belum ada Jasa aktif di lab ini — tambahkan dulu lewat menu Layanan.
+        <p v-if="services?.length === 0" class="text-xs text-amber-600 flex items-center gap-1.5">
+          <TriangleAlert class="size-3.5 shrink-0" />
+          Belum ada Jasa aktif di lab ini — tambahkan dulu lewat menu Layanan.
         </p>
-        <p v-if="assets?.length === 0" class="text-xs text-amber-600">
-          ⚠ Belum ada Alat yang bisa disewa di lab ini — tambahkan dulu lewat menu Aset (centang
+        <p v-if="assets?.length === 0" class="text-xs text-amber-600 flex items-center gap-1.5">
+          <TriangleAlert class="size-3.5 shrink-0" />
+          Belum ada Alat yang bisa disewa di lab ini — tambahkan dulu lewat menu Aset (centang
           "rentable").
         </p>
       </div>
+
+      <Separator />
 
       <div class="flex items-center gap-3">
         <input
@@ -322,26 +333,17 @@ const { mutate: savePackage, isPending } = useMutation({
           id="pkg_active"
           class="w-4 h-4 rounded border-gray-300"
         />
-        <label for="pkg_active" class="text-sm font-medium text-gray-700"
-          >Tampilkan ke customer (aktif)</label
-        >
+        <label for="pkg_active" class="text-sm font-medium text-gray-700">
+          Tampilkan ke customer (aktif)
+        </label>
       </div>
     </form>
 
     <template #footer>
-      <button
-        @click="$emit('close')"
-        class="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
-      >
-        Batal
-      </button>
-      <button
-        @click="savePackage()"
-        :disabled="isPending"
-        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg"
-      >
+      <Button variant="ghost" @click="$emit('close')">Batal</Button>
+      <Button :disabled="isPending" @click="savePackage()">
         {{ isPending ? 'Menyimpan...' : isEdit ? 'Update' : 'Simpan' }}
-      </button>
+      </Button>
     </template>
   </BaseModal>
 </template>

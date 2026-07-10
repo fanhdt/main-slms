@@ -58,10 +58,28 @@ const PAGE_TITLES: Record<string, string> = {
 }
 
 const currentPageTitle = computed(() => PAGE_TITLES[route.name as string] ?? 'Dashboard')
+
+/**
+ * Vue Router 4 sudah tidak mendukung prop `exact` pada <RouterLink> (beda dengan
+ * Vue Router 3). Menulis `:exact="true"` tidak error, tapi diabaikan begitu saja —
+ * jadi active-class bisa nyala terus di menu yang path-nya jadi "leluhur" dari
+ * halaman lain (misal Dashboard tetap gelap walau sudah pindah ke halaman lain).
+ * Solusinya: tentukan status aktif sendiri dengan membandingkan route.path,
+ * lalu bind lewat :class, bukan bergantung pada active-class bawaan.
+ */
+function isNavActive(path: string, exact = false) {
+  if (exact) return route.path === path
+  return route.path === path || route.path.startsWith(path + '/')
+}
 </script>
 
 <template>
-  <div class="min-h-screen flex" style="background: var(--surface-0)">
+  <!--
+    Wrapper luar dikunci ke tinggi viewport (h-screen + overflow-hidden) supaya
+    scroll TIDAK terjadi di level halaman/body. Scroll dipindah ke dalam kolom
+    <main> saja, sementara <aside> tetap sticky/diam di tempatnya.
+  -->
+  <div class="h-screen flex overflow-hidden" style="background: var(--surface-0)">
     <Transition
       enter-active-class="transition duration-150"
       enter-from-class="opacity-0"
@@ -79,10 +97,11 @@ const currentPageTitle = computed(() => PAGE_TITLES[route.name as string] ?? 'Da
     </Transition>
 
     <!-- ============================================================
-         SIDEBAR
+         SIDEBAR — sticky di desktop (diam saat konten discroll),
+         overlay fixed di mobile (perilaku lama tetap dipertahankan).
     ============================================================= -->
     <aside
-      class="w-64 shrink-0 flex flex-col fixed inset-y-0 left-0 z-40 transition-transform duration-200 lg:static lg:translate-x-0"
+      class="w-64 h-screen shrink-0 flex flex-col fixed inset-y-0 left-0 z-40 transition-transform duration-200 overflow-y-auto lg:sticky lg:top-0 lg:translate-x-0"
       :class="mobileNavOpen ? 'translate-x-0' : '-translate-x-full'"
       style="background: var(--surface-2); border-right: 0.5px solid var(--border)"
     >
@@ -197,11 +216,12 @@ const currentPageTitle = computed(() => PAGE_TITLES[route.name as string] ?? 'Da
     </aside>
 
     <!-- ============================================================
-         MAIN
+         MAIN — satu-satunya kolom yang scroll (h-screen + overflow-y-auto).
+         Sidebar di sebelah kiri tetap diam karena posisinya sticky/fixed.
     ============================================================= -->
-    <div class="flex-1 flex flex-col min-w-0">
+    <div class="flex-1 h-screen flex flex-col min-w-0 overflow-y-auto">
       <header
-        class="h-16 shrink-0 flex items-center gap-3 px-4 lg:px-6"
+        class="h-16 shrink-0 flex items-center gap-3 px-4 lg:px-6 sticky top-0 z-20"
         style="background: var(--surface-2); border-bottom: 0.5px solid var(--border)"
       >
         <button class="lg:hidden" @click="mobileNavOpen = true" aria-label="Buka menu">
@@ -216,7 +236,7 @@ const currentPageTitle = computed(() => PAGE_TITLES[route.name as string] ?? 'Da
           </span>
         </div>
       </header>
-      <main class="flex-1 p-4 lg:p-6 overflow-auto">
+      <main class="flex-1 p-4 lg:p-6">
         <RouterView />
       </main>
     </div>

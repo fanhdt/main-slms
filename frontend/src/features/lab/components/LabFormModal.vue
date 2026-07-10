@@ -6,6 +6,9 @@ import BaseModal from '@/components/BaseModal.vue'
 import { toast } from 'vue-sonner'
 import type { Lab } from '@/types'
 import { defaultCreateLabForm } from '@/features/lab/types'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Upload, Loader2, ImageIcon } from 'lucide-vue-next'
 
 const props = defineProps<{
   show: boolean
@@ -24,9 +27,8 @@ const errors = ref<Record<string, string>>({})
 const isEdit = ref(false)
 const logoInputRef = ref<HTMLInputElement | null>(null)
 const heroInputRef = ref<HTMLInputElement | null>(null)
-const isUploadingImage = ref<string | null>(null) // 'logo' | 'hero_image' | null
+const isUploadingImage = ref<string | null>(null)
 
-// Auto generate slug dari nama
 function generateSlug(name: string) {
   return name
     .toLowerCase()
@@ -76,8 +78,6 @@ watch(
 
 const { mutate: saveLab, isPending } = useMutation({
   mutationFn: async () => {
-    // Field harga sewa dikirim lewat endpoint khusus (rental-rates),
-    // bukan ikut payload lab biasa — supaya settings.class_hours (RFID) tidak ketimpa.
     const { student_price_per_hour, public_price_per_hour, ...labData } = form.value
 
     if (isEdit.value && props.lab) {
@@ -122,7 +122,6 @@ async function handleImageChange(e: Event, type: 'logo' | 'hero_image') {
   isUploadingImage.value = type
   try {
     const res = await labApi.updateImage(props.lab.uuid, type, file)
-    // Update branding di form.value biar preview langsung berubah tanpa perlu tutup modal
     const updatedLab = res.data.data as Lab
     if (type === 'logo') form.value.logoPreview = updatedLab.branding.logo
     if (type === 'hero_image') form.value.heroPreview = updatedLab.branding.hero_image
@@ -144,7 +143,7 @@ async function handleImageChange(e: Event, type: 'logo' | 'hero_image') {
     size="lg"
     @close="$emit('close')"
   >
-    <form @submit.prevent="() => saveLab()" class="space-y-4">
+    <form @submit.prevent="() => saveLab()" class="space-y-5">
       <div class="grid grid-cols-2 gap-4">
         <!-- Nama -->
         <div class="col-span-2 space-y-1.5">
@@ -162,8 +161,7 @@ async function handleImageChange(e: Event, type: 'logo' | 'hero_image') {
         <!-- Slug -->
         <div class="col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">
-            Slug
-            <span class="text-gray-400 font-normal">(auto-generate dari nama)</span>
+            Slug <span class="text-gray-400 font-normal">(auto-generate dari nama)</span>
           </label>
           <input
             v-model="form.slug"
@@ -221,73 +219,84 @@ async function handleImageChange(e: Event, type: 'logo' | 'hero_image') {
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
+      </div>
 
-        <!-- Harga Sewa -->
-        <div class="col-span-2 border-t border-gray-100 pt-4">
-          <p class="text-sm font-medium text-gray-700 mb-1">Harga Sewa Lab (per jam)</p>
-          <p class="text-xs text-gray-400 mb-3">
+      <Separator />
+
+      <!-- Harga Sewa -->
+      <div class="space-y-3">
+        <div>
+          <p class="text-sm font-medium text-gray-700">Harga Sewa Lab (per jam)</p>
+          <p class="text-xs text-gray-400 mt-0.5">
             Dipakai saat mahasiswa/organisasi meminjam lab di luar jam kuliah. Booking dengan
             keperluan "Akademik" (jam kuliah) selalu gratis otomatis.
           </p>
         </div>
-
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium text-gray-700">Mahasiswa / Organisasi (Rp/jam)</label>
-          <input
-            v-model.number="form.student_price_per_hour"
-            type="number"
-            min="0"
-            step="1000"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium text-gray-700">Mahasiswa / Organisasi (Rp/jam)</label>
+            <input
+              v-model.number="form.student_price_per_hour"
+              type="number"
+              min="0"
+              step="1000"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium text-gray-700">Umum / Publik (Rp/jam)</label>
+            <input
+              v-model.number="form.public_price_per_hour"
+              type="number"
+              min="0"
+              step="1000"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
+      </div>
 
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium text-gray-700">Umum / Publik (Rp/jam)</label>
-          <input
-            v-model.number="form.public_price_per_hour"
-            type="number"
-            min="0"
-            step="1000"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+      <Separator />
+
+      <!-- Kontak -->
+      <div class="space-y-3">
+        <p class="text-sm font-medium text-gray-700">Kontak</p>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium text-gray-700">Email Kontak</label>
+            <input
+              v-model="form.contact.email"
+              type="email"
+              placeholder="lab@slms.local"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium text-gray-700">Telepon</label>
+            <input
+              v-model="form.contact.phone"
+              type="tel"
+              placeholder="08123456789"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div class="col-span-2 space-y-1.5">
+            <label class="text-sm font-medium text-gray-700">Alamat</label>
+            <input
+              v-model="form.contact.address"
+              type="text"
+              placeholder="Gedung A, Lantai 2"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
+      </div>
 
-        <!-- Kontak -->
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium text-gray-700">Email Kontak</label>
-          <input
-            v-model="form.contact.email"
-            type="email"
-            placeholder="lab@slms.local"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium text-gray-700">Telepon</label>
-          <input
-            v-model="form.contact.phone"
-            type="tel"
-            placeholder="08123456789"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <div class="col-span-2 space-y-1.5">
-          <label class="text-sm font-medium text-gray-700">Alamat</label>
-          <input
-            v-model="form.contact.address"
-            type="text"
-            placeholder="Gedung A, Lantai 2"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <!-- Gambar Lab — cuma muncul saat edit -->
-        <div v-if="isEdit" class="col-span-2 border-t border-gray-100 pt-4 space-y-4">
+      <!-- Gambar Lab — cuma muncul saat edit -->
+      <template v-if="isEdit">
+        <Separator />
+        <div class="space-y-4">
           <p class="text-sm font-medium text-gray-700">Gambar Lab</p>
-
           <div class="flex gap-6">
             <!-- Logo -->
             <div class="text-center">
@@ -300,16 +309,19 @@ async function handleImageChange(e: Event, type: 'logo' | 'hero_image') {
                   alt="Logo"
                   class="w-full h-full object-cover"
                 />
-                <span v-else class="text-xs text-gray-400">No logo</span>
+                <ImageIcon v-else class="size-6 text-gray-300" />
               </div>
-              <button
+              <Button
                 type="button"
-                @click="logoInputRef?.click()"
+                variant="link"
+                size="sm"
                 :disabled="isUploadingImage === 'logo'"
-                class="text-xs text-blue-600 hover:underline disabled:opacity-50"
+                @click="logoInputRef?.click()"
               >
+                <Loader2 v-if="isUploadingImage === 'logo'" class="size-3.5 animate-spin" />
+                <Upload v-else class="size-3.5" />
                 {{ isUploadingImage === 'logo' ? 'Mengupload...' : 'Ganti Logo' }}
-              </button>
+              </Button>
               <input
                 ref="logoInputRef"
                 type="file"
@@ -330,16 +342,19 @@ async function handleImageChange(e: Event, type: 'logo' | 'hero_image') {
                   alt="Hero"
                   class="w-full h-full object-cover"
                 />
-                <span v-else class="text-xs text-gray-400">No hero image</span>
+                <ImageIcon v-else class="size-6 text-gray-300" />
               </div>
-              <button
+              <Button
                 type="button"
-                @click="heroInputRef?.click()"
+                variant="link"
+                size="sm"
                 :disabled="isUploadingImage === 'hero_image'"
-                class="text-xs text-blue-600 hover:underline disabled:opacity-50"
+                @click="heroInputRef?.click()"
               >
+                <Loader2 v-if="isUploadingImage === 'hero_image'" class="size-3.5 animate-spin" />
+                <Upload v-else class="size-3.5" />
                 {{ isUploadingImage === 'hero_image' ? 'Mengupload...' : 'Ganti Hero Image' }}
-              </button>
+              </Button>
               <input
                 ref="heroInputRef"
                 type="file"
@@ -350,34 +365,27 @@ async function handleImageChange(e: Event, type: 'logo' | 'hero_image') {
             </div>
           </div>
         </div>
+      </template>
 
-        <!-- Status -->
-        <div class="col-span-2 flex items-center gap-3">
-          <input
-            v-model="form.is_active"
-            type="checkbox"
-            id="lab_is_active"
-            class="w-4 h-4 rounded border-gray-300"
-          />
-          <label for="lab_is_active" class="text-sm font-medium text-gray-700"> Lab Aktif </label>
-        </div>
+      <Separator />
+
+      <!-- Status -->
+      <div class="flex items-center gap-3">
+        <input
+          v-model="form.is_active"
+          type="checkbox"
+          id="lab_is_active"
+          class="w-4 h-4 rounded border-gray-300"
+        />
+        <label for="lab_is_active" class="text-sm font-medium text-gray-700">Lab Aktif</label>
       </div>
     </form>
 
     <template #footer>
-      <button
-        @click="$emit('close')"
-        class="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-      >
-        Batal
-      </button>
-      <button
-        @click="saveLab()"
-        :disabled="isPending"
-        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors"
-      >
+      <Button variant="ghost" @click="$emit('close')">Batal</Button>
+      <Button :disabled="isPending" @click="saveLab()">
         {{ isPending ? 'Menyimpan...' : isEdit ? 'Update' : 'Simpan' }}
-      </button>
+      </Button>
     </template>
   </BaseModal>
 </template>

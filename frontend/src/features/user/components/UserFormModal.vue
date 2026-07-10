@@ -6,6 +6,10 @@ import { labApi } from '@/features/lab/api/labApi'
 import BaseModal from '@/components/BaseModal.vue'
 import { toast } from 'vue-sonner'
 import type { User } from '@/types'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { CreditCard, ScanLine } from 'lucide-vue-next'
 
 const props = defineProps<{
   show: boolean
@@ -30,7 +34,6 @@ const form = ref({
 
 const errors = ref<Record<string, string>>({})
 
-// Isi form saat mode edit
 watch(
   () => props.user,
   (user) => {
@@ -68,13 +71,10 @@ watch(
   { immediate: true },
 )
 
-// === Role yang butuh di-scope ke lab tertentu ===
 const LAB_SCOPED_ROLES = ['lab_admin', 'operator', 'photographer', 'editor']
 const needsLabAccess = computed(() => LAB_SCOPED_ROLES.includes(form.value.role))
-// lab_admin cuma boleh pegang 1 lab; role staff lain boleh lebih dari 1
 const isSingleLabRole = computed(() => form.value.role === 'lab_admin')
 
-// === Daftar semua lab (buat opsi checkbox/radio) ===
 const { data: allLabs } = useQuery({
   queryKey: ['labs-for-user-form'],
   queryFn: async () => {
@@ -84,7 +84,6 @@ const { data: allLabs } = useQuery({
   enabled: computed(() => props.show),
 })
 
-// === Lab yang sudah di-assign ke user ini (kalau edit) ===
 const initialLabUuids = ref<string[]>([])
 const selectedLabUuids = ref<string[]>([])
 
@@ -116,7 +115,6 @@ watch(
 
 function toggleLab(uuid: string) {
   if (isSingleLabRole.value) {
-    // radio behavior: selalu jadi 1 pilihan saja
     selectedLabUuids.value = [uuid]
     return
   }
@@ -128,18 +126,15 @@ function toggleLab(uuid: string) {
   }
 }
 
-// Kalau role berubah jadi lab_admin sementara sudah ada >1 lab dicentang, potong jadi 1
 watch(
   () => form.value.role,
   () => {
     if (isSingleLabRole.value && selectedLabUuids.value.length > 1) {
-      // non-null assertion: sudah dicek length > 1 di atas, jadi index 0 pasti ada
       selectedLabUuids.value = [selectedLabUuids.value[0]!]
     }
   },
 )
 
-// === Sinkronkan akses lab (dipakai untuk create & edit, ikut 1 aksi Simpan/Update) ===
 async function syncLabAccess(userUuid: string) {
   if (!needsLabAccess.value) return
 
@@ -232,8 +227,7 @@ function handleRfidScan() {
     size="lg"
     @close="$emit('close')"
   >
-    <form @submit.prevent="() => saveUser()" class="space-y-4">
-      <!-- Nama -->
+    <form @submit.prevent="() => saveUser()" class="space-y-5">
       <div class="space-y-1.5">
         <label class="text-sm font-medium text-gray-700">Nama Lengkap</label>
         <input
@@ -246,7 +240,6 @@ function handleRfidScan() {
         <p v-if="errors.name" class="text-xs text-red-500">{{ errors.name }}</p>
       </div>
 
-      <!-- Email — hanya saat create -->
       <div v-if="!isEdit" class="space-y-1.5">
         <label class="text-sm font-medium text-gray-700">Email</label>
         <input
@@ -259,7 +252,6 @@ function handleRfidScan() {
         <p v-if="errors.email" class="text-xs text-red-500">{{ errors.email }}</p>
       </div>
 
-      <!-- Phone -->
       <div class="space-y-1.5">
         <label class="text-sm font-medium text-gray-700">No. Telepon</label>
         <input
@@ -270,7 +262,6 @@ function handleRfidScan() {
         />
       </div>
 
-      <!-- Role -->
       <div class="space-y-1.5">
         <label class="text-sm font-medium text-gray-700">Role</label>
         <select
@@ -287,52 +278,57 @@ function handleRfidScan() {
         </select>
       </div>
 
-      <!-- Akses Laboratorium — cuma muncul kalau role butuh scope ke lab -->
-      <div v-if="needsLabAccess" class="space-y-2 border-t border-gray-100 pt-4">
-        <label class="text-sm font-medium text-gray-700">
-          Akses Laboratorium
-          <span v-if="isSingleLabRole" class="text-xs text-gray-400 font-normal"
-            >(pilih 1 lab)</span
-          >
-        </label>
-        <p class="text-xs text-gray-400">
-          {{
-            isSingleLabRole
-              ? 'Lab Admin hanya bisa mengelola 1 laboratorium.'
-              : 'Pilih lab mana saja yang boleh dikelola/diakses user ini.'
-          }}
-        </p>
-
-        <div
-          class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-3"
-        >
-          <label
-            v-for="lab in allLabs"
-            :key="lab.uuid"
-            class="flex items-center gap-2 text-sm cursor-pointer"
-          >
-            <input
-              v-if="isSingleLabRole"
-              type="radio"
-              name="lab-access-radio"
-              :checked="selectedLabUuids.includes(lab.uuid)"
-              @change="toggleLab(lab.uuid)"
-              class="w-4 h-4 border-gray-300"
-            />
-            <input
-              v-else
-              type="checkbox"
-              :checked="selectedLabUuids.includes(lab.uuid)"
-              @change="toggleLab(lab.uuid)"
-              class="w-4 h-4 rounded border-gray-300"
-            />
-            {{ lab.name }}
+      <!-- Akses Laboratorium -->
+      <template v-if="needsLabAccess">
+        <Separator />
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-gray-700">
+            Akses Laboratorium
+            <span v-if="isSingleLabRole" class="text-xs text-gray-400 font-normal"
+              >(pilih 1 lab)</span
+            >
           </label>
-          <p v-if="!allLabs?.length" class="text-xs text-gray-400 col-span-2">
-            Belum ada lab terdaftar.
+          <p class="text-xs text-gray-400">
+            {{
+              isSingleLabRole
+                ? 'Lab Admin hanya bisa mengelola 1 laboratorium.'
+                : 'Pilih lab mana saja yang boleh dikelola/diakses user ini.'
+            }}
           </p>
+
+          <div
+            class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-3"
+          >
+            <label
+              v-for="lab in allLabs"
+              :key="lab.uuid"
+              class="flex items-center gap-2 text-sm cursor-pointer"
+            >
+              <input
+                v-if="isSingleLabRole"
+                type="radio"
+                name="lab-access-radio"
+                :checked="selectedLabUuids.includes(lab.uuid)"
+                @change="toggleLab(lab.uuid)"
+                class="w-4 h-4 border-gray-300"
+              />
+              <input
+                v-else
+                type="checkbox"
+                :checked="selectedLabUuids.includes(lab.uuid)"
+                @change="toggleLab(lab.uuid)"
+                class="w-4 h-4 rounded border-gray-300"
+              />
+              {{ lab.name }}
+            </label>
+            <p v-if="!allLabs?.length" class="text-xs text-gray-400 col-span-2">
+              Belum ada lab terdaftar.
+            </p>
+          </div>
         </div>
-      </div>
+      </template>
+
+      <Separator />
 
       <!-- Password -->
       <div class="space-y-1.5">
@@ -361,35 +357,47 @@ function handleRfidScan() {
       </div>
 
       <!-- Kaitkan Kartu RFID — cuma muncul saat edit -->
-      <div v-if="isEdit" class="space-y-2 border-t border-gray-100 pt-4">
-        <div class="flex items-center justify-between">
-          <label class="text-sm font-medium text-gray-700">
-            Kartu RFID
-            <span v-if="props.user?.rfid_uid" class="text-xs text-green-600 font-normal ml-1">
-              ✓ Terdaftar
-            </span>
-          </label>
-          <button type="button" @click="openRfidScan" class="text-xs text-blue-600 hover:underline">
-            {{ props.user?.rfid_uid ? 'Ganti Kartu' : 'Kaitkan Kartu' }}
-          </button>
-        </div>
+      <template v-if="isEdit">
+        <Separator />
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+              <CreditCard class="size-4 text-gray-400" />
+              Kartu RFID
+              <Badge
+                v-if="props.user?.rfid_uid"
+                variant="outline"
+                class="border-0 bg-green-50 text-green-700"
+              >
+                Terdaftar
+              </Badge>
+            </label>
+            <Button type="button" variant="link" size="sm" class="px-0" @click="openRfidScan">
+              {{ props.user?.rfid_uid ? 'Ganti Kartu' : 'Kaitkan Kartu' }}
+            </Button>
+          </div>
 
-        <div v-if="showRfidSection" class="space-y-2">
-          <input
-            ref="rfidInputRef"
-            v-model="rfidInput"
-            @keyup.enter="handleRfidScan"
-            type="text"
-            placeholder="Tempelkan kartu ke reader..."
-            class="w-full px-3 py-2 border-2 border-dashed border-blue-300 rounded-lg text-sm text-center focus:outline-none focus:border-blue-500"
-          />
-          <p class="text-xs text-gray-400 text-center">
-            {{ isSavingRfid ? 'Menyimpan...' : 'Tempelkan kartu RFID mahasiswa ke reader' }}
-          </p>
+          <div v-if="showRfidSection" class="space-y-2">
+            <div class="relative">
+              <ScanLine class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-blue-400" />
+              <input
+                ref="rfidInputRef"
+                v-model="rfidInput"
+                @keyup.enter="handleRfidScan"
+                type="text"
+                placeholder="Tempelkan kartu ke reader..."
+                class="w-full pl-9 pr-3 py-2 border-2 border-dashed border-blue-300 rounded-lg text-sm text-center focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <p class="text-xs text-gray-400 text-center">
+              {{ isSavingRfid ? 'Menyimpan...' : 'Tempelkan kartu RFID mahasiswa ke reader' }}
+            </p>
+          </div>
         </div>
-      </div>
+      </template>
 
-      <!-- Status -->
+      <Separator />
+
       <div class="flex items-center gap-3">
         <input
           v-model="form.is_active"
@@ -397,24 +405,15 @@ function handleRfidScan() {
           id="is_active"
           class="w-4 h-4 rounded border-gray-300"
         />
-        <label for="is_active" class="text-sm font-medium text-gray-700"> Akun Aktif </label>
+        <label for="is_active" class="text-sm font-medium text-gray-700">Akun Aktif</label>
       </div>
     </form>
 
     <template #footer>
-      <button
-        @click="$emit('close')"
-        class="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-      >
-        Batal
-      </button>
-      <button
-        @click="saveUser()"
-        :disabled="isPending"
-        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors"
-      >
+      <Button variant="ghost" @click="$emit('close')">Batal</Button>
+      <Button :disabled="isPending" @click="saveUser()">
         {{ isPending ? 'Menyimpan...' : isEdit ? 'Update' : 'Simpan' }}
-      </button>
+      </Button>
     </template>
   </BaseModal>
 </template>

@@ -68,17 +68,14 @@ async function handleLogin() {
       <div class="space-y-1.5">
         <Label for="login-email">Email<span class="text-red-500">*</span></Label>
         <div class="relative">
-          <Mail
-            :size="17"
-            class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-          />
+          <Mail :size="17" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <Input
             id="login-email"
             v-model="email"
             type="email"
             autocomplete="email"
             placeholder="nama@email.com"
-            class="h-11 pl-10"
+            class="h-12 pl-10"
           />
         </div>
       </div>
@@ -87,17 +84,14 @@ async function handleLogin() {
       <div class="space-y-1.5">
         <Label for="login-password">Kata sandi<span class="text-red-500">*</span></Label>
         <div class="relative">
-          <Lock
-            :size="17"
-            class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-          />
+          <Lock :size="17" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <Input
             id="login-password"
             v-model="password"
             :type="showPassword ? 'text' : 'password'"
             autocomplete="current-password"
             placeholder="••••••••••••"
-            class="h-11 pl-10 pr-11"
+            class="h-12 pl-10 pr-11"
           />
           <button
             type="button"
@@ -127,7 +121,7 @@ async function handleLogin() {
       </div>
 
       <!-- Submit -->
-      <Button type="submit" :disabled="authStore.loading" class="h-11 w-full">
+      <Button type="submit" :disabled="authStore.loading" class="h-12 w-full">
         {{ authStore.loading ? 'Memproses...' : 'Masuk' }}
       </Button>
 
@@ -139,7 +133,7 @@ async function handleLogin() {
       </div>
 
       <!-- Google (visual only) -->
-      <Button type="button" variant="outline" class="h-11 w-full gap-2.5">
+      <Button type="button" variant="outline" class="h-12 w-full gap-2.5">
         <svg viewBox="0 0 48 48" class="h-4 w-4 shrink-0">
           <path
             fill="#FFC107"

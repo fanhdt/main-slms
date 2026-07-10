@@ -11,9 +11,6 @@ import {
   ExternalLink,
   TrendingUp,
   TrendingDown,
-  Users,
-  FlaskConical,
-  FileBarChart,
 } from 'lucide-vue-next'
 import { Line, Doughnut, Bar } from 'vue-chartjs'
 import {
@@ -60,7 +57,8 @@ const labStore = useLabStore()
 const labSlug = computed(() => route.params.labSlug as string)
 
 // ============================================================
-// Data — QUERY TIDAK DIUBAH, hanya reuse yang sudah ada
+// Data — endpoint SAMA seperti sebelumnya, hanya per_page dinaikkan
+// supaya cukup data untuk chart (bukan endpoint baru).
 // ============================================================
 const { data: bookings, isLoading: bookingsLoading } = useQuery({
   queryKey: ['lab-bookings-stats', labSlug],
@@ -78,7 +76,7 @@ const { data: assets, isLoading: assetsLoading } = useQuery({
   queryFn: async () => {
     const lab = labStore.activeLab
     if (!lab) return null
-    const res = await api.get('/assets', { params: { lab_id: lab.id } })
+    const res = await api.get('/assets', { params: { lab_id: lab.id, per_page: 100 } })
     return res.data.data
   },
   enabled: computed(() => !!labStore.activeLab),
@@ -100,7 +98,7 @@ const isLoadingStats = computed(
 )
 
 // ============================================================
-// Stat computations — sama persis dengan sebelumnya
+// Stat computations
 // ============================================================
 const totalBookings = computed(() => bookings.value?.meta?.total ?? 0)
 
@@ -148,9 +146,6 @@ function formatDate(date: string) {
   })
 }
 
-// ============================================================
-// Header — sapaan & tanggal
-// ============================================================
 const todayLabel = computed(() =>
   new Date().toLocaleDateString('id-ID', {
     weekday: 'long',
@@ -159,37 +154,29 @@ const todayLabel = computed(() =>
     year: 'numeric',
   }),
 )
-
 const greetingName = computed(() => authStore.user?.name?.split(' ')[0] ?? 'Admin')
 
-// ============================================================
-// Stat cards config — badge indikator dummy (siap diganti API)
-// TODO: replace dengan data perbandingan periode dari backend
-// ============================================================
+// Catatan: badge perubahan (%) belum tersedia dari backend (butuh endpoint
+// perbandingan periode), jadi untuk sekarang stat card TIDAK menampilkan
+// badge tren — hanya angka aktual dari data yang sudah di-fetch.
 const statCards = computed(() => [
   {
     label: 'Total booking',
     value: totalBookings.value,
     hint: '100 data terakhir',
     icon: CalendarDays,
-    change: 12,
-    isDummy: true,
   },
   {
     label: 'Pendapatan (lunas)',
     value: formatCurrency(paidRevenue.value),
     hint: `${paidRate.value}% booking lunas`,
     icon: Wallet,
-    change: 8,
-    isDummy: true,
   },
   {
     label: 'Aset tersedia',
     value: `${availableAssets.value} / ${totalAssets.value}`,
     hint: 'Siap dipinjam',
     icon: Package,
-    change: -3,
-    isDummy: true,
   },
   {
     label: 'Photo project aktif',
@@ -197,34 +184,68 @@ const statCards = computed(() => [
     hint:
       pendingApproval.value > 0 ? `${pendingApproval.value} menunggu approval` : 'Semua terkendali',
     icon: Image,
-    change: 5,
-    isDummy: true,
     hidden: !labStore.activeLab?.is_photography_lab,
   },
 ])
 
 // ============================================================
-// CHART DATA — dummy, struktur siap diganti data API
-// TODO: ganti dengan endpoint /bookings/trend, /bookings/status-summary, /assets/usage-by-category
+// CHART: Tren Booking — REAL DATA dari bookings.value.data
 // ============================================================
 const chartTextColor = '#6b7280'
 const chartGridColor = 'rgba(0,0,0,0.05)'
+const MONTH_LABELS_ID = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agu',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
+]
 
-const bookingTrendData = computed(() => ({
-  labels: ['Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul'],
-  datasets: [
-    {
-      label: 'Booking',
-      data: [12, 19, 14, 26, 22, totalBookings.value || 30],
-      borderColor: '#3b82f6',
-      backgroundColor: 'rgba(59, 130, 246, 0.08)',
-      fill: true,
-      tension: 0.35,
-      pointRadius: 3,
-      pointBackgroundColor: '#3b82f6',
-    },
-  ],
-}))
+const bookingTrendData = computed(() => {
+  const items = bookings.value?.data ?? []
+  const now = new Date()
+
+  const months: { year: number; month: number; label: string }[] = []
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    months.push({
+      year: d.getFullYear(),
+      month: d.getMonth(),
+      label: MONTH_LABELS_ID[d.getMonth()]!,
+    })
+  }
+
+  const counts = months.map(
+    ({ year, month }) =>
+      items.filter((b: any) => {
+        const d = new Date(b.created_at)
+        return d.getFullYear() === year && d.getMonth() === month
+      }).length,
+  )
+
+  return {
+    labels: months.map((m) => m.label),
+    datasets: [
+      {
+        label: 'Booking',
+        data: counts,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.08)',
+        fill: true,
+        tension: 0.35,
+        pointRadius: 3,
+        pointBackgroundColor: '#3b82f6',
+      },
+    ],
+  }
+})
 
 const bookingTrendOptions = {
   responsive: true,
@@ -232,27 +253,31 @@ const bookingTrendOptions = {
   plugins: { legend: { display: false } },
   scales: {
     x: { grid: { display: false }, ticks: { color: chartTextColor } },
-    y: { grid: { color: chartGridColor }, ticks: { color: chartTextColor }, beginAtZero: true },
+    y: {
+      grid: { color: chartGridColor },
+      ticks: { color: chartTextColor, precision: 0 },
+      beginAtZero: true,
+    },
   },
 }
 
+// ============================================================
+// CHART: Status Booking — REAL DATA dari bookings.value.data
+// ============================================================
 const bookingStatusData = computed(() => {
   const items = bookings.value?.data ?? []
   const count = (status: string) => items.filter((b: any) => b.status?.value === status).length
 
-  const hasData = items.length > 0
   return {
-    labels: ['Pending', 'Approved', 'Completed', 'Rejected/Canceled'],
+    labels: ['Pending', 'Approved/Ongoing', 'Completed', 'Rejected/Canceled'],
     datasets: [
       {
-        data: hasData
-          ? [
-              count('pending'),
-              count('approved') + count('ongoing'),
-              count('completed'),
-              count('rejected') + count('canceled'),
-            ]
-          : [4, 6, 8, 2], // dummy fallback
+        data: [
+          count('pending'),
+          count('approved') + count('ongoing'),
+          count('completed'),
+          count('rejected') + count('canceled'),
+        ],
         backgroundColor: ['#f59e0b', '#3b82f6', '#22c55e', '#ef4444'],
         borderWidth: 0,
       },
@@ -272,43 +297,78 @@ const bookingStatusOptions = {
   cutout: '65%',
 }
 
-// TODO: ganti dengan data pemakaian per lab dari backend
-const labUsageData = {
-  labels: ['Lab Foto', 'Lab Komputer', 'Lab Audio'],
-  datasets: [
-    {
-      label: 'Jam Pemakaian',
-      data: [42, 28, 35, 18],
-      backgroundColor: '#8b5cf6',
-      borderRadius: 6,
-      maxBarThickness: 36,
-    },
-  ],
-}
+// ============================================================
+// CHART: Aset per Kategori — REAL DATA dari assets.value.data
+// (menggantikan chart "pemakaian per lab" yang tidak relevan untuk
+// dashboard satu-lab; ini pakai data aset yang memang sudah di-fetch)
+// ============================================================
+const assetCategoryData = computed(() => {
+  const items = assets.value?.data ?? []
+  const grouped: Record<string, number> = {}
+  items.forEach((a: any) => {
+    const label = a.category?.label ?? 'Lainnya'
+    grouped[label] = (grouped[label] ?? 0) + 1
+  })
+  const sorted = Object.entries(grouped)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
 
-const labUsageOptions = {
+  return {
+    labels: sorted.map(([label]) => label),
+    datasets: [
+      {
+        label: 'Jumlah Aset',
+        data: sorted.map(([, count]) => count),
+        backgroundColor: '#8b5cf6',
+        borderRadius: 6,
+        maxBarThickness: 36,
+      },
+    ],
+  }
+})
+
+const assetCategoryOptions = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: { legend: { display: false } },
   scales: {
     x: { grid: { display: false }, ticks: { color: chartTextColor } },
-    y: { grid: { color: chartGridColor }, ticks: { color: chartTextColor }, beginAtZero: true },
+    y: {
+      grid: { color: chartGridColor },
+      ticks: { color: chartTextColor, precision: 0 },
+      beginAtZero: true,
+    },
   },
 }
 
 // ============================================================
-// Recent Activity — dummy, siap diganti endpoint activity log
-// TODO: ganti dengan GET /activities atau sejenis
+// Recent Activity — REAL DATA dari bookings.value.data terbaru
+// (menggantikan dummy events sebelumnya)
 // ============================================================
-const recentActivities = [
-  { icon: CalendarDays, text: 'Booking baru dibuat oleh mahasiswa', time: '5 menit lalu' },
-  { icon: FlaskConical, text: 'Booking disetujui oleh admin', time: '32 menit lalu' },
-  { icon: Users, text: 'User baru terdaftar', time: '1 jam lalu' },
-  { icon: Package, text: 'Aset baru ditambahkan ke inventaris', time: '3 jam lalu' },
-]
+const recentActivities = computed(() => {
+  const items = [...(bookings.value?.data ?? [])]
+    .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5)
+
+  return items.map((b: any) => ({
+    icon: CalendarDays,
+    text: `Booking ${b.booking_code} oleh ${b.user?.name ?? 'customer'}`,
+    time: b.created_at,
+  }))
+})
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return 'baru saja'
+  if (minutes < 60) return `${minutes} menit lalu`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} jam lalu`
+  return `${Math.floor(hours / 24)} hari lalu`
+}
 
 // ============================================================
-// Quick Actions — mengarah ke route yang sudah ada, tidak ada route baru
+// Quick Actions
 // ============================================================
 function createManualBooking() {
   router.push({
@@ -321,28 +381,11 @@ function createManualBooking() {
 function openLandingPage() {
   window.open(`/lab/${labSlug.value}`, '_blank')
 }
-
-const quickActions = computed(() => [
-  { label: 'Booking Baru', icon: Plus, action: createManualBooking },
-  {
-    label: 'Tambah Aset',
-    icon: Package,
-    action: () => router.push(`/dashboard/lab/${labSlug.value}/assets`),
-  },
-  {
-    label: 'Tambah Pengguna',
-    icon: Users,
-    action: () => router.push(`/dashboard/lab/${labSlug.value}/users`),
-  },
-  { label: 'Lihat Landing Page', icon: FileBarChart, action: openLandingPage },
-])
 </script>
 
 <template>
   <div class="space-y-6">
-    <!-- ============================================================
-         HEADER
-    ============================================================= -->
+    <!-- HEADER -->
     <div class="flex flex-col gap-1">
       <p class="text-xs font-medium" style="color: var(--text-muted)">
         {{ labStore.activeLab?.name ?? 'Dashboard' }} · {{ todayLabel }}
@@ -372,14 +415,11 @@ const quickActions = computed(() => [
 
     <Separator />
 
-    <!-- ============================================================
-         STAT CARDS
-    ============================================================= -->
+    <!-- STAT CARDS -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       <template v-if="isLoadingStats">
         <Skeleton v-for="i in 4" :key="i" class="h-[92px] w-full rounded-xl" />
       </template>
-
       <template v-else>
         <Card v-for="stat in statCards" v-show="!stat.hidden" :key="stat.label" class="p-0">
           <CardContent class="px-4 py-3.5">
@@ -391,22 +431,9 @@ const quickActions = computed(() => [
                 <p class="text-xl font-semibold mt-1 truncate" style="color: var(--text-primary)">
                   {{ stat.value }}
                 </p>
-                <div class="flex items-center gap-1.5 mt-1.5">
-                  <Badge
-                    variant="outline"
-                    class="border-0 px-1.5 py-0 h-5 gap-0.5 text-[11px] font-medium"
-                    :class="
-                      stat.change >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
-                    "
-                  >
-                    <TrendingUp v-if="stat.change >= 0" class="size-3" />
-                    <TrendingDown v-else class="size-3" />
-                    {{ Math.abs(stat.change) }}%
-                  </Badge>
-                  <span class="text-[11px] truncate" style="color: var(--text-muted)">
-                    {{ stat.hint }}
-                  </span>
-                </div>
+                <p class="text-[11px] mt-1.5 truncate" style="color: var(--text-muted)">
+                  {{ stat.hint }}
+                </p>
               </div>
               <div
                 class="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center"
@@ -420,31 +447,33 @@ const quickActions = computed(() => [
       </template>
     </div>
 
-    <!-- ============================================================
-         CHARTS
-    ============================================================= -->
+    <!-- CHARTS -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <!-- Booking Trend -->
       <Card class="lg:col-span-2 p-0">
         <CardHeader class="px-5 pt-5 pb-0">
           <CardTitle class="text-sm font-semibold">Tren Booking</CardTitle>
           <p class="text-xs" style="color: var(--text-muted)">6 bulan terakhir</p>
         </CardHeader>
         <CardContent class="px-5 pb-5 pt-4">
-          <div class="h-[240px] w-full">
+          <div v-if="bookingsLoading" class="h-[240px] w-full">
+            <Skeleton class="h-full w-full" />
+          </div>
+          <div v-else class="h-[240px] w-full">
             <Line :data="bookingTrendData" :options="bookingTrendOptions" />
           </div>
         </CardContent>
       </Card>
 
-      <!-- Booking Status Donut -->
       <Card class="p-0">
         <CardHeader class="px-5 pt-5 pb-0">
           <CardTitle class="text-sm font-semibold">Status Booking</CardTitle>
           <p class="text-xs" style="color: var(--text-muted)">Distribusi status saat ini</p>
         </CardHeader>
         <CardContent class="px-5 pb-5 pt-4">
-          <div class="h-[240px] w-full">
+          <div v-if="bookingsLoading" class="h-[240px] w-full">
+            <Skeleton class="h-full w-full rounded-full" />
+          </div>
+          <div v-else class="h-[240px] w-full">
             <Doughnut :data="bookingStatusData" :options="bookingStatusOptions" />
           </div>
         </CardContent>
@@ -452,28 +481,30 @@ const quickActions = computed(() => [
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <!-- Lab Usage Bar -->
       <Card class="lg:col-span-2 p-0">
         <CardHeader class="px-5 pt-5 pb-0">
-          <CardTitle class="text-sm font-semibold">Pemakaian Lab</CardTitle>
-          <p class="text-xs" style="color: var(--text-muted)">
-            Total jam pemakaian per kategori lab
-          </p>
+          <CardTitle class="text-sm font-semibold">Aset per Kategori</CardTitle>
+          <p class="text-xs" style="color: var(--text-muted)">Distribusi jumlah aset di lab ini</p>
         </CardHeader>
         <CardContent class="px-5 pb-5 pt-4">
-          <div class="h-[220px] w-full">
-            <Bar :data="labUsageData" :options="labUsageOptions" />
+          <div v-if="assetsLoading" class="h-[220px] w-full">
+            <Skeleton class="h-full w-full" />
+          </div>
+          <div v-else class="h-[220px] w-full">
+            <Bar :data="assetCategoryData" :options="assetCategoryOptions" />
           </div>
         </CardContent>
       </Card>
 
-      <!-- Recent Activity -->
       <Card class="p-0">
         <CardHeader class="px-5 pt-5 pb-0">
           <CardTitle class="text-sm font-semibold">Aktivitas Terbaru</CardTitle>
         </CardHeader>
         <CardContent class="px-5 pb-5 pt-3">
-          <ul class="space-y-3">
+          <div v-if="bookingsLoading" class="space-y-3">
+            <Skeleton v-for="i in 4" :key="i" class="h-9 w-full" />
+          </div>
+          <ul v-else-if="recentActivities.length" class="space-y-3">
             <li
               v-for="(activity, idx) in recentActivities"
               :key="idx"
@@ -489,19 +520,19 @@ const quickActions = computed(() => [
                 <p class="text-sm truncate" style="color: var(--text-primary)">
                   {{ activity.text }}
                 </p>
-                <p class="text-xs" style="color: var(--text-muted)">{{ activity.time }}</p>
+                <p class="text-xs" style="color: var(--text-muted)">{{ timeAgo(activity.time) }}</p>
               </div>
             </li>
           </ul>
+          <p v-else class="text-sm text-center py-6" style="color: var(--text-muted)">
+            Belum ada aktivitas.
+          </p>
         </CardContent>
       </Card>
     </div>
 
-    <!-- ============================================================
-         RECENT BOOKING + QUICK ACTIONS
-    ============================================================= -->
+    <!-- RECENT BOOKING + QUICK ACTIONS -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <!-- Recent Booking table -->
       <Card class="lg:col-span-2 p-0 overflow-hidden">
         <CardHeader class="px-5 pt-5 pb-3 flex flex-row items-center justify-between space-y-0">
           <CardTitle class="text-sm font-semibold">Booking Terbaru</CardTitle>
@@ -580,22 +611,46 @@ const quickActions = computed(() => [
         </div>
       </Card>
 
-      <!-- Quick Actions -->
       <Card class="p-0">
         <CardHeader class="px-5 pt-5 pb-0">
           <CardTitle class="text-sm font-semibold">Aksi Cepat</CardTitle>
         </CardHeader>
         <CardContent class="px-5 pb-5 pt-4 grid grid-cols-2 gap-2">
           <Button
-            v-for="action in quickActions"
-            :key="action.label"
             variant="outline"
             size="sm"
             class="h-auto flex-col items-start gap-1.5 py-3 px-3"
-            @click="action.action"
+            @click="createManualBooking"
           >
-            <component :is="action.icon" class="size-4" style="color: var(--text-accent)" />
-            <span class="text-xs font-medium text-left">{{ action.label }}</span>
+            <Plus class="size-4" style="color: var(--text-accent)" />
+            <span class="text-xs font-medium text-left">Booking Baru</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            class="h-auto flex-col items-start gap-1.5 py-3 px-3"
+            @click="router.push(`/dashboard/lab/${labSlug}/assets`)"
+          >
+            <Package class="size-4" style="color: var(--text-accent)" />
+            <span class="text-xs font-medium text-left">Tambah Aset</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            class="h-auto flex-col items-start gap-1.5 py-3 px-3"
+            @click="router.push(`/dashboard/lab/${labSlug}/users`)"
+          >
+            <CalendarDays class="size-4" style="color: var(--text-accent)" />
+            <span class="text-xs font-medium text-left">Tambah Pengguna</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            class="h-auto flex-col items-start gap-1.5 py-3 px-3"
+            @click="openLandingPage"
+          >
+            <ExternalLink class="size-4" style="color: var(--text-accent)" />
+            <span class="text-xs font-medium text-left">Landing Page</span>
           </Button>
         </CardContent>
       </Card>

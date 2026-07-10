@@ -4,13 +4,23 @@ import { useRoute, useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import { useBookingFlowMode } from '@/composables/useBookingFlowMode'
 import api from '@/lib/axios'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import {
+  ArrowLeft,
+  ChevronRight,
+  Building2,
+  Camera,
+  Palette,
+  Package,
+  Wrench,
+} from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
 const slug = computed(() => route.params.slug as string)
 const { isStaffMode, withMode, goBack } = useBookingFlowMode()
 
-// Layar utama: pilih salah satu dari 3 flow. null = belum pilih (tampilkan 3 kartu).
 const activeFlow = ref<'lab_rental' | 'asset_rental' | 'service' | null>(null)
 const serviceTab = ref<'services' | 'packages'>('packages')
 
@@ -43,6 +53,36 @@ const { data: packages } = useQuery({
   },
   enabled: computed(() => activeFlow.value === 'service' && !!lab.value),
 })
+
+const flowOptions = [
+  {
+    key: 'lab_rental' as const,
+    title: 'Pinjam Lab',
+    description: 'Pinjam ruangan/studio sesuai jadwal. Gratis untuk keperluan akademik.',
+    icon: Building2,
+    tone: 'text-blue-600 bg-blue-50',
+  },
+  {
+    key: 'asset_rental' as const,
+    title: 'Sewa Alat',
+    description: 'Sewa kamera, properti, dan peralatan lainnya.',
+    icon: Camera,
+    tone: 'text-purple-600 bg-purple-50',
+  },
+  {
+    key: 'service' as const,
+    title: 'Jasa & Paket',
+    description: 'Fotografi, editing, cetak foto, dan paket bundling (prewedding, dll).',
+    icon: Palette,
+    tone: 'text-green-600 bg-green-50',
+  },
+]
+
+function selectFlow(key: 'lab_rental' | 'asset_rental' | 'service') {
+  if (key === 'lab_rental') return goToLabRental()
+  if (key === 'asset_rental') return goToAssetRental()
+  activeFlow.value = 'service'
+}
 
 function goToLabRental() {
   router.push({
@@ -93,82 +133,73 @@ function formatPrice(price: string | number) {
         backgroundColor: isStaffMode ? '#111827' : (lab?.branding?.primary_color ?? '#1a1a2e'),
       }"
     >
-      <div class="max-w-3xl mx-auto px-6 h-16 flex items-center gap-4">
+      <div class="max-w-4xl mx-auto px-6 h-16 flex items-center gap-4">
         <button
           @click="activeFlow ? (activeFlow = null) : goBack(slug)"
-          class="text-white/70 hover:text-white transition-colors"
+          class="text-white/70 hover:text-white transition-colors flex items-center gap-1.5"
         >
-          ← Kembali
+          <ArrowLeft class="size-4" />
+          Kembali
         </button>
-          <span class="text-white font-bold">{{ lab?.name ?? 'Booking' }}</span>
-       <span
-         v-if="isStaffMode"
-         class="ml-auto text-xs font-medium text-white/70 border border-white/20 rounded-full px-2.5 py-0.5"
-      >
-         Mode Admin
-       </span>
+        <span class="text-white font-bold">{{ lab?.name ?? 'Booking' }}</span>
+        <Badge
+          v-if="isStaffMode"
+          variant="outline"
+          class="ml-auto border-white/20 text-white/70 bg-transparent"
+        >
+          Mode Admin
+        </Badge>
       </div>
     </header>
 
-    <div class="max-w-3xl mx-auto px-6 py-8">
+    <div class="max-w-4xl mx-auto px-6 py-10">
       <!-- Layar pilih flow -->
-      <div v-if="!activeFlow" class="space-y-4">
-        <h2 class="text-xl font-bold text-gray-900 mb-2">Mau booking apa?</h2>
+      <div v-if="!activeFlow">
+        <div class="text-center mb-8">
+          <h1 class="text-2xl font-bold text-gray-900">Mau booking apa?</h1>
+          <p class="text-gray-500 mt-1 text-sm">Pilih salah satu jenis layanan di bawah ini.</p>
+        </div>
 
-        <button
-          @click="goToLabRental"
-          class="w-full text-left bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-md p-5 transition-all flex items-center gap-4"
-        >
-          <div
-            class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-2xl shrink-0"
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <button
+            v-for="option in flowOptions"
+            :key="option.key"
+            @click="selectFlow(option.key)"
+            class="group text-left"
           >
-            🏢
-          </div>
-          <div class="flex-1">
-            <h3 class="font-semibold text-gray-900">Pinjam Lab</h3>
-            <p class="text-sm text-gray-500">
-              Pinjam ruangan/studio sesuai jadwal. Gratis untuk keperluan akademik.
-            </p>
-          </div>
-          <span class="text-gray-300">›</span>
-        </button>
-
-        <button
-          @click="goToAssetRental"
-          class="w-full text-left bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-md p-5 transition-all flex items-center gap-4"
-        >
-          <div
-            class="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center text-2xl shrink-0"
-          >
-            📷
-          </div>
-          <div class="flex-1">
-            <h3 class="font-semibold text-gray-900">Sewa Alat</h3>
-            <p class="text-sm text-gray-500">Sewa kamera, properti, dan peralatan lainnya.</p>
-          </div>
-          <span class="text-gray-300">›</span>
-        </button>
-
-        <button
-          @click="activeFlow = 'service'"
-          class="w-full text-left bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-md p-5 transition-all flex items-center gap-4"
-        >
-          <div
-            class="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center text-2xl shrink-0"
-          >
-            🎨
-          </div>
-          <div class="flex-1">
-            <h3 class="font-semibold text-gray-900">Jasa & Paket</h3>
-            <p class="text-sm text-gray-500">
-              Fotografi, editing, cetak foto, dan paket bundling (prewedding, dll).
-            </p>
-          </div>
-          <span class="text-gray-300">›</span>
-        </button>
+            <Card
+              class="p-0 h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-200"
+            >
+              <CardContent class="p-6 flex flex-col items-start gap-4">
+                <div
+                  class="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
+                  :class="option.tone"
+                >
+                  <component :is="option.icon" class="size-7" />
+                </div>
+                <div>
+                  <h3
+                    class="font-semibold text-gray-900 text-lg group-hover:text-blue-600 transition-colors"
+                  >
+                    {{ option.title }}
+                  </h3>
+                  <p class="text-sm text-gray-500 mt-1.5 leading-relaxed">
+                    {{ option.description }}
+                  </p>
+                </div>
+                <span
+                  class="mt-auto text-sm font-medium text-blue-600 flex items-center gap-1 group-hover:underline"
+                >
+                  Pilih
+                  <ChevronRight class="size-3.5" />
+                </span>
+              </CardContent>
+            </Card>
+          </button>
+        </div>
       </div>
 
-      <!-- Layar Jasa & Paket (tab lama) -->
+      <!-- Layar Jasa & Paket -->
       <div v-else-if="activeFlow === 'service'">
         <div class="flex gap-2 mb-6">
           <button
@@ -177,9 +208,10 @@ function formatPrice(price: string | number) {
             :class="
               serviceTab === 'packages'
                 ? 'bg-blue-600 text-white'
-                : 'bg-white border border-gray-200 text-gray-600'
+                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
             "
           >
+            <Package class="size-3.5 inline mr-1.5 -mt-0.5" />
             Paket
           </button>
           <button
@@ -188,9 +220,10 @@ function formatPrice(price: string | number) {
             :class="
               serviceTab === 'services'
                 ? 'bg-blue-600 text-white'
-                : 'bg-white border border-gray-200 text-gray-600'
+                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
             "
           >
+            <Wrench class="size-3.5 inline mr-1.5 -mt-0.5" />
             Layanan Satuan
           </button>
         </div>
@@ -200,11 +233,17 @@ function formatPrice(price: string | number) {
             v-for="pkg in packages"
             :key="pkg.uuid"
             @click="selectPackage(pkg)"
-            class="text-left bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-md p-5 transition-all"
+            class="text-left"
           >
-            <h3 class="font-semibold text-gray-900">{{ pkg.name }}</h3>
-            <p class="text-sm text-gray-500 mt-1">{{ pkg.description }}</p>
-            <p class="font-bold text-gray-900 mt-2">{{ formatPrice(pkg.price - pkg.discount) }}</p>
+            <Card class="p-0 hover:border-blue-400 hover:shadow-md transition-all">
+              <CardContent class="p-5">
+                <h3 class="font-semibold text-gray-900">{{ pkg.name }}</h3>
+                <p class="text-sm text-gray-500 mt-1">{{ pkg.description }}</p>
+                <p class="font-bold text-gray-900 mt-2">
+                  {{ formatPrice(pkg.price - pkg.discount) }}
+                </p>
+              </CardContent>
+            </Card>
           </button>
           <p v-if="!packages?.length" class="text-sm text-gray-400 text-center py-8">
             Belum ada paket tersedia.
@@ -216,16 +255,20 @@ function formatPrice(price: string | number) {
             v-for="service in services"
             :key="service.uuid"
             @click="selectService(service)"
-            class="text-left bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-md p-5 transition-all"
+            class="text-left"
           >
-            <h3 class="font-semibold text-gray-900">{{ service.name }}</h3>
-            <p class="text-sm text-gray-500 mt-1">{{ service.description }}</p>
-            <p class="font-bold text-gray-900 mt-2">
-              {{ formatPrice(service.price) }}
-              <span class="text-sm font-normal text-gray-400"
-                >/ {{ service.pricing_type?.label }}</span
-              >
-            </p>
+            <Card class="p-0 hover:border-blue-400 hover:shadow-md transition-all">
+              <CardContent class="p-5">
+                <h3 class="font-semibold text-gray-900">{{ service.name }}</h3>
+                <p class="text-sm text-gray-500 mt-1">{{ service.description }}</p>
+                <p class="font-bold text-gray-900 mt-2">
+                  {{ formatPrice(service.price) }}
+                  <span class="text-sm font-normal text-gray-400"
+                    >/ {{ service.pricing_type?.label }}</span
+                  >
+                </p>
+              </CardContent>
+            </Card>
           </button>
           <p v-if="!services?.length" class="text-sm text-gray-400 text-center py-8">
             Belum ada layanan tersedia.

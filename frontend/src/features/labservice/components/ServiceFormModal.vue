@@ -7,6 +7,9 @@ import { toast } from 'vue-sonner'
 import type { Service } from '@/types'
 import { useLabStore } from '@/features/lab/stores/useLabStore'
 import { defaultCreateServiceForm } from '@/features/labservice/types'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Upload, Loader2, ImageIcon } from 'lucide-vue-next'
 
 const props = defineProps<{
   show: boolean
@@ -124,9 +127,8 @@ async function handleImageChange(e: Event) {
     size="lg"
     @close="$emit('close')"
   >
-    <form @submit.prevent="() => saveService()" class="space-y-4">
+    <form @submit.prevent="() => saveService()" class="space-y-5">
       <div class="grid grid-cols-2 gap-4">
-        <!-- Nama -->
         <div class="col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Nama Layanan</label>
           <input
@@ -139,7 +141,6 @@ async function handleImageChange(e: Event) {
           <p v-if="errors.name" class="text-xs text-red-500">{{ errors.name }}</p>
         </div>
 
-        <!-- Tipe -->
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Tipe Layanan</label>
           <select
@@ -157,7 +158,6 @@ async function handleImageChange(e: Event) {
           </select>
         </div>
 
-        <!-- Tipe Harga -->
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Tipe Harga</label>
           <select
@@ -174,7 +174,6 @@ async function handleImageChange(e: Event) {
           </select>
         </div>
 
-        <!-- Harga -->
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Harga (Rp)</label>
           <input
@@ -187,7 +186,6 @@ async function handleImageChange(e: Event) {
           <p v-if="errors.price" class="text-xs text-red-500">{{ errors.price }}</p>
         </div>
 
-        <!-- Durasi -->
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Durasi (menit, opsional)</label>
           <input
@@ -198,7 +196,6 @@ async function handleImageChange(e: Event) {
           />
         </div>
 
-        <!-- Min Qty -->
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Minimal Qty</label>
           <input
@@ -209,7 +206,6 @@ async function handleImageChange(e: Event) {
           />
         </div>
 
-        <!-- Max Qty -->
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Maksimal Qty (opsional)</label>
           <input
@@ -220,7 +216,6 @@ async function handleImageChange(e: Event) {
           />
         </div>
 
-        <!-- Deskripsi -->
         <div class="col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Deskripsi</label>
           <textarea
@@ -231,11 +226,10 @@ async function handleImageChange(e: Event) {
           />
         </div>
 
-        <!-- Includes -->
         <div class="col-span-2 space-y-1.5">
-          <label class="text-sm font-medium text-gray-700"
-            >Termasuk (satu baris per item, opsional)</label
-          >
+          <label class="text-sm font-medium text-gray-700">
+            Termasuk (satu baris per item, opsional)
+          </label>
           <textarea
             v-model="form.includes_text"
             rows="3"
@@ -243,9 +237,12 @@ async function handleImageChange(e: Event) {
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
+      </div>
 
-        <!-- Gambar Layanan — cuma muncul saat edit -->
-        <div v-if="isEdit" class="col-span-2 border-t border-gray-100 pt-4 space-y-2">
+      <!-- Gambar Layanan — cuma muncul saat edit -->
+      <template v-if="isEdit">
+        <Separator />
+        <div class="space-y-2">
           <p class="text-sm font-medium text-gray-700">Gambar Layanan</p>
           <div class="flex items-center gap-4">
             <div
@@ -257,17 +254,21 @@ async function handleImageChange(e: Event) {
                 alt="Gambar Layanan"
                 class="w-full h-full object-cover"
               />
-              <span v-else class="text-xs text-gray-400 text-center px-2">Belum ada gambar</span>
+              <ImageIcon v-else class="size-6 text-gray-300" />
             </div>
             <div>
-              <button
+              <Button
                 type="button"
-                @click="imageInputRef?.click()"
+                variant="link"
+                size="sm"
+                class="px-0"
                 :disabled="isUploadingImage"
-                class="text-xs text-blue-600 hover:underline disabled:opacity-50"
+                @click="imageInputRef?.click()"
               >
+                <Loader2 v-if="isUploadingImage" class="size-3.5 animate-spin" />
+                <Upload v-else class="size-3.5" />
                 {{ isUploadingImage ? 'Mengupload...' : 'Ganti Gambar' }}
-              </button>
+              </Button>
               <p class="text-xs text-gray-400 mt-1">JPG, PNG, atau WEBP. Maks 5MB.</p>
               <input
                 ref="imageInputRef"
@@ -279,36 +280,28 @@ async function handleImageChange(e: Event) {
             </div>
           </div>
         </div>
+      </template>
 
-        <!-- Aktif -->
-        <div class="col-span-2 flex items-center gap-3">
-          <input
-            v-model="form.is_active"
-            type="checkbox"
-            id="is_active"
-            class="w-4 h-4 rounded border-gray-300"
-          />
-          <label for="is_active" class="text-sm font-medium text-gray-700">
-            Tampilkan ke customer (aktif)
-          </label>
-        </div>
+      <Separator />
+
+      <div class="flex items-center gap-3">
+        <input
+          v-model="form.is_active"
+          type="checkbox"
+          id="is_active"
+          class="w-4 h-4 rounded border-gray-300"
+        />
+        <label for="is_active" class="text-sm font-medium text-gray-700">
+          Tampilkan ke customer (aktif)
+        </label>
       </div>
     </form>
 
     <template #footer>
-      <button
-        @click="$emit('close')"
-        class="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-      >
-        Batal
-      </button>
-      <button
-        @click="saveService()"
-        :disabled="isPending"
-        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors"
-      >
+      <Button variant="ghost" @click="$emit('close')">Batal</Button>
+      <Button :disabled="isPending" @click="saveService()">
         {{ isPending ? 'Menyimpan...' : isEdit ? 'Update' : 'Simpan' }}
-      </button>
+      </Button>
     </template>
   </BaseModal>
 </template>

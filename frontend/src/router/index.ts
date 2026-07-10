@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import { useLabStore } from '@/features/lab/stores/useLabStore'
+import CustomerLayout from '@/layouts/CustomerLayout.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -8,81 +9,90 @@ const router = createRouter({
     // =========================================================
     // PUBLIC ROUTES
     // =========================================================
-
-    // Landing Page Utama SLMS
     {
       path: '/',
       name: 'home',
       component: () => import('@/features/landing/pages/HomePage.vue'),
     },
-
     {
       path: '/lab/:slug/kiosk',
       name: 'lab-rfid-kiosk',
       component: () => import('@/features/user/pages/RfidKioskPage.vue'),
     },
-
-    // Landing Page per Lab (public)
     {
       path: '/lab/:slug',
       name: 'lab-landing',
       component: () => import('@/features/landing/pages/LabLandingPage.vue'),
     },
 
-    // Profile
+    // =========================================================
+    // CUSTOMER ROUTES (Using Customer Layout)
+    // =========================================================
     {
-      path: '/profile',
-      name: 'profile',
-      component: () => import('@/features/auth/pages/ProfilePage.vue'),
+      path: '/',
+      component: CustomerLayout,
       meta: { requiresAuth: true },
+      children: [
+        {
+          path: '/home',
+          name: 'user-dashboard',
+          component: () => import('@/features/dashboard/pages/UserDashboardPage.vue'),
+        },
+        {
+          path: '/profile',
+          name: 'profile',
+          component: () => import('@/features/auth/pages/ProfilePage.vue'),
+        },
+        {
+          path: '/booking',
+          name: 'booking',
+          component: () => import('@/features/booking/pages/BookingPage.vue'),
+        },
+        {
+          path: '/my-bookings',
+          name: 'my-bookings',
+          component: () => import('@/features/booking/pages/MyBookingsPage.vue'),
+        },
+        {
+          path: '/my-bookings/photo/:uuid/select',
+          name: 'photo-selection',
+          component: () => import('@/features/photo/pages/PhotoSelectionPage.vue'),
+        },
+        {
+          path: '/my-bookings/photo/:uuid/delivery',
+          name: 'photo-delivery',
+          component: () => import('@/features/photo/pages/PhotoDeliveryPage.vue'),
+        },
+      ],
     },
 
-    // Dashboard User
-    {
-      path: '/home',
-      name: 'user-dashboard',
-      component: () => import('@/features/dashboard/pages/UserDashboardPage.vue'),
-      meta: { requiresAuth: true },
-    },
-    // Booking — untuk customer
-    {
-      path: '/booking',
-      name: 'booking',
-      component: () => import('@/features/booking/pages/BookingPage.vue'),
-      meta: { requiresAuth: true },
-    },
-
+    // =========================================================
+    // STANDALONE CUSTOMER ROUTES (Auth Required, No Layout)
+    // =========================================================
     {
       path: '/booking/:slug',
       name: 'booking-lab',
       component: () => import('@/features/booking/pages/BookingLabPage.vue'),
       meta: { requiresAuth: true },
     },
-
     {
       path: '/booking/:slug/form',
       name: 'booking-form',
       component: () => import('@/features/booking/pages/BookingFormPage.vue'),
       meta: { requiresAuth: true },
     },
-
-    // Success page setelah booking dibuat
     {
       path: '/booking/:slug/success/:code',
       name: 'booking-success',
       component: () => import('@/features/booking/pages/BookingSuccessPage.vue'),
       meta: { requiresAuth: true },
     },
-
-    // Asset Catalog — browse alat untuk disewa
     {
       path: '/booking/:slug/catalog',
       name: 'asset-catalog',
       component: () => import('@/features/booking/pages/AssetCatalogPage.vue'),
       meta: { requiresAuth: true },
     },
-
-    // Cart — review keranjang sebelum checkout
     {
       path: '/booking/:slug/cart',
       name: 'booking-cart',
@@ -90,28 +100,9 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
 
-    // My Bookings
-    {
-      path: '/my-bookings',
-      name: 'my-bookings',
-      component: () => import('@/features/booking/pages/MyBookingsPage.vue'),
-      meta: { requiresAuth: true },
-    },
-
-    {
-      path: '/my-bookings/photo/:uuid/select',
-      name: 'photo-selection',
-      component: () => import('@/features/photo/pages/PhotoSelectionPage.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/my-bookings/photo/:uuid/delivery',
-      name: 'photo-delivery',
-      component: () => import('@/features/photo/pages/PhotoDeliveryPage.vue'),
-      meta: { requiresAuth: true },
-    },
-
-    // Auth
+    // =========================================================
+    // AUTH ROUTES
+    // =========================================================
     {
       path: '/login',
       name: 'login',
@@ -124,13 +115,11 @@ const router = createRouter({
       component: () => import('@/features/auth/pages/RegisterPage.vue'),
       meta: { requiresGuest: true },
     },
-
     {
       path: '/email-verified',
       name: 'email-verified',
       component: () => import('@/features/auth/pages/EmailVerifiedPage.vue'),
     },
-
     {
       path: '/forgot-password',
       name: 'forgot-password',
@@ -145,7 +134,7 @@ const router = createRouter({
     },
 
     // =========================================================
-    // DASHBOARD — Pilih Lab
+    // DASHBOARD — Lab Selector
     // =========================================================
     {
       path: '/dashboard',
@@ -233,20 +222,16 @@ const router = createRouter({
           name: 'lab-photo-project-detail',
           component: () => import('@/features/photo/pages/PhotoProjectDetailPage.vue'),
         },
-
         {
           path: 'photographers',
           name: 'lab-photographers',
           component: () => import('@/features/portfolio/pages/PhotographerListPage.vue'),
         },
-
-        // Portfolio
         {
           path: 'portfolio',
           name: 'lab-portfolio',
           component: () => import('@/features/portfolio/pages/PortfolioListPage.vue'),
         },
-
         {
           path: 'rfid-checkin',
           name: 'lab-rfid-checkin',
@@ -260,14 +245,14 @@ const router = createRouter({
       ],
     },
 
-    // 404
+    // =========================================================
+    // 404 CATCH ALL
+    // =========================================================
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('@/features/dashboard/pages/NotFoundPage.vue'),
     },
-
-    // RFID
   ],
 })
 
@@ -277,16 +262,18 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const authStore = useAuthStore()
 
+  // Ambil user data jika ada token tapi belum ada data user
   if (authStore.token && !authStore.user) {
     await authStore.fetchUser()
   }
 
+  // Cek Authentication
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'login' }
   }
 
+  // Redirect Guest yang sudah login
   if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    // Redirect berdasarkan role
     if (authStore.hasRole('super_admin')) {
       return { name: 'admin-dashboard' }
     }
@@ -296,34 +283,33 @@ router.beforeEach(async (to) => {
     return { name: 'dashboard' }
   }
 
+  // Pengecekan Role Super Admin
   if (to.meta.requiresRole === 'super_admin') {
     if (!authStore.hasRole('super_admin')) {
       return { name: 'dashboard' }
     }
   }
 
-  if (to.meta.requiresRole === 'super_admin') {
-    if (!authStore.hasRole('super_admin')) {
-      return { name: 'dashboard' }
-    }
-  }
-
-  // NEW — /dashboard (LabSelectorPage) & rute admin lab lain hanya untuk staff
+  // Pengecekan Staff untuk /dashboard dan Lab Admin
   if (to.meta.requiresStaff) {
     if (!authStore.hasRole('lab_admin') && !authStore.hasRole('super_admin')) {
       return { name: 'user-dashboard' }
     }
   }
 
+  // Pengecekan Akses Lab Spesifik
   if (to.meta.requiresLabAccess) {
     const labStore = useLabStore()
     if (!authStore.hasRole('super_admin')) {
-      if (!labStore.managedLabs.length) await labStore.fetchManagedLabs()
+      if (!labStore.managedLabs.length) {
+        await labStore.fetchManagedLabs()
+      }
       const allowed = labStore.managedLabs.some((l) => l.slug === to.params.labSlug)
-      if (!allowed) return { name: 'dashboard' }
+      if (!allowed) {
+        return { name: 'dashboard' }
+      }
     }
   }
-  // === SAMPAI SINI ===
 })
 
 export default router

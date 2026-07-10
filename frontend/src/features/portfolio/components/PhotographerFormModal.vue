@@ -5,6 +5,8 @@ import { photographerApi } from '@/features/portfolio/api/photographerApi'
 import BaseModal from '@/components/BaseModal.vue'
 import { toast } from 'vue-sonner'
 import type { Photographer } from '@/features/portfolio/types'
+import { Button } from '@/components/ui/button'
+import { UserSquare2, Loader2, Upload } from 'lucide-vue-next'
 
 const props = defineProps<{
   show: boolean
@@ -76,18 +78,32 @@ async function handlePhotoChange(e: Event) {
   >
     <form @submit.prevent="() => save()" class="space-y-4">
       <div v-if="isEdit()" class="space-y-2">
-        <div class="w-20 h-20 rounded-full overflow-hidden bg-gray-100 mx-auto">
+        <div
+          class="w-20 h-20 rounded-full overflow-hidden bg-gray-100 mx-auto flex items-center justify-center"
+        >
           <img v-if="currentPhoto" :src="currentPhoto" alt="" class="w-full h-full object-cover" />
+          <UserSquare2 v-else class="size-8 text-gray-300" />
         </div>
+        <Button
+          type="button"
+          variant="link"
+          size="sm"
+          class="mx-auto flex"
+          :disabled="isUploadingPhoto"
+          @click="photoInput?.click()"
+        >
+          <Loader2 v-if="isUploadingPhoto" class="size-3.5 animate-spin" />
+          <Upload v-else class="size-3.5" />
+          {{ isUploadingPhoto ? 'Mengupload...' : 'Ganti Foto' }}
+        </Button>
         <input
           ref="photoInput"
           type="file"
           accept="image/jpeg,image/png,image/webp"
           :disabled="isUploadingPhoto"
+          class="hidden"
           @change="handlePhotoChange"
-          class="text-xs block mx-auto"
         />
-        <p v-if="isUploadingPhoto" class="text-xs text-gray-400 text-center">Mengupload...</p>
       </div>
       <p v-else class="text-xs text-gray-400 text-center -mt-2">
         Foto profil bisa diupload setelah profil disimpan.
@@ -99,7 +115,7 @@ async function handlePhotoChange(e: Event) {
           v-model="form.name"
           type="text"
           required
-          class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
@@ -108,7 +124,7 @@ async function handlePhotoChange(e: Event) {
         <textarea
           v-model="form.bio"
           rows="3"
-          class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none"
+          class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
@@ -117,25 +133,15 @@ async function handlePhotoChange(e: Event) {
         <input
           v-model="form.instagram"
           type="text"
-          class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
       <div class="flex justify-end gap-2 pt-2">
-        <button
-          type="button"
-          @click="$emit('close')"
-          class="px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50"
-        >
-          Batal
-        </button>
-        <button
-          type="submit"
-          :disabled="isPending"
-          class="px-4 py-2 text-sm rounded-lg bg-gray-900 text-white disabled:opacity-50"
-        >
+        <Button type="button" variant="outline" @click="$emit('close')">Batal</Button>
+        <Button type="submit" :disabled="isPending">
           {{ isPending ? 'Menyimpan...' : 'Simpan' }}
-        </button>
+        </Button>
       </div>
     </form>
   </BaseModal>

@@ -4,9 +4,9 @@ import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import { toast } from 'vue-sonner'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import AuthFooter from '@/features/auth/components/AuthFooter.vue'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 import { MailCheck, Mail } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
@@ -34,16 +34,13 @@ async function submit() {
     :subtitle="sent ? undefined : 'Masukkan email kamu, kami kirim link reset kata sandi'"
   >
     <div v-if="sent" class="space-y-4 text-center">
-      <div
-        class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl"
-        style="background: rgba(233, 69, 96, 0.1)"
-      >
-        <MailCheck :size="26" style="color: #e94560" />
+      <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
+        <MailCheck :size="26" class="text-red-500" />
       </div>
-      <h1 class="text-xl font-extrabold text-[#14162a]">Cek Email Kamu</h1>
+      <h1 class="text-xl font-bold text-gray-900">Cek Email Kamu</h1>
       <p class="text-sm text-gray-500">
-        Kalau email <b class="text-gray-700">{{ email }}</b> terdaftar, link reset kata sandi sudah
-        dikirim. Cek inbox kamu.
+        Kalau email <b class="text-gray-700">{{ email }}</b> terdaftar, link reset kata sandi
+        sudah dikirim. Cek inbox kamu.
       </p>
 
       <AuthFooter link-text="← Kembali ke Login" to="/login" />
@@ -51,28 +48,22 @@ async function submit() {
 
     <form v-else @submit.prevent="() => submit()" class="space-y-5">
       <div class="space-y-1.5">
-        <Label class="text-[#1a1a2e] font-semibold text-[0.8125rem]">
-          Email<span class="text-[#e94560]">*</span>
-        </Label>
+        <Label for="forgot-email">Email<span class="text-red-500">*</span></Label>
         <div class="relative">
-          <Mail :size="17" class="field-icon" />
+          <Mail :size="17" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <Input
+            id="forgot-email"
             v-model="email"
             type="email"
             required
             autocomplete="email"
             placeholder="nama@email.com"
-            class="h-12 rounded-xl pl-10 transition focus-visible:ring-2 focus-visible:ring-[#e94560]/20 focus-visible:border-[#e94560]"
+            class="h-12 pl-10"
           />
         </div>
       </div>
 
-      <Button
-        type="submit"
-        :disabled="isPending"
-        class="w-full h-12 rounded-xl text-white font-bold shadow-lg shadow-[#e94560]/30 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#e94560]/40 disabled:opacity-60"
-        style="background: linear-gradient(135deg, #ff6b81 0%, #e94560 55%, #b5223f 100%)"
-      >
+      <Button type="submit" :disabled="isPending" class="h-12 w-full">
         {{ isPending ? 'Mengirim...' : 'Kirim Link Reset' }}
       </Button>
 
@@ -80,15 +71,3 @@ async function submit() {
     </form>
   </AuthLayout>
 </template>
-
-<style scoped>
-.field-icon {
-  position: absolute;
-  left: 0.9rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #b7b8c6;
-  pointer-events: none;
-  z-index: 10;
-}
-</style>

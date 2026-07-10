@@ -5,6 +5,7 @@ import { VueQueryPlugin } from '@tanstack/vue-query'
 import App from './App.vue'
 import router from './router'
 import './assets/main.css'
+import 'vue-sonner/style.css' 
 
 const app = createApp(App)
 
@@ -15,7 +16,7 @@ app.use(VueQueryPlugin, {
     defaultOptions: {
       queries: {
         retry: 1,
-        staleTime: 1000 * 60 * 5, // 5 menit
+        staleTime: 1000 * 60 * 5,
         refetchOnWindowFocus: false,
       },
     },

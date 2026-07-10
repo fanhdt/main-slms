@@ -5,6 +5,9 @@ import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import api from '@/lib/axios'
 import { markKioskSession, clearKioskSession } from '@/composables/useKioskSession'
 import { toast } from 'vue-sonner'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { CreditCard, CheckCircle2 } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,7 +28,7 @@ onMounted(() => {
   authStore.user = null
   authStore.token = null
   localStorage.removeItem('token')
-  clearKioskSession() // NEW
+  clearKioskSession()
   focusInput()
 })
 
@@ -40,7 +43,7 @@ async function handleScan() {
     localStorage.setItem('token', token)
     await authStore.fetchUser()
 
-    markKioskSession(slug) // NEW — tandai sesi ini sebagai sesi kios
+    markKioskSession(slug)
 
     welcomeMessage.value = res.data.message
     showWelcome.value = true
@@ -69,12 +72,12 @@ function scanAgain() {
 </script>
 
 <template>
-  <div
-    class="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6"
-  >
+  <div class="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
     <div class="max-w-lg w-full">
       <div v-if="!showWelcome" class="text-center space-y-6">
-        <div class="text-6xl">💳</div>
+        <div class="w-20 h-20 rounded-2xl bg-white/10 flex items-center justify-center mx-auto">
+          <CreditCard class="size-9 text-white" />
+        </div>
         <div>
           <h1 class="text-2xl font-bold text-white">Tap Kartu Mahasiswa</h1>
           <p class="text-gray-400 mt-2">
@@ -96,14 +99,18 @@ function scanAgain() {
         <p v-if="isLoading" class="text-gray-400">Memproses...</p>
       </div>
 
-      <div v-else class="text-center space-y-4 bg-white rounded-2xl p-8">
-        <div class="text-5xl">✅</div>
-        <h2 class="text-xl font-bold text-gray-900">{{ welcomeMessage }}</h2>
-        <p class="text-gray-500 text-sm">Mengarahkan ke halaman booking kamu...</p>
-        <button @click="scanAgain" class="text-sm text-blue-600 hover:underline">
-          Bukan kamu? Scan ulang
-        </button>
-      </div>
+      <Card v-else class="p-0">
+        <CardContent class="p-8 text-center space-y-4">
+          <div class="w-16 h-16 rounded-2xl bg-green-50 flex items-center justify-center mx-auto">
+            <CheckCircle2 class="size-8 text-green-600" />
+          </div>
+          <h2 class="text-xl font-bold text-gray-900">{{ welcomeMessage }}</h2>
+          <p class="text-gray-500 text-sm">Mengarahkan ke halaman booking kamu...</p>
+          <Button variant="link" size="sm" @click="scanAgain">
+            Bukan kamu? Scan ulang
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   </div>
 </template>

@@ -5,7 +5,8 @@ import { assetApi } from '@/features/asset/api/assetApi'
 import BaseModal from '@/components/BaseModal.vue'
 import { toast } from 'vue-sonner'
 import type { Asset } from '@/types'
-import { useLabStore } from '@/features/lab/stores/useLabStore'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 
 const props = defineProps<{
   show: boolean
@@ -17,7 +18,6 @@ const emit = defineEmits<{
 }>()
 
 const queryClient = useQueryClient()
-const labStore = useLabStore()
 
 const form = ref({
   name: '',
@@ -112,9 +112,8 @@ const { mutate: saveAsset, isPending } = useMutation({
     size="lg"
     @close="$emit('close')"
   >
-    <form @submit.prevent="() => saveAsset()" class="space-y-4">
+    <form @submit.prevent="() => saveAsset()" class="space-y-5">
       <div class="grid grid-cols-2 gap-4">
-        <!-- Nama -->
         <div class="col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Nama Aset</label>
           <input
@@ -127,7 +126,6 @@ const { mutate: saveAsset, isPending } = useMutation({
           <p v-if="errors.name" class="text-xs text-red-500">{{ errors.name }}</p>
         </div>
 
-        <!-- Kode -->
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Kode Aset</label>
           <input
@@ -140,7 +138,6 @@ const { mutate: saveAsset, isPending } = useMutation({
           <p v-if="errors.code" class="text-xs text-red-500">{{ errors.code }}</p>
         </div>
 
-        <!-- Kategori -->
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Kategori</label>
           <select
@@ -161,7 +158,6 @@ const { mutate: saveAsset, isPending } = useMutation({
           </select>
         </div>
 
-        <!-- Brand -->
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Brand</label>
           <input
@@ -172,7 +168,6 @@ const { mutate: saveAsset, isPending } = useMutation({
           />
         </div>
 
-        <!-- Model -->
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Model</label>
           <input
@@ -183,7 +178,6 @@ const { mutate: saveAsset, isPending } = useMutation({
           />
         </div>
 
-        <!-- Status -->
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Status</label>
           <select
@@ -197,7 +191,6 @@ const { mutate: saveAsset, isPending } = useMutation({
           </select>
         </div>
 
-        <!-- Serial Number -->
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Serial Number</label>
           <input
@@ -208,7 +201,6 @@ const { mutate: saveAsset, isPending } = useMutation({
           />
         </div>
 
-        <!-- Harga Beli -->
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Harga Beli</label>
           <input
@@ -219,7 +211,6 @@ const { mutate: saveAsset, isPending } = useMutation({
           />
         </div>
 
-        <!-- Tanggal Beli -->
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Tanggal Beli</label>
           <input
@@ -229,7 +220,6 @@ const { mutate: saveAsset, isPending } = useMutation({
           />
         </div>
 
-        <!-- Harga Sewa -->
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Harga Sewa</label>
           <input
@@ -240,7 +230,6 @@ const { mutate: saveAsset, isPending } = useMutation({
           />
         </div>
 
-        <!-- Deskripsi -->
         <div class="col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Deskripsi</label>
           <textarea
@@ -250,36 +239,28 @@ const { mutate: saveAsset, isPending } = useMutation({
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
+      </div>
 
-        <!-- Bisa Disewa -->
-        <div class="col-span-2 flex items-center gap-3">
-          <input
-            v-model="form.is_rentable"
-            type="checkbox"
-            id="is_rentable"
-            class="w-4 h-4 rounded border-gray-300"
-          />
-          <label for="is_rentable" class="text-sm font-medium text-gray-700">
-            Bisa Disewa Customer
-          </label>
-        </div>
+      <Separator />
+
+      <div class="flex items-center gap-3">
+        <input
+          v-model="form.is_rentable"
+          type="checkbox"
+          id="is_rentable"
+          class="w-4 h-4 rounded border-gray-300"
+        />
+        <label for="is_rentable" class="text-sm font-medium text-gray-700">
+          Bisa Disewa Customer
+        </label>
       </div>
     </form>
 
     <template #footer>
-      <button
-        @click="$emit('close')"
-        class="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-      >
-        Batal
-      </button>
-      <button
-        @click="saveAsset()"
-        :disabled="isPending"
-        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors"
-      >
+      <Button variant="ghost" @click="$emit('close')">Batal</Button>
+      <Button :disabled="isPending" @click="saveAsset()">
         {{ isPending ? 'Menyimpan...' : isEdit ? 'Update' : 'Simpan' }}
-      </button>
+      </Button>
     </template>
   </BaseModal>
 </template>

@@ -8,6 +8,10 @@ import { useBookingFlowMode } from '@/composables/useBookingFlowMode'
 import AvailabilityCalendar from '@/components/AvailabilityCalendar.vue'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import { useCartStore } from '@/features/booking/stores/useCartStore'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Plus, ArrowLeft } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,10 +21,8 @@ const { isStaffMode, goBack } = useBookingFlowMode()
 
 const slug = computed(() => route.params.slug as string)
 
-// 'lab_rental' | 'asset_rental' | 'service' — default 'service' untuk kompatibilitas link lama
 const bookingType = computed(() => (route.query.bookingType as string) || 'service')
-
-const itemType = computed(() => route.query.type as string) // dipakai kalau bookingType === 'service'
+const itemType = computed(() => route.query.type as string)
 const itemId = computed(() => route.query.id as string)
 
 const notes = ref('')
@@ -28,11 +30,9 @@ const schedule = ref<{ date: string; start: string; end: string; durationHours: 
   null,
 )
 
-// --- Khusus Pinjam Lab ---
 const purpose = ref<'academic' | 'organization' | 'public'>('public')
 const nim = ref('')
 
-// --- Khusus Sewa Alat: item sudah dipilih lewat halaman Keranjang ---
 const cartItems = computed(() => cartStore.getItems(slug.value))
 const rentalStartDate = ref('')
 const rentalEndDate = ref('')
@@ -90,7 +90,6 @@ const totalPrice = computed(() => {
   if (bookingType.value === 'asset_rental') {
     return assetRentalTotal.value
   }
-  // service
   if (itemType.value === 'service') {
     return itemPrice.value * (schedule.value?.durationHours ?? 1)
   }
@@ -151,7 +150,6 @@ const { mutate: submitBooking, isPending } = useMutation({
       })
     }
 
-    // service
     return api.post('/bookings', {
       ...base,
       items: [
@@ -244,205 +242,236 @@ const pageTitle = computed(() => {
       class="sticky top-0 z-10"
       :style="{ backgroundColor: lab?.branding?.primary_color ?? '#1a1a2e' }"
     >
-      <div class="max-w-2xl mx-auto px-6 h-16 flex items-center gap-4">
-        <button @click="goBack(slug)" class="text-white/70 hover:text-white transition-colors">
-          ← Kembali
+      <div class="max-w-5xl mx-auto px-6 h-16 flex items-center gap-4">
+        <button
+          @click="goBack(slug)"
+          class="text-white/70 hover:text-white transition-colors flex items-center gap-1.5"
+        >
+          <ArrowLeft class="size-4" />
+          Kembali
         </button>
         <span class="text-white font-bold">{{ pageTitle }}</span>
       </div>
     </header>
 
-    <div class="max-w-2xl mx-auto px-6 py-8 space-y-6">
-      <!-- Ringkasan item (mode Jasa & Paket) -->
-      <div
-        v-if="bookingType === 'service' && item"
-        class="bg-white rounded-xl border border-gray-200 p-5"
-      >
-        <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">
-          {{ itemType === 'package' ? 'Paket Dipilih' : 'Layanan Dipilih' }}
-        </p>
-        <h3 class="font-semibold text-gray-900 text-lg">{{ item.name }}</h3>
-        <p class="text-sm text-gray-500 mt-1">{{ item.description }}</p>
-        <p class="font-bold text-xl text-gray-900 mt-3">
-          {{ formatPrice(itemPrice) }}
-          <span v-if="itemType === 'service'" class="text-sm font-normal text-gray-400"
-            >/ {{ item.pricing_type?.label }}</span
-          >
-        </p>
-      </div>
+    <div class="max-w-5xl mx-auto px-6 py-8">
+      <div class="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 items-start">
+        <!-- ============================================================
+             KOLOM KIRI — Jadwal & detail spesifik tipe booking
+        ============================================================= -->
+        <div class="space-y-6 min-w-0">
+          <!-- Mode Pinjam Lab: pilih keperluan -->
+          <Card v-if="bookingType === 'lab_rental'" class="p-0">
+            <CardHeader class="px-5 pt-5 pb-0">
+              <CardTitle class="text-sm font-semibold">Keperluan Peminjaman</CardTitle>
+            </CardHeader>
+            <CardContent class="p-5 space-y-3">
+              <label
+                class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors"
+                :class="purpose === 'academic' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'"
+              >
+                <input v-model="purpose" type="radio" value="academic" class="w-4 h-4" />
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Akademik / Perkuliahan</p>
+                  <p class="text-xs text-gray-500">
+                    Gratis — khusus mahasiswa, untuk keperluan mata kuliah.
+                  </p>
+                </div>
+              </label>
+              <label
+                class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors"
+                :class="
+                  purpose === 'organization' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                "
+              >
+                <input v-model="purpose" type="radio" value="organization" class="w-4 h-4" />
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Organisasi / Mandiri (Mahasiswa)</p>
+                  <p class="text-xs text-gray-500">
+                    Tarif diskon —
+                    {{ formatPrice(Number(lab?.lab_rental_rates?.student_price_per_hour ?? 0)) }} /
+                    jam
+                  </p>
+                </div>
+              </label>
+              <label
+                class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors"
+                :class="purpose === 'public' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'"
+              >
+                <input v-model="purpose" type="radio" value="public" class="w-4 h-4" />
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Umum</p>
+                  <p class="text-xs text-gray-500">
+                    Tarif penuh —
+                    {{ formatPrice(Number(lab?.lab_rental_rates?.public_price_per_hour ?? 0)) }} /
+                    jam
+                  </p>
+                </div>
+              </label>
 
-      <!-- Mode Pinjam Lab: pilih keperluan -->
-      <div
-        v-if="bookingType === 'lab_rental'"
-        class="bg-white rounded-xl border border-gray-200 p-5 space-y-4"
-      >
-        <h3 class="font-semibold text-gray-900">Keperluan Peminjaman</h3>
-        <div class="grid grid-cols-1 gap-2">
-          <label
-            class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors"
-            :class="purpose === 'academic' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'"
-          >
-            <input v-model="purpose" type="radio" value="academic" class="w-4 h-4" />
-            <div>
-              <p class="text-sm font-medium text-gray-900">Akademik / Perkuliahan</p>
-              <p class="text-xs text-gray-500">
-                Gratis — khusus mahasiswa, untuk keperluan mata kuliah.
+              <div v-if="needsStudentVerification && !currentUserNim" class="space-y-1.5 pt-1">
+                <label class="text-sm font-medium text-gray-700">NIM</label>
+                <input
+                  v-model="nim"
+                  type="text"
+                  placeholder="Masukkan NIM kamu"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="text-xs text-gray-400">
+                  Sementara pakai NIM manual — nanti akan diverifikasi otomatis via kartu RFID.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <!-- Mode Sewa Alat: ringkasan keranjang -->
+          <Card v-if="bookingType === 'asset_rental'" class="p-0">
+            <CardHeader class="px-5 pt-5 pb-0 flex flex-row items-center justify-between space-y-0">
+              <CardTitle class="text-sm font-semibold">Alat yang Disewa</CardTitle>
+              <button
+                @click="router.push({ name: 'asset-catalog', params: { slug } })"
+                class="text-xs text-blue-600 hover:underline"
+              >
+                + Tambah alat lain
+              </button>
+            </CardHeader>
+            <CardContent class="p-5">
+              <div v-if="!cartItems.length" class="text-sm text-gray-400 py-4 text-center">
+                Keranjang kosong.
+                <button
+                  @click="router.push({ name: 'asset-catalog', params: { slug } })"
+                  class="text-blue-600 hover:underline"
+                >
+                  Pilih alat dulu
+                </button>
+              </div>
+
+              <div
+                v-for="asset in cartItems"
+                :key="asset.uuid"
+                class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0"
+              >
+                <div>
+                  <p class="text-sm font-medium text-gray-900">{{ asset.name }}</p>
+                  <p class="text-xs text-gray-500">{{ asset.brand }}</p>
+                </div>
+                <span class="text-sm font-semibold text-gray-900">
+                  {{ formatPrice(Number(asset.rental_price)) }} / hari
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <!-- Mode Sewa Alat: rentang tanggal -->
+          <Card v-if="bookingType === 'asset_rental'" class="p-0">
+            <CardHeader class="px-5 pt-5 pb-0">
+              <CardTitle class="text-sm font-semibold">Lama Peminjaman</CardTitle>
+            </CardHeader>
+            <CardContent class="p-5 space-y-3">
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                  <label class="text-sm font-medium text-gray-700">Tanggal Mulai</label>
+                  <input
+                    v-model="rentalStartDate"
+                    type="date"
+                    :min="minDate"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-sm font-medium text-gray-700">Tanggal Selesai</label>
+                  <input
+                    v-model="rentalEndDate"
+                    type="date"
+                    :min="minRentalEndDate"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <p v-if="rentalDays > 0" class="text-sm text-gray-600">
+                Durasi sewa: <strong>{{ rentalDays }} hari</strong>
               </p>
-            </div>
-          </label>
-          <label
-            class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors"
-            :class="purpose === 'organization' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'"
-          >
-            <input v-model="purpose" type="radio" value="organization" class="w-4 h-4" />
-            <div>
-              <p class="text-sm font-medium text-gray-900">Organisasi / Mandiri (Mahasiswa)</p>
-              <p class="text-xs text-gray-500">
-                Tarif diskon —
-                {{ formatPrice(Number(lab?.lab_rental_rates?.student_price_per_hour ?? 0)) }} / jam
-              </p>
-            </div>
-          </label>
-          <label
-            class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors"
-            :class="purpose === 'public' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'"
-          >
-            <input v-model="purpose" type="radio" value="public" class="w-4 h-4" />
-            <div>
-              <p class="text-sm font-medium text-gray-900">Umum</p>
-              <p class="text-xs text-gray-500">
-                Tarif penuh —
-                {{ formatPrice(Number(lab?.lab_rental_rates?.public_price_per_hour ?? 0)) }} / jam
-              </p>
-            </div>
-          </label>
+            </CardContent>
+          </Card>
+
+          <!-- Kalender jadwal (mode Pinjam Lab & Jasa) -->
+          <Card v-if="bookingType !== 'asset_rental'" class="p-0">
+            <CardHeader class="px-5 pt-5 pb-0">
+              <CardTitle class="text-sm font-semibold">Pilih Jadwal</CardTitle>
+            </CardHeader>
+            <CardContent class="p-5">
+              <AvailabilityCalendar
+                :slug="slug"
+                interactive
+                :min-date="minDate"
+                @confirm-slot="handleScheduleConfirm"
+              />
+            </CardContent>
+          </Card>
+
+          <!-- Catatan -->
+          <Card class="p-0">
+            <CardContent class="p-5 space-y-1.5">
+              <label class="text-sm font-medium text-gray-700">Catatan (opsional)</label>
+              <textarea
+                v-model="notes"
+                rows="3"
+                placeholder="Tulis permintaan khusus..."
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </CardContent>
+          </Card>
         </div>
 
-        <div v-if="needsStudentVerification && !currentUserNim" class="space-y-1.5">
-          <label class="text-sm font-medium text-gray-700">NIM</label>
-          <input
-            v-model="nim"
-            type="text"
-            placeholder="Masukkan NIM kamu"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <p class="text-xs text-gray-400">
-            Sementara pakai NIM manual — nanti akan diverifikasi otomatis via kartu RFID.
-          </p>
+        <!-- ============================================================
+             KOLOM KANAN — Ringkasan (sticky)
+        ============================================================= -->
+        <div class="lg:sticky lg:top-24 space-y-4">
+          <Card class="p-0">
+            <CardHeader class="px-5 pt-5 pb-0">
+              <CardTitle class="text-sm font-semibold">Ringkasan Booking</CardTitle>
+            </CardHeader>
+            <CardContent class="p-5 space-y-4">
+              <!-- Item terpilih (mode Jasa & Paket) -->
+              <div v-if="bookingType === 'service' && item" class="space-y-1">
+                <p class="text-xs text-gray-400 uppercase tracking-wide">
+                  {{ itemType === 'package' ? 'Paket Dipilih' : 'Layanan Dipilih' }}
+                </p>
+                <h3 class="font-semibold text-gray-900">{{ item.name }}</h3>
+                <p class="text-sm text-gray-500 line-clamp-2">{{ item.description }}</p>
+              </div>
+
+              <div v-if="bookingType === 'lab_rental'" class="text-sm text-gray-600">
+                Keperluan: <span class="font-medium text-gray-900 capitalize">{{ purpose }}</span>
+              </div>
+
+              <div v-if="schedule" class="text-sm text-gray-600">
+                Jadwal:
+                <span class="font-medium text-gray-900">
+                  {{ schedule.date }} · {{ schedule.start }}–{{ schedule.end }}
+                </span>
+              </div>
+
+              <div
+                v-if="bookingType === 'asset_rental' && rentalDays > 0"
+                class="text-sm text-gray-600"
+              >
+                Durasi: <span class="font-medium text-gray-900">{{ rentalDays }} hari</span>
+              </div>
+
+              <Separator />
+
+              <div class="flex items-center justify-between">
+                <span class="text-gray-600 text-sm">Total Pembayaran</span>
+                <span class="text-xl font-bold text-gray-900">{{ formatPrice(totalPrice) }}</span>
+              </div>
+
+              <Button class="w-full" :disabled="isPending" @click="handleSubmit">
+                {{ isPending ? 'Memproses...' : 'Konfirmasi Booking' }}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
-      </div>
-
-      <!-- Mode Sewa Alat: ringkasan keranjang + rentang tanggal -->
-      <div
-        v-if="bookingType === 'asset_rental'"
-        class="bg-white rounded-xl border border-gray-200 p-5 space-y-3"
-      >
-        <div class="flex items-center justify-between">
-          <h3 class="font-semibold text-gray-900">Alat yang Disewa</h3>
-          <button
-            @click="router.push({ name: 'asset-catalog', params: { slug } })"
-            class="text-xs text-blue-600 hover:underline"
-          >
-            + Tambah alat lain
-          </button>
-        </div>
-
-        <div v-if="!cartItems.length" class="text-sm text-gray-400 py-4 text-center">
-          Keranjang kosong.
-          <button
-            @click="router.push({ name: 'asset-catalog', params: { slug } })"
-            class="text-blue-600 hover:underline"
-          >
-            Pilih alat dulu
-          </button>
-        </div>
-
-        <div
-          v-for="asset in cartItems"
-          :key="asset.uuid"
-          class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0"
-        >
-          <div>
-            <p class="text-sm font-medium text-gray-900">{{ asset.name }}</p>
-            <p class="text-xs text-gray-500">{{ asset.brand }}</p>
-          </div>
-          <span class="text-sm font-semibold text-gray-900"
-            >{{ formatPrice(Number(asset.rental_price)) }} / hari</span
-          >
-        </div>
-      </div>
-
-      <!-- Mode Sewa Alat: rentang tanggal sewa (harian, bukan per jam) -->
-      <div
-        v-if="bookingType === 'asset_rental'"
-        class="bg-white rounded-xl border border-gray-200 p-5 space-y-4"
-      >
-        <h3 class="font-semibold text-gray-900">Lama Peminjaman</h3>
-        <div class="grid grid-cols-2 gap-4">
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-gray-700">Tanggal Mulai</label>
-            <input
-              v-model="rentalStartDate"
-              type="date"
-              :min="minDate"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-gray-700">Tanggal Selesai</label>
-            <input
-              v-model="rentalEndDate"
-              type="date"
-              :min="minRentalEndDate"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-        <p v-if="rentalDays > 0" class="text-sm text-gray-600">
-          Durasi sewa: <strong>{{ rentalDays }} hari</strong>
-        </p>
-      </div>
-
-      <!-- Kalender jadwal (mode Pinjam Lab & Jasa) -->
-      <div
-        v-if="bookingType !== 'asset_rental'"
-        class="bg-white rounded-xl border border-gray-200 p-5 space-y-4"
-      >
-        <h3 class="font-semibold text-gray-900">Pilih Jadwal</h3>
-        <AvailabilityCalendar
-          :slug="slug"
-          interactive
-          :min-date="minDate"
-          @confirm-slot="handleScheduleConfirm"
-        />
-      </div>
-
-      <!-- Catatan -->
-      <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-1.5">
-        <label class="text-sm font-medium text-gray-700">Catatan (opsional)</label>
-        <textarea
-          v-model="notes"
-          rows="3"
-          placeholder="Tulis permintaan khusus..."
-          class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <!-- Total & submit -->
-      <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-        <div class="flex items-center justify-between">
-          <span class="text-gray-600">Total Pembayaran</span>
-          <span class="text-2xl font-bold text-gray-900">{{ formatPrice(totalPrice) }}</span>
-        </div>
-
-        <button
-          @click="handleSubmit"
-          :disabled="isPending"
-          class="w-full py-3 rounded-xl font-semibold text-white transition-colors disabled:opacity-50"
-          :style="{ backgroundColor: lab?.branding?.secondary_color ?? '#e94560' }"
-        >
-          {{ isPending ? 'Memproses...' : 'Konfirmasi Booking' }}
-        </button>
       </div>
     </div>
   </div>
