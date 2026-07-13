@@ -102,6 +102,21 @@ artisan:
 npm:
 	docker compose exec frontend npm $(cmd)
 
+prod-up:
+	docker compose -f docker-compose.prod.yml up -d --build
+
+prod-down:
+	docker compose -f docker-compose.prod.yml down
+
+prod-migrate:
+	docker compose -f docker-compose.prod.yml exec backend php artisan migrate --force
+
+prod-key:
+	docker compose -f docker-compose.prod.yml exec backend php artisan key:generate
+
+prod-logs:
+	docker compose -f docker-compose.prod.yml logs -f
+
 # ---- First-time Setup -----------------------------------------------------
 
 setup:
