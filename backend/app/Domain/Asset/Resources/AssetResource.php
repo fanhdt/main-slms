@@ -14,7 +14,8 @@ class AssetResource extends JsonResource
         return [
             'id'             => $this->id, // NEW
             'uuid'           => $this->uuid,
-            'lab_id'         => $this->lab?->uuid,
+            'lab_id'   => $this->lab_id,       
+            'lab_uuid' => $this->lab?->uuid,
             'name'           => $this->name,
             'code'           => $this->code,
             'category'       => [

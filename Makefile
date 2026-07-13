@@ -40,6 +40,7 @@ help:
 
 up:
 	docker compose up -d
+	docker compose exec backend composer install
 
 down:
 	docker compose down
@@ -110,6 +111,8 @@ setup:
 	@docker compose build
 	@echo "→ Starting services..."
 	@docker compose up -d
+	@echo "→ Installing backend dependencies (Composer)..."
+	@docker compose exec backend composer install
 	@echo "→ Waiting for PostgreSQL to be healthy..."
 	@sleep 5
 	@echo "→ Generating application key..."
