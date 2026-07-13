@@ -252,10 +252,15 @@ const bookingStatusOptions = {
 const labUsageChart = computed(() => {
   const labList = labs.value?.data ?? []
   const items = bookings.value?.data ?? []
-
+  function bookingLabId(b: any): string | number | undefined {
+    return b.lab_id ?? b.lab?.id ?? b.lab_uuid ?? b.lab?.uuid
+  }
   const labeled = labList.map((lab: any) => ({
     name: lab.name,
-    count: items.filter((b: any) => String(b.lab_id) === String(lab.id)).length,
+    count: items.filter((b: any) => {
+      const bId = bookingLabId(b)
+      return String(bId) === String(lab.id) || String(bId) === String(lab.uuid)
+    }).length,
   }))
 
   // urutkan dari terbanyak, ambil maks 6 biar chart tidak penuh
@@ -274,7 +279,7 @@ const labUsageChart = computed(() => {
     ],
   }
 })
-
+const hasLabUsageData = computed(() => labUsageChart.value.datasets[0].data.some((v) => v > 0))
 const labUsageOptions = {
   responsive: true,
   maintainAspectRatio: false,
@@ -473,6 +478,13 @@ const quickActions = computed(() => [
             class="h-[220px] w-full flex items-center justify-center"
           >
             <Skeleton class="h-full w-full" />
+          </div>
+
+          <div
+            v-else-if="!hasLabUsageData"
+            class="h-[220px] flex items-center justify-center text-sm text-gray-400"
+          >
+            Belum ada data booking untuk ditampilkan per lab.
           </div>
           <div v-else class="h-[220px] w-full">
             <Bar :data="labUsageChart" :options="labUsageOptions" />

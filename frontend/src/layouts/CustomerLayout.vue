@@ -81,11 +81,7 @@ const PAGE_TITLES: Record<string, string> = {
     >
       <div class="h-16 flex items-center justify-between px-5 border-b border-gray-200 shrink-0">
         <RouterLink to="/home" class="flex items-center gap-2.5">
-          <div
-            class="w-7 h-7 rounded-lg bg-gray-900 flex items-center justify-center text-xs font-bold text-white"
-          >
-            S
-          </div>
+          <img src="/images/logo-lab.svg" alt="Logo SLMS" class="w-7 h-7 object-contain" />
           <span class="font-semibold text-sm text-gray-900">SLMS</span>
         </RouterLink>
         <button class="lg:hidden" @click="mobileNavOpen = false" aria-label="Tutup menu">

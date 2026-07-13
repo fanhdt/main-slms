@@ -111,16 +111,11 @@ function isNavActive(path: string, exact = false) {
         style="border-bottom: 0.5px solid var(--border)"
       >
         <div class="flex items-center gap-2.5">
-          <div
-            class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0"
-            style="background: var(--fill-accent)"
-          >
-            S
+          <div class="flex items-center gap-2.5">
+            <img src="/images/logo-lab.svg" alt="Logo SLMS" class="w-7 h-7 object-contain" />
+            <span class="text-lg font-bold text-gray-900">SLMS</span>
           </div>
-          <div class="leading-tight">
-            <p class="font-semibold text-sm" style="color: var(--text-primary)">SLMS</p>
-            <p class="text-[11px]" style="color: var(--text-muted)">Super Admin</p>
-          </div>
+          <div class="leading-tight"></div>
         </div>
         <button class="lg:hidden" @click="mobileNavOpen = false" aria-label="Tutup menu">
           <X :size="18" style="color: var(--text-secondary)" />

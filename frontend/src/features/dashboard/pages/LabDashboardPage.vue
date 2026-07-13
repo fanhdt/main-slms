@@ -306,7 +306,8 @@ const assetCategoryData = computed(() => {
   const items = assets.value?.data ?? []
   const grouped: Record<string, number> = {}
   items.forEach((a: any) => {
-    const label = a.category?.label ?? 'Lainnya'
+    // toleran: category bisa berupa enum object {value,label} atau string polos
+    const label = a.category?.label ?? a.category ?? 'Lainnya'
     grouped[label] = (grouped[label] ?? 0) + 1
   })
   const sorted = Object.entries(grouped)
@@ -326,6 +327,8 @@ const assetCategoryData = computed(() => {
     ],
   }
 })
+
+const hasAssetData = computed(() => (assets.value?.data?.length ?? 0) > 0)
 
 const assetCategoryOptions = {
   responsive: true,
@@ -489,6 +492,12 @@ function openLandingPage() {
         <CardContent class="px-5 pb-5 pt-4">
           <div v-if="assetsLoading" class="h-[220px] w-full">
             <Skeleton class="h-full w-full" />
+          </div>
+          <div
+            v-else-if="!hasAssetData"
+            class="h-[220px] flex items-center justify-center text-sm text-gray-400"
+          >
+            Belum ada aset terdaftar di lab ini.
           </div>
           <div v-else class="h-[220px] w-full">
             <Bar :data="assetCategoryData" :options="assetCategoryOptions" />

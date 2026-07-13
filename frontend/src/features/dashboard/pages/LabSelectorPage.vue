@@ -32,12 +32,10 @@ function goToAdmin() {
     <header class="bg-white border-b border-gray-200">
       <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <div class="flex items-center gap-2.5">
-          <div
-            class="w-7 h-7 rounded-lg bg-gray-900 flex items-center justify-center text-xs font-bold text-white shrink-0"
-          >
-            S
+          <div class="flex items-center gap-2.5">
+            <img src="/images/logo-lab.svg" alt="Logo SLMS" class="w-7 h-7 object-contain" />
+            <span class="text-lg font-bold text-gray-900">SLMS</span>
           </div>
-          <span class="text-lg font-bold text-gray-900">SLMS</span>
         </div>
         <div class="flex items-center gap-4">
           <span class="text-sm text-gray-600">

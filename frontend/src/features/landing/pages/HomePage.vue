@@ -156,8 +156,6 @@ const testimonials = [
             alt="Logo UPI"
             class="h-8 w-auto max-w-24 object-contain shrink-0"
           />
-          <span class="hidden sm:inline text-xs text-white/40 ml-1">|</span>
-          <span class="hidden sm:inline text-xs text-white/60">UPI Kampus Cibiru</span>
         </div>
 
         <!-- Desktop menu -->
@@ -211,7 +209,7 @@ const testimonials = [
           >
           <Button
             size="sm"
-            class="bg-blue-600 hover:bg-blue-700 rounded-xl w-full"
+            class="bg-blue-600 hover:bg-blue-700 rounded-md w-full"
             @click="goToAuth"
           >
             {{ authStore.isAuthenticated ? 'Dashboard' : 'Masuk' }}
@@ -406,9 +404,9 @@ const testimonials = [
       <div class="max-w-4xl mx-auto px-6 text-center relative z-10">
         <h2 class="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight">Tentang SLMS</h2>
         <p class="text-white/60 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto">
-          Smart Lab Management System adalah platform terpadu untuk mengelola berbagai laboratorium
-          — mulai dari booking studio, sewa peralatan, hingga pengelolaan layanan, semuanya dalam
-          satu sistem yang mudah digunakan.
+          Smart Lab Management System adalah platform terpadu untuk mengelola berbagai laboratorium.
+          Mulai dari booking studio, sewa peralatan, hingga pengelolaan layanan, semuanya dalam satu
+          sistem yang mudah digunakan.
         </p>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-14">
