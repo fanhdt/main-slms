@@ -255,7 +255,7 @@ const labUsageChart = computed(() => {
   function bookingLabId(b: any): string | number | undefined {
     return b.lab_id ?? b.lab?.id ?? b.lab_uuid ?? b.lab?.uuid
   }
-  const labeled = labList.map((lab: any) => ({
+  const labeled: { name: string; count: number }[] = labList.map((lab: any) => ({
     name: lab.name,
     count: items.filter((b: any) => {
       const bId = bookingLabId(b)
@@ -264,7 +264,11 @@ const labUsageChart = computed(() => {
   }))
 
   // urutkan dari terbanyak, ambil maks 6 biar chart tidak penuh
-  const sorted = labeled.sort((a, b) => b.count - a.count).slice(0, 6)
+  const sorted = labeled
+    .sort(
+      (a: { name: string; count: number }, b: { name: string; count: number }) => b.count - a.count,
+    )
+    .slice(0, 6)
 
   return {
     labels: sorted.map((l) => l.name),
@@ -279,7 +283,9 @@ const labUsageChart = computed(() => {
     ],
   }
 })
-const hasLabUsageData = computed(() => labUsageChart.value.datasets[0].data.some((v) => v > 0))
+const hasLabUsageData = computed(() =>
+  (labUsageChart.value.datasets[0]?.data ?? []).some((v: number) => v > 0),
+)
 const labUsageOptions = {
   responsive: true,
   maintainAspectRatio: false,
@@ -298,21 +304,25 @@ const labUsageOptions = {
 // Recent Activity — gabungan booking & user terbaru (REAL DATA),
 // diurutkan berdasarkan created_at, bukan event yang direka.
 // ============================================================
+type ActivityItem = { icon: unknown; text: string; time: string }
+
 const recentActivities = computed(() => {
-  const bookingItems = (bookings.value?.data ?? []).map((b: any) => ({
+  const bookingItems: ActivityItem[] = (bookings.value?.data ?? []).map((b: any) => ({
     icon: CalendarDays,
     text: `Booking ${b.booking_code} dibuat oleh ${b.user?.name ?? 'customer'}`,
     time: b.created_at,
   }))
 
-  const userItems = (users.value?.data ?? []).map((u: any) => ({
+  const userItems: ActivityItem[] = (users.value?.data ?? []).map((u: any) => ({
     icon: Users,
     text: `User baru terdaftar: ${u.name}`,
     time: u.created_at,
   }))
 
   return [...bookingItems, ...userItems]
-    .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+    .sort(
+      (a: ActivityItem, b: ActivityItem) => new Date(b.time).getTime() - new Date(a.time).getTime(),
+    )
     .slice(0, 6)
 })
 
