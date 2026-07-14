@@ -7,7 +7,7 @@ services:
     image: nginx:1.25-alpine
     container_name: slms_nginx
     ports:
-      - "80:80"
+      - "8080:80"
     volumes:
       - ./nginx/conf.d/prod.conf:/etc/nginx/conf.d/default.conf:ro
       - backend_storage:/var/www/html/public/storage:ro
@@ -61,7 +61,8 @@ services:
       AWS_DEFAULT_REGION: us-east-1
       AWS_BUCKET: "${MINIO_BUCKET:-slms}"
       AWS_ENDPOINT: "http://minio:9000"
-      AWS_URL: "http://172.197.208.54:9000/slms"
+      AWS_ENDPOINT_PUBLIC: "${AWS_ENDPOINT_PUBLIC}"
+      AWS_URL: "${AWS_URL}"
       AWS_USE_PATH_STYLE_ENDPOINT: "true"
 
       MAIL_MAILER: "${MAIL_MAILER:-smtp}"
@@ -176,6 +177,10 @@ services:
       target: production
       args:
         VITE_API_BASE_URL: "${VITE_API_BASE_URL}"
+        VITE_REVERB_APP_KEY: "${VITE_REVERB_APP_KEY}"
+        VITE_REVERB_HOST: "${VITE_REVERB_HOST}"
+        VITE_REVERB_PORT: "${VITE_REVERB_PORT}"
+        VITE_REVERB_SCHEME: "${VITE_REVERB_SCHEME}"
     container_name: slms_frontend
     networks:
       - slms_network
