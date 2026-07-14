@@ -2,6 +2,8 @@
 
 return [
     App\Providers\AppServiceProvider::class,
-    App\Providers\TelescopeServiceProvider::class,
-    App\Providers\BroadcastServiceProvider::class, 
+    ...(class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)
+        ? [App\Providers\TelescopeServiceProvider::class]
+        : []),
+    App\Providers\BroadcastServiceProvider::class,
 ];

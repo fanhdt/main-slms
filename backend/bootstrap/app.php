@@ -46,4 +46,13 @@ return Application::configure(basePath: dirname(__DIR__))
             ], 403);
         }
     });
+$exceptions->render(function (\App\Core\Exceptions\ApiException $e, $request) {
+        if ($request->is('api/*')) {
+            $statusCode = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 400;
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $statusCode);
+        }
+    });
 })->create();
