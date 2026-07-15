@@ -9,7 +9,7 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ./nginx/conf.d/prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/conf.d.prod/prod.conf:/etc/nginx/conf.d/default.conf:ro
       - backend_storage:/var/www/html/public/storage:ro
     depends_on:
       - backend
