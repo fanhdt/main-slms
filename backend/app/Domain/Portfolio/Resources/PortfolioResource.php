@@ -14,7 +14,7 @@ class PortfolioResource extends JsonResource
         return [
             'uuid'              => $this->uuid,
             'lab_id'            => $this->lab_id,
-            'photographer_name' => $this->photographer_name,
+            'photographer_name' => $this->photographer?->name,
             'image'             => $this->image_url,
             'caption'           => $this->caption,
             'order'             => $this->order,

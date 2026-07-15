@@ -58,8 +58,10 @@ class PortfolioService extends BaseService
         }
 
         if (isset($filters['photographer_name'])) {
-            $query->forPhotographer($filters['photographer_name']);
-        }
+    $query->whereHas('photographer', function ($q) use ($filters) {
+        $q->where('name', 'like', '%' . $filters['photographer_name'] . '%');
+    });
+}
 
         return $query->orderBy('order')->latest()->paginate($filters['per_page'] ?? 15);
     }
