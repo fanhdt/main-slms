@@ -35,11 +35,12 @@ class CreateBookingRequest extends FormRequest
             'nim' => ['nullable', 'string', 'max:20'],
 
             // --- Sewa Alat ---
-            'asset_uuids'   => [
-                Rule::requiredIf(fn () => $this->input('booking_type') === BookingType::AssetRental->value),
-                'array', 'min:1',
-            ],
-            'asset_uuids.*' => ['string', 'exists:assets,uuid'],
+           'assets'              => [
+    Rule::requiredIf(fn () => $this->input('booking_type') === BookingType::AssetRental->value),
+    'array', 'min:1',
+],
+'assets.*.asset_uuid' => ['required', 'string', 'exists:assets,uuid'],
+'assets.*.quantity'   => ['required', 'integer', 'min:1'],
 
             // --- Jasa & Paket ---
             'items' => [
@@ -59,7 +60,7 @@ class CreateBookingRequest extends FormRequest
             'end_time.after'        => 'Waktu selesai harus setelah waktu mulai.',
             'items.required'        => 'Minimal harus ada 1 layanan atau paket yang dipilih.',
             'purpose.required'      => 'Keperluan peminjaman lab wajib dipilih.',
-            'asset_uuids.required'  => 'Minimal harus ada 1 alat yang dipilih.',
+            'assets.required'  => 'Minimal harus ada 1 alat yang dipilih.',
         ];
     }
 }

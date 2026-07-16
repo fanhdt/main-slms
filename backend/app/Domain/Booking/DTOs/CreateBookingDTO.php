@@ -17,7 +17,7 @@ readonly class CreateBookingDTO
         public string $endTime,
         public BookingType $bookingType,
         public array $items = [],
-        public array $assetIds = [],
+        public array $assets = [],
         public ?string $purpose = null,
         public ?string $nim = null,
         public ?string $notes = null,
@@ -41,8 +41,17 @@ readonly class CreateBookingDTO
             return $resolved;
         })->toArray();
 
-        $assetIds = collect($data['asset_uuids'] ?? [])
-            ->map(fn ($uuid) => Asset::where('uuid', $uuid)->value('id'))
+        $assets = collect($data['assets'] ?? [])
+            ->map(function ($item) {
+                $assetId = Asset::where('uuid', $item['asset_uuid'])->value('id');
+                if (!$assetId) {
+                    return null;
+                }
+                return [
+                    'asset_id' => $assetId,
+                    'quantity' => $item['quantity'] ?? 1,
+                ];
+            })
             ->filter()
             ->values()
             ->toArray();
@@ -54,7 +63,7 @@ readonly class CreateBookingDTO
             endTime:     $data['end_time'],
             bookingType: $bookingType,
             items:       $items,
-            assetIds:    $assetIds,
+            assets:      $assets,
             purpose:     $data['purpose'] ?? null,
             nim:         $data['nim'] ?? null,
             notes:       $data['notes'] ?? null,

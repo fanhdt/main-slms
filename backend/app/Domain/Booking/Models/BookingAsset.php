@@ -12,6 +12,7 @@ class BookingAsset extends Model
 {
     protected $fillable = [
     'asset_id',
+    'quantity',
     'rental_days',
     'subtotal',
     'status',

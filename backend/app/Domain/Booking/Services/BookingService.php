@@ -147,50 +147,57 @@ class BookingService extends BaseService
      * Rentang tanggal dianggap inklusif (10-12 Juli = 3 hari), bukan per jam-slot.
      */
     private function createAssetRental(CreateBookingDTO $dto): Booking
-    {
-        $assets = Asset::whereIn('id', $dto->assetIds)->get();
+{
+    $assetIds = collect($dto->assets)->pluck('asset_id')->toArray();
+    $assets = Asset::whereIn('id', $assetIds)->get()->keyBy('id');
 
-        if ($assets->count() !== count($dto->assetIds)) {
-            throw ApiException::unprocessable('Ada aset yang dipilih tidak ditemukan.');
-        }
-
-        $notRentable = $assets->firstWhere('is_rentable', false);
-        if ($notRentable) {
-            throw ApiException::unprocessable("Aset \"{$notRentable->name}\" tidak tersedia untuk disewa.");
-        }
-
-        $start = Carbon::parse($dto->startTime)->startOfDay();
-        $end = Carbon::parse($dto->endTime)->startOfDay();
-        $rentalDays = max(1, $start->diffInDays($end) + 1);
-
-        $totalPrice = $assets->sum('rental_price') * $rentalDays;
-
-        return DB::transaction(function () use ($dto, $assets, $totalPrice, $rentalDays) {
-            $booking = Booking::create([
-                'lab_id'         => $dto->labId,
-                'user_id'        => $dto->userId,
-                'booking_code'   => $this->generateBookingCode(),
-                'booking_type'   => BookingType::AssetRental->value,
-                'start_time'     => $dto->startTime,
-                'end_time'       => $dto->endTime,
-                'status'         => BookingStatus::Pending,
-                'payment_status' => PaymentStatus::Unpaid,
-                'total_price'    => $totalPrice,
-                'notes'          => $dto->notes,
-            ]);
-
-            foreach ($assets as $asset) {
-                $booking->assets()->create([
-                    'asset_id'    => $asset->id,
-                    'rental_days' => $rentalDays,
-                    'subtotal'    => $asset->rental_price * $rentalDays,
-                    'status'      => 'reserved',
-                ]);
-            }
-
-            return $booking->load(['user', 'lab', 'assets.asset']);
-        });
+    if ($assets->count() !== count($assetIds)) {
+        throw ApiException::unprocessable('Ada aset yang dipilih tidak ditemukan.');
     }
+
+    $notRentable = $assets->firstWhere('is_rentable', false);
+    if ($notRentable) {
+        throw ApiException::unprocessable("Aset \"{$notRentable->name}\" tidak tersedia untuk disewa.");
+    }
+
+    $start = Carbon::parse($dto->startTime)->startOfDay();
+    $end = Carbon::parse($dto->endTime)->startOfDay();
+    $rentalDays = max(1, $start->diffInDays($end) + 1);
+
+    $totalPrice = 0;
+    foreach ($dto->assets as $item) {
+        $asset = $assets->get($item['asset_id']);
+        $totalPrice += $asset->rental_price * $item['quantity'] * $rentalDays;
+    }
+
+    return DB::transaction(function () use ($dto, $assets, $totalPrice, $rentalDays) {
+        $booking = Booking::create([
+            'lab_id'         => $dto->labId,
+            'user_id'        => $dto->userId,
+            'booking_code'   => $this->generateBookingCode(),
+            'booking_type'   => BookingType::AssetRental->value,
+            'start_time'     => $dto->startTime,
+            'end_time'       => $dto->endTime,
+            'status'         => BookingStatus::Pending,
+            'payment_status' => PaymentStatus::Unpaid,
+            'total_price'    => $totalPrice,
+            'notes'          => $dto->notes,
+        ]);
+
+        foreach ($dto->assets as $item) {
+            $asset = $assets->get($item['asset_id']);
+            $booking->assets()->create([
+                'asset_id'    => $asset->id,
+                'quantity'    => $item['quantity'],
+                'rental_days' => $rentalDays,
+                'subtotal'    => $asset->rental_price * $item['quantity'] * $rentalDays,
+                'status'      => 'reserved',
+            ]);
+        }
+
+        return $booking->load(['user', 'lab', 'assets.asset']);
+    });
+}
 
     /**
      * Jasa & Paket — alur booking yang sudah ada sebelumnya (Service/Package).
