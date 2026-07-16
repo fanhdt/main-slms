@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Asset\Models;
 
 use App\Core\Traits\BelongsToLab;
+use App\Core\Traits\HasImageUrl;
 use App\Core\Traits\HasUuid;
 use App\Domain\Asset\Enums\AssetCategory;
 use App\Domain\Asset\Enums\AssetStatus;
@@ -16,8 +17,11 @@ class Asset extends Model
 {
     use BelongsToLab;
     use HasFactory;
+    use HasImageUrl;
     use HasUuid;
     use SoftDeletes;
+
+    public const IMAGE_DISK = 's3';
 
     protected $fillable = [
         'uuid',
@@ -49,6 +53,11 @@ class Asset extends Model
             'rental_price'   => 'decimal:2',
             'purchase_date'  => 'date',
         ];
+    }
+
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->getImageUrlFrom($this->image);
     }
 
     public function scopeAvailable($query)

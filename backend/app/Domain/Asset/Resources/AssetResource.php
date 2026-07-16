@@ -31,7 +31,7 @@ class AssetResource extends JsonResource
                 'label' => $this->status->label(),
             ],
             'specifications' => $this->specifications,
-            'image'          => $this->image,
+            'image'          => $this->image_url,
             'is_rentable'    => $this->is_rentable,
             'rental_price'   => $this->rental_price,
             'purchase_price' => $this->purchase_price,

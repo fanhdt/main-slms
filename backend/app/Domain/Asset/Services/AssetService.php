@@ -10,6 +10,9 @@ use App\Domain\Asset\DTOs\CreateAssetDTO;
 use App\Domain\Asset\DTOs\UpdateAssetDTO;
 use App\Domain\Asset\Models\Asset;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class AssetService extends BaseService
 {
@@ -134,4 +137,22 @@ class AssetService extends BaseService
 
         return $asset->fresh();
     }
+
+    public function updateImage(string $uuid, UploadedFile $file): Asset
+{
+    $asset = $this->findByUuid($uuid);
+
+    if ($asset->image) {
+        Storage::disk(Asset::IMAGE_DISK)->delete($asset->image);
+    }
+
+    $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
+    $path = "assets/{$asset->lab_id}/{$filename}";
+
+    Storage::disk(Asset::IMAGE_DISK)->put($path, file_get_contents($file->getRealPath()));
+
+    $asset->update(['image' => $path]);
+
+    return $asset->fresh('lab');
+}
 }

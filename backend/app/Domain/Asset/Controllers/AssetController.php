@@ -78,4 +78,15 @@ class AssetController extends ApiController
 
         return $this->success(new AssetResource($asset), 'Status aset berhasil diupdate.');
     }
+
+    public function updateImage(Request $request, string $uuid): JsonResponse
+{
+    $request->validate([
+        'image' => ['required', 'image', 'max:5120'],
+    ]);
+
+    $asset = $this->assetService->updateImage($uuid, $request->file('image'));
+
+    return $this->success(new AssetResource($asset), 'Gambar aset berhasil diupdate.');
+}
 }
