@@ -9,6 +9,9 @@ use App\Core\Services\BaseService;
 use App\Domain\LabService\Models\Package;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PackageService extends BaseService
 {
@@ -78,6 +81,24 @@ class PackageService extends BaseService
             return $package->fresh(['lab', 'items.service', 'items.asset']);
         });
     }
+
+    public function updateImage(string $uuid, UploadedFile $file): Package
+{
+    $package = $this->findByUuid($uuid);
+
+    if ($package->image) {
+        Storage::disk(Package::IMAGE_DISK)->delete($package->image);
+    }
+
+    $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
+    $path = "packages/{$package->lab_id}/{$filename}";
+
+    Storage::disk(Package::IMAGE_DISK)->put($path, file_get_contents($file->getRealPath()));
+
+    $package->update(['image' => $path]);
+
+    return $package->fresh(['lab', 'items.service', 'items.asset']);
+}
 
     public function delete(string $uuid): void
     {

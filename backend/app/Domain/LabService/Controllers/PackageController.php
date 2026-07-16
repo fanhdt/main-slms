@@ -51,6 +51,17 @@ class PackageController extends ApiController
         return $this->success(new PackageResource($package), 'Package berhasil diupdate.');
     }
 
+    public function updateImage(Request $request, string $uuid): JsonResponse
+{
+    $request->validate([
+        'image' => ['required', 'image', 'max:5120'],
+    ]);
+
+    $package = $this->packageService->updateImage($uuid, $request->file('image'));
+
+    return $this->success(new PackageResource($package), 'Gambar package berhasil diupdate.');
+}
+
     public function destroy(string $uuid): JsonResponse
     {
         $this->packageService->delete($uuid);
