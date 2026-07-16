@@ -101,7 +101,7 @@ function isNavActive(path: string, exact = false) {
          overlay fixed di mobile (perilaku lama tetap dipertahankan).
     ============================================================= -->
     <aside
-      class="w-64 h-screen shrink-0 flex flex-col fixed inset-y-0 left-0 z-40 transition-transform duration-200 overflow-y-auto lg:sticky lg:top-0 lg:translate-x-0"
+      class="w-64 h-screen shrink-0 flex flex-col fixed inset-y-0 left-0 z-40 transition-transform duration-200 overflow-y-auto lg:sticky lg:top-0 lg:translate-x-0 admin-sidebar"
       :class="mobileNavOpen ? 'translate-x-0' : '-translate-x-full'"
       style="background: var(--surface-2); border-right: 0.5px solid var(--border)"
     >
@@ -179,7 +179,7 @@ function isNavActive(path: string, exact = false) {
 
         <RouterLink
           to="/profile"
-          class="flex items-center gap-3 px-2.5 py-2 rounded-[var(--radius)] transition-colors hover:bg-[var(--surface-1)]"
+          class="flex items-center gap-3 px-2.5 py-2 rounded-lg transition-colors hover:bg-(--surface-1)"
         >
           <div
             class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
@@ -210,10 +210,6 @@ function isNavActive(path: string, exact = false) {
       </div>
     </aside>
 
-    <!-- ============================================================
-         MAIN — satu-satunya kolom yang scroll (h-screen + overflow-y-auto).
-         Sidebar di sebelah kiri tetap diam karena posisinya sticky/fixed.
-    ============================================================= -->
     <div class="flex-1 h-screen flex flex-col min-w-0 overflow-y-auto">
       <header
         class="h-16 shrink-0 flex items-center gap-3 px-4 lg:px-6 sticky top-0 z-20"
@@ -260,5 +256,11 @@ function isNavActive(path: string, exact = false) {
 .nav-active {
   background: var(--bg-accent);
   color: var(--text-accent) !important;
+}
+
+@media (max-width: 1023px) {
+  .admin-sidebar {
+    background-color: #ffffff !important;
+  }
 }
 </style>

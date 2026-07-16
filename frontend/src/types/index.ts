@@ -144,6 +144,7 @@ export interface Asset {
   rental_price: string | null
   purchase_price: string | null
   purchase_date: string | null
+  quantity: number
   created_at: string
 }
 

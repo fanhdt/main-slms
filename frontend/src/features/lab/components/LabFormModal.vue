@@ -8,7 +8,7 @@ import type { Lab } from '@/types'
 import { defaultCreateLabForm } from '@/features/lab/types'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { Upload, Loader2, ImageIcon } from 'lucide-vue-next'
+import { ImageUpload } from '@/components/ui/image-upload'
 
 const props = defineProps<{
   show: boolean
@@ -25,9 +25,7 @@ const form = ref(defaultCreateLabForm())
 
 const errors = ref<Record<string, string>>({})
 const isEdit = ref(false)
-const logoInputRef = ref<HTMLInputElement | null>(null)
-const heroInputRef = ref<HTMLInputElement | null>(null)
-const isUploadingImage = ref<string | null>(null)
+const isUploadingImage = ref<'logo' | 'hero_image' | null>(null)
 
 function generateSlug(name: string) {
   return name
@@ -114,10 +112,8 @@ const { mutate: saveLab, isPending } = useMutation({
   },
 })
 
-async function handleImageChange(e: Event, type: 'logo' | 'hero_image') {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file || !props.lab) return
+async function handleImageSelect(file: File, type: 'logo' | 'hero_image') {
+  if (!props.lab) return
 
   isUploadingImage.value = type
   try {
@@ -131,7 +127,24 @@ async function handleImageChange(e: Event, type: 'logo' | 'hero_image') {
     toast.error(err.response?.data?.message ?? 'Gagal upload gambar.')
   } finally {
     isUploadingImage.value = null
-    input.value = ''
+  }
+}
+
+async function handleImageRemove(type: 'logo' | 'hero_image') {
+  if (!props.lab) return
+
+  isUploadingImage.value = type
+  try {
+    const res = await labApi.removeImage(props.lab.uuid, type)
+    const updatedLab = res.data.data as Lab
+    if (type === 'logo') form.value.logoPreview = updatedLab.branding.logo
+    if (type === 'hero_image') form.value.heroPreview = updatedLab.branding.hero_image
+    queryClient.invalidateQueries({ queryKey: ['labs'] })
+    toast.success(`${type === 'logo' ? 'Logo' : 'Hero image'} berhasil dihapus.`)
+  } catch (err: any) {
+    toast.error(err.response?.data?.message ?? 'Gagal menghapus gambar.')
+  } finally {
+    isUploadingImage.value = null
   }
 }
 </script>
@@ -297,72 +310,27 @@ async function handleImageChange(e: Event, type: 'logo' | 'hero_image') {
         <Separator />
         <div class="space-y-4">
           <p class="text-sm font-medium text-gray-700">Gambar Lab</p>
-          <div class="flex gap-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <!-- Logo -->
-            <div class="text-center">
-              <div
-                class="w-20 h-20 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center mb-2 mx-auto"
-              >
-                <img
-                  v-if="form.logoPreview"
-                  :src="form.logoPreview"
-                  alt="Logo"
-                  class="w-full h-full object-cover"
-                />
-                <ImageIcon v-else class="size-6 text-gray-300" />
-              </div>
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                :disabled="isUploadingImage === 'logo'"
-                @click="logoInputRef?.click()"
-              >
-                <Loader2 v-if="isUploadingImage === 'logo'" class="size-3.5 animate-spin" />
-                <Upload v-else class="size-3.5" />
-                {{ isUploadingImage === 'logo' ? 'Mengupload...' : 'Ganti Logo' }}
-              </Button>
-              <input
-                ref="logoInputRef"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                class="hidden"
-                @change="handleImageChange($event, 'logo')"
-              />
-            </div>
+            <ImageUpload
+              v-model="form.logoPreview"
+              label="Logo"
+              shape="circle"
+              aspect="square"
+              :loading="isUploadingImage === 'logo'"
+              @select="(file) => handleImageSelect(file, 'logo')"
+              @remove="() => handleImageRemove('logo')"
+            />
 
             <!-- Hero Image -->
-            <div class="text-center">
-              <div
-                class="w-32 h-20 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center mb-2 mx-auto"
-              >
-                <img
-                  v-if="form.heroPreview"
-                  :src="form.heroPreview"
-                  alt="Hero"
-                  class="w-full h-full object-cover"
-                />
-                <ImageIcon v-else class="size-6 text-gray-300" />
-              </div>
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                :disabled="isUploadingImage === 'hero_image'"
-                @click="heroInputRef?.click()"
-              >
-                <Loader2 v-if="isUploadingImage === 'hero_image'" class="size-3.5 animate-spin" />
-                <Upload v-else class="size-3.5" />
-                {{ isUploadingImage === 'hero_image' ? 'Mengupload...' : 'Ganti Hero Image' }}
-              </Button>
-              <input
-                ref="heroInputRef"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                class="hidden"
-                @change="handleImageChange($event, 'hero_image')"
-              />
-            </div>
+            <ImageUpload
+              v-model="form.heroPreview"
+              label="Hero Image"
+              aspect="video"
+              :loading="isUploadingImage === 'hero_image'"
+              @select="(file) => handleImageSelect(file, 'hero_image')"
+              @remove="() => handleImageRemove('hero_image')"
+            />
           </div>
         </div>
       </template>

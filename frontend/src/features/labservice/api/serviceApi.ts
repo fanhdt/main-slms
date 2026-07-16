@@ -29,4 +29,8 @@ export const serviceApi = {
   delete(uuid: string) {
     return api.delete(`/services/${uuid}`)
   },
+
+  removeImage(uuid: string) {
+    return api.delete(`/services/${uuid}/image`)
+  },
 }

@@ -9,7 +9,7 @@ import { useLabStore } from '@/features/lab/stores/useLabStore'
 import { defaultCreateServiceForm } from '@/features/labservice/types'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { Upload, Loader2, ImageIcon } from 'lucide-vue-next'
+import { ImageUpload } from '@/components/ui/image-upload'
 
 const props = defineProps<{
   show: boolean
@@ -26,7 +26,6 @@ const labStore = useLabStore()
 const form = ref(defaultCreateServiceForm(labStore.activeLab?.id ?? 1))
 const errors = ref<Record<string, string>>({})
 const isEdit = ref(false)
-const imageInputRef = ref<HTMLInputElement | null>(null)
 const isUploadingImage = ref(false)
 
 watch(
@@ -99,10 +98,8 @@ const { mutate: saveService, isPending } = useMutation({
   },
 })
 
-async function handleImageChange(e: Event) {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file || !props.service) return
+async function handleImageSelect(file: File) {
+  if (!props.service) return
 
   isUploadingImage.value = true
   try {
@@ -115,7 +112,23 @@ async function handleImageChange(e: Event) {
     toast.error(err.response?.data?.message ?? 'Gagal upload gambar.')
   } finally {
     isUploadingImage.value = false
-    input.value = ''
+  }
+}
+
+async function handleImageRemove() {
+  if (!props.service) return
+
+  isUploadingImage.value = true
+  try {
+    const res = await serviceApi.removeImage(props.service.uuid)
+    const updatedService = res.data.data as Service
+    form.value.imagePreview = updatedService.image
+    queryClient.invalidateQueries({ queryKey: ['services'] })
+    toast.success('Gambar berhasil dihapus.')
+  } catch (err: any) {
+    toast.error(err.response?.data?.message ?? 'Gagal menghapus gambar.')
+  } finally {
+    isUploadingImage.value = false
   }
 }
 </script>
@@ -242,44 +255,14 @@ async function handleImageChange(e: Event) {
       <!-- Gambar Layanan — cuma muncul saat edit -->
       <template v-if="isEdit">
         <Separator />
-        <div class="space-y-2">
-          <p class="text-sm font-medium text-gray-700">Gambar Layanan</p>
-          <div class="flex items-center gap-4">
-            <div
-              class="w-24 h-24 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center shrink-0"
-            >
-              <img
-                v-if="form.imagePreview"
-                :src="form.imagePreview"
-                alt="Gambar Layanan"
-                class="w-full h-full object-cover"
-              />
-              <ImageIcon v-else class="size-6 text-gray-300" />
-            </div>
-            <div>
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                class="px-0"
-                :disabled="isUploadingImage"
-                @click="imageInputRef?.click()"
-              >
-                <Loader2 v-if="isUploadingImage" class="size-3.5 animate-spin" />
-                <Upload v-else class="size-3.5" />
-                {{ isUploadingImage ? 'Mengupload...' : 'Ganti Gambar' }}
-              </Button>
-              <p class="text-xs text-gray-400 mt-1">JPG, PNG, atau WEBP. Maks 5MB.</p>
-              <input
-                ref="imageInputRef"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                class="hidden"
-                @change="handleImageChange"
-              />
-            </div>
-          </div>
-        </div>
+        <ImageUpload
+          v-model="form.imagePreview"
+          label="Gambar Layanan"
+          aspect="video"
+          :loading="isUploadingImage"
+          @select="handleImageSelect"
+          @remove="handleImageRemove"
+        />
       </template>
 
       <Separator />

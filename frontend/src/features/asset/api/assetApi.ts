@@ -25,4 +25,15 @@ export const assetApi = {
   delete(uuid: string) {
     return api.delete(`/assets/${uuid}`)
   },
+
+  updateImage(uuid: string, file: File) {
+    const formData = new FormData()
+    formData.append('image', file)
+    return api.post<ApiResponse<Asset>>(`/assets/${uuid}/image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  removeImage(uuid: string) {
+    return api.delete<ApiResponse<Asset>>(`/assets/${uuid}/image`)
+  },
 }

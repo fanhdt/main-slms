@@ -80,7 +80,9 @@ const rentalDays = computed(() => {
 })
 
 const assetRentalTotal = computed(
-  () => cartItems.value.reduce((sum, a) => sum + Number(a.rental_price), 0) * rentalDays.value,
+  () =>
+    cartItems.value.reduce((sum, a) => sum + Number(a.rental_price) * a.quantity, 0) *
+    rentalDays.value,
 )
 
 const totalPrice = computed(() => {
@@ -146,7 +148,10 @@ const { mutate: submitBooking, isPending } = useMutation({
     if (bookingType.value === 'asset_rental') {
       return api.post('/bookings', {
         ...base,
-        asset_uuids: cartItems.value.map((i) => i.uuid),
+        assets: cartItems.value.map((i) => ({
+          asset_uuid: i.uuid,
+          quantity: i.quantity,
+        })),
       })
     }
 
@@ -352,11 +357,13 @@ const pageTitle = computed(() => {
                 class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0"
               >
                 <div>
-                  <p class="text-sm font-medium text-gray-900">{{ asset.name }}</p>
+                  <p class="text-sm font-medium text-gray-900">
+                    {{ asset.name }} × {{ asset.quantity }}
+                  </p>
                   <p class="text-xs text-gray-500">{{ asset.brand }}</p>
                 </div>
                 <span class="text-sm font-semibold text-gray-900">
-                  {{ formatPrice(Number(asset.rental_price)) }} / hari
+                  {{ formatPrice(Number(asset.rental_price) * asset.quantity) }} / hari
                 </span>
               </div>
             </CardContent>

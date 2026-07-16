@@ -9,6 +9,7 @@ import api from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Plus, Trash2, TriangleAlert } from 'lucide-vue-next'
+import { ImageUpload } from '@/components/ui/image-upload'
 
 const props = defineProps<{
   show: boolean
@@ -19,6 +20,10 @@ const emit = defineEmits<{ close: [] }>()
 
 const queryClient = useQueryClient()
 const labStore = useLabStore()
+
+const imagePreview = ref<string | null>(null)
+const pendingImageFile = ref<File | null>(null)
+const isUploadingImage = ref(false)
 
 interface ItemRow {
   type: 'service' | 'asset'
@@ -87,7 +92,7 @@ watch(
     isEdit.value = !!pkg
     if (pkg) {
       form.value = {
-        lab_id: pkg.lab_id,
+        lab_id: labStore.activeLab?.id ?? 1,
         name: pkg.name,
         description: pkg.description ?? '',
         price: pkg.price,
@@ -107,6 +112,8 @@ watch(
     } else {
       form.value = defaultForm()
     }
+    imagePreview.value = pkg?.image ?? null
+    pendingImageFile.value = null
   },
   { immediate: true },
 )
@@ -160,7 +167,12 @@ const { mutate: savePackage, isPending } = useMutation({
     }
     return packageApi.create(payload)
   },
-  onSuccess: () => {
+  onSuccess: async (res) => {
+    const newUuid = isEdit.value ? props.pkg!.uuid : (res.data.data as any).uuid
+    if (pendingImageFile.value) {
+      await packageApi.updateImage(newUuid, pendingImageFile.value)
+      pendingImageFile.value = null
+    }
     queryClient.invalidateQueries({ queryKey: ['packages'] })
     toast.success(isEdit.value ? 'Package berhasil diupdate.' : 'Package berhasil dibuat.')
     emit('close')
@@ -177,6 +189,55 @@ const { mutate: savePackage, isPending } = useMutation({
     }
   },
 })
+async function handleImageSelect(file: File) {
+  if (!props.pkg) return
+  isUploadingImage.value = true
+  try {
+    const res = await packageApi.updateImage(props.pkg.uuid, file)
+    imagePreview.value = res.data.data.image
+    queryClient.invalidateQueries({ queryKey: ['packages'] })
+    toast.success('Gambar paket berhasil diupdate.')
+  } catch (err: any) {
+    toast.error(err.response?.data?.message ?? 'Gagal upload gambar.')
+  } finally {
+    isUploadingImage.value = false
+  }
+}
+
+async function handleImageRemove() {
+  if (!props.pkg) return
+  isUploadingImage.value = true
+  try {
+    const res = await packageApi.removeImage(props.pkg.uuid)
+    imagePreview.value = res.data.data.image
+    queryClient.invalidateQueries({ queryKey: ['packages'] })
+    toast.success('Gambar paket berhasil dihapus.')
+  } finally {
+    isUploadingImage.value = false
+  }
+}
+
+function handleImageSelectPending(file: File) {
+  pendingImageFile.value = file
+  imagePreview.value = URL.createObjectURL(file) // preview lokal sebelum upload beneran
+}
+
+function onImageSelect(file: File) {
+  if (isEdit.value) {
+    handleImageSelect(file)
+  } else {
+    handleImageSelectPending(file)
+  }
+}
+
+function onImageRemove() {
+  if (isEdit.value) {
+    handleImageRemove()
+  } else {
+    pendingImageFile.value = null
+    imagePreview.value = null
+  }
+}
 </script>
 
 <template>
@@ -325,6 +386,14 @@ const { mutate: savePackage, isPending } = useMutation({
       </div>
 
       <Separator />
+      <ImageUpload
+        v-model="imagePreview"
+        label="Gambar Paket"
+        aspect="video"
+        :loading="isUploadingImage"
+        @select="onImageSelect"
+        @remove="onImageRemove"
+      />
 
       <div class="flex items-center gap-3">
         <input

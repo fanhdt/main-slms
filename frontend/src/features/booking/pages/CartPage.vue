@@ -9,7 +9,7 @@ import { toast } from 'vue-sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, ShoppingCart, Trash2, ArrowRight } from 'lucide-vue-next'
+import { ArrowLeft, ShoppingCart, Trash2, ArrowRight, Minus, Plus } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -28,12 +28,25 @@ const { data: lab } = useQuery({
 const items = computed(() => cartStore.getItems(slug.value))
 
 const totalPerDay = computed(() =>
-  items.value.reduce((sum, item) => sum + Number(item.rental_price), 0),
+  items.value.reduce((sum, item) => sum + Number(item.rental_price) * item.quantity, 0),
 )
 
-function removeItem(uuid: string) {
+function removeItem(uuid: string, name: string) {
   cartStore.removeItem(slug.value, uuid)
-  toast.info('Alat dihapus dari keranjang.')
+  toast.info(`${name} dihapus dari keranjang.`)
+}
+
+function increment(uuid: string) {
+  cartStore.incrementQuantity(slug.value, uuid)
+}
+
+function decrement(uuid: string, name: string) {
+  const item = items.value.find((i) => i.uuid === uuid)
+  if (item && item.quantity <= 1) {
+    removeItem(uuid, name)
+    return
+  }
+  cartStore.decrementQuantity(slug.value, uuid)
 }
 
 function checkout() {
@@ -95,23 +108,44 @@ function formatPrice(price: number) {
             <div
               v-for="item in items"
               :key="item.uuid"
-              class="p-4 flex items-center justify-between"
+              class="p-4 flex items-center justify-between gap-3"
             >
-              <div>
-                <p class="font-medium text-gray-900">{{ item.name }}</p>
-                <p class="text-xs text-gray-400">{{ item.brand }}</p>
+              <div class="min-w-0">
+                <p class="font-medium text-gray-900 truncate">{{ item.name }}</p>
+                <p class="text-xs text-gray-400 truncate">{{ item.brand }}</p>
                 <p class="text-sm font-semibold text-gray-900 mt-1">
                   {{ formatPrice(Number(item.rental_price)) }}
-                  <span class="text-xs font-normal text-gray-400">/ hari</span>
+                  <span class="text-xs font-normal text-gray-400">/ hari / unit</span>
                 </p>
               </div>
-              <button
-                title="Hapus dari keranjang"
-                @click="removeItem(item.uuid)"
-                class="p-2 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-              >
-                <Trash2 class="size-4" />
-              </button>
+
+              <div class="flex items-center gap-2 shrink-0">
+                <div class="flex items-center border border-gray-200 rounded-lg">
+                  <button
+                    class="p-1.5 text-gray-500 hover:text-red-600 transition-colors"
+                    @click="decrement(item.uuid, item.name)"
+                  >
+                    <Minus class="size-3.5" />
+                  </button>
+                  <span class="w-8 text-center text-sm font-medium text-gray-900">
+                    {{ item.quantity }}
+                  </span>
+                  <button
+                    class="p-1.5 text-gray-500 hover:text-blue-600 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                    :disabled="item.max_quantity <= 1 || item.quantity >= item.max_quantity"
+                    @click="increment(item.uuid)"
+                  >
+                    <Plus class="size-3.5" />
+                  </button>
+                </div>
+                <button
+                  title="Hapus dari keranjang"
+                  @click="removeItem(item.uuid, item.name)"
+                  class="p-2 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <Trash2 class="size-4" />
+                </button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -123,7 +157,8 @@ function formatPrice(price: number) {
               <span class="font-bold text-gray-900">{{ formatPrice(totalPerDay) }}</span>
             </div>
             <p class="text-xs text-gray-400">
-              Total akhir dihitung sesuai lama peminjaman di langkah berikutnya.
+              {{ cartStore.totalQuantity(slug) }} unit alat &middot; total akhir dihitung sesuai
+              lama peminjaman di langkah berikutnya.
             </p>
           </CardContent>
         </Card>

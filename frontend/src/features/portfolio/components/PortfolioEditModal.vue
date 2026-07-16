@@ -6,6 +6,8 @@ import { photographerApi } from '@/features/portfolio/api/photographerApi'
 import BaseModal from '@/components/BaseModal.vue'
 import { toast } from 'vue-sonner'
 import type { PhotographerPortfolio } from '@/features/portfolio/types'
+import { Button } from '@/components/ui/button'
+import { ImageUpload } from '@/components/ui/image-upload'
 
 const props = defineProps<{
   show: boolean
@@ -18,7 +20,6 @@ const queryClient = useQueryClient()
 const selectedPhotographerId = ref<number | null>(null)
 const caption = ref('')
 const order = ref(0)
-const fileInput = ref<HTMLInputElement | null>(null)
 const isUploadingImage = ref(false)
 const currentImage = ref<string | null>(null)
 
@@ -63,11 +64,8 @@ const { mutate: save, isPending } = useMutation({
   },
 })
 
-async function handleImageChange(e: Event) {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file || !props.portfolio) return
-
+async function handleImageSelect(file: File) {
+  if (!props.portfolio) return
   isUploadingImage.value = true
   try {
     const res = await portfolioApi.updateImage(props.portfolio.uuid, file)
@@ -78,30 +76,27 @@ async function handleImageChange(e: Event) {
     toast.error(err.response?.data?.message ?? 'Gagal upload foto.')
   } finally {
     isUploadingImage.value = false
-    input.value = ''
   }
+}
+
+function handleImageRemoveClick() {
+  // Foto portofolio wajib ada, jadi tombol "Hapus" di sini cuma mengingatkan
+  // user untuk pilih foto pengganti — bukan menghapus permanen.
+  toast.info('Klik "Ganti" untuk memilih foto baru. Foto portofolio tidak bisa dikosongkan.')
 }
 </script>
 
 <template>
   <BaseModal :show="show" title="Edit Portofolio" size="md" @close="$emit('close')">
     <form @submit.prevent="() => save()" class="space-y-4">
-      <div v-if="currentImage" class="w-full aspect-video rounded-lg overflow-hidden bg-gray-100">
-        <img :src="currentImage" alt="" class="w-full h-full object-cover" />
-      </div>
-
-      <div>
-        <label class="text-sm font-medium text-gray-700">Ganti Foto</label>
-        <input
-          ref="fileInput"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          @change="handleImageChange"
-          :disabled="isUploadingImage"
-          class="mt-1 text-sm"
-        />
-        <p v-if="isUploadingImage" class="text-xs text-gray-400 mt-1">Mengupload...</p>
-      </div>
+      <ImageUpload
+        v-model="currentImage"
+        label="Foto Portofolio"
+        aspect="video"
+        :loading="isUploadingImage"
+        @select="handleImageSelect"
+        @remove="handleImageRemoveClick"
+      />
 
       <div>
         <label class="text-sm font-medium text-gray-700">Fotografer</label>
@@ -133,20 +128,10 @@ async function handleImageChange(e: Event) {
       </div>
 
       <div class="flex justify-end gap-2 pt-2">
-        <button
-          type="button"
-          @click="$emit('close')"
-          class="px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50"
-        >
-          Batal
-        </button>
-        <button
-          type="submit"
-          :disabled="isPending"
-          class="px-4 py-2 text-sm rounded-lg bg-gray-900 text-white disabled:opacity-50"
-        >
+        <Button type="button" variant="outline" @click="$emit('close')">Batal</Button>
+        <Button type="submit" :disabled="isPending">
           {{ isPending ? 'Menyimpan...' : 'Simpan' }}
-        </button>
+        </Button>
       </div>
     </form>
   </BaseModal>

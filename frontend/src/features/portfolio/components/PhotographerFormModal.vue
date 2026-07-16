@@ -86,7 +86,7 @@ async function handlePhotoChange(e: Event) {
         </div>
         <Button
           type="button"
-          variant="link"
+          variant="outline"
           size="sm"
           class="mx-auto flex"
           :disabled="isUploadingPhoto"
@@ -94,7 +94,7 @@ async function handlePhotoChange(e: Event) {
         >
           <Loader2 v-if="isUploadingPhoto" class="size-3.5 animate-spin" />
           <Upload v-else class="size-3.5" />
-          {{ isUploadingPhoto ? 'Mengupload...' : 'Ganti Foto' }}
+          {{ isUploadingPhoto ? 'Mengupload...' : currentPhoto ? 'Ganti Foto' : 'Pilih Foto' }}
         </Button>
         <input
           ref="photoInput"

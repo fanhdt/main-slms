@@ -16,4 +16,15 @@ export const packageApi = {
   delete(uuid: string) {
     return api.delete(`/packages/${uuid}`)
   },
+  updateImage(uuid: string, file: File) {
+    const formData = new FormData()
+    formData.append('image', file)
+    return api.post(`/packages/${uuid}/image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
+  removeImage(uuid: string) {
+    return api.delete(`/packages/${uuid}/image`)
+  },
 }

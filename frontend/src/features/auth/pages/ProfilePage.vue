@@ -6,7 +6,7 @@ import { toast } from 'vue-sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CreditCard, User, ShieldAlert } from 'lucide-vue-next'
+import { CreditCard, User, ShieldAlert, ImagePlus } from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -125,13 +125,19 @@ async function changePassword() {
         </div>
         <div>
           <Button
-            variant="link"
+            variant="outline"
             size="sm"
-            class="px-0 h-auto"
             :disabled="isUploadingAvatar"
             @click="avatarInputRef?.click()"
           >
-            {{ isUploadingAvatar ? 'Mengupload...' : 'Ganti Foto Profil' }}
+            <ImagePlus class="size-3.5" />
+            {{
+              isUploadingAvatar
+                ? 'Mengupload...'
+                : authStore.user?.avatar
+                  ? 'Ganti Foto Profil'
+                  : 'Pilih Foto Profil'
+            }}
           </Button>
           <input
             ref="avatarInputRef"
@@ -140,7 +146,7 @@ async function changePassword() {
             class="hidden"
             @change="handleAvatarChange"
           />
-          <p class="text-xs text-gray-400 mt-1">JPG, PNG, atau WEBP. Maks 5MB.</p>
+          <p class="text-xs text-gray-400 mt-2">JPG, PNG, atau WEBP. Maks 5MB.</p>
         </div>
       </CardContent>
     </Card>

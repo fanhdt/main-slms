@@ -6,6 +6,7 @@ import BaseModal from '@/components/BaseModal.vue'
 import { toast } from 'vue-sonner'
 import type { Asset } from '@/types'
 import { Button } from '@/components/ui/button'
+import { ImageUpload } from '@/components/ui/image-upload'
 import { Separator } from '@/components/ui/separator'
 
 const props = defineProps<{
@@ -32,16 +33,36 @@ const form = ref({
   purchase_date: '',
   is_rentable: true,
   rental_price: '',
+  quantity: 1,
   lab_id: 1,
 })
 
 const errors = ref<Record<string, string>>({})
 const isEdit = ref(false)
 
+const imagePreview = ref<string | null>(null)
+const isUploadingImage = ref(false)
+
+// File gambar yang dipilih SEBELUM aset dibuat (mode create).
+// Diupload otomatis setelah asset berhasil dibuat & dapat uuid.
+const pendingImageFile = ref<File | null>(null)
+
+watch(
+  () => props.show,
+  (show) => {
+    if (show) {
+      // reset state pending setiap modal dibuka
+      pendingImageFile.value = null
+    }
+  },
+)
+
 watch(
   () => props.asset,
   (asset) => {
     isEdit.value = !!asset
+    imagePreview.value = asset?.image ?? null
+    pendingImageFile.value = null
     if (asset) {
       form.value = {
         name: asset.name,
@@ -56,6 +77,7 @@ watch(
         purchase_date: asset.purchase_date ?? '',
         is_rentable: asset.is_rentable,
         rental_price: asset.rental_price ?? '',
+        quantity: asset.quantity ?? 1,
         lab_id: 1,
       }
     } else {
@@ -72,6 +94,7 @@ watch(
         purchase_date: '',
         is_rentable: true,
         rental_price: '',
+        quantity: 1,
         lab_id: 1,
       }
     }
@@ -87,8 +110,20 @@ const { mutate: saveAsset, isPending } = useMutation({
       return assetApi.create(form.value)
     }
   },
-  onSuccess: () => {
+  onSuccess: async (res) => {
     queryClient.invalidateQueries({ queryKey: ['assets'] })
+
+    // Mode create + ada gambar yang sudah dipilih sebelumnya -> upload sekarang
+    if (!isEdit.value && pendingImageFile.value) {
+      const newAsset = res.data.data as Asset
+      try {
+        await assetApi.updateImage(newAsset.uuid, pendingImageFile.value)
+        queryClient.invalidateQueries({ queryKey: ['assets'] })
+      } catch (err: any) {
+        toast.error(err.response?.data?.message ?? 'Aset dibuat, tapi gagal upload gambar.')
+      }
+    }
+
     toast.success(isEdit.value ? 'Aset berhasil diupdate.' : 'Aset berhasil dibuat.')
     emit('close')
   },
@@ -103,6 +138,55 @@ const { mutate: saveAsset, isPending } = useMutation({
     }
   },
 })
+
+// Dipakai saat mode EDIT — langsung upload ke aset yang sudah ada
+async function handleImageSelect(file: File) {
+  if (!isEdit.value) {
+    // Mode CREATE — belum ada aset, simpan dulu filenya + tampilkan preview lokal
+    pendingImageFile.value = file
+    const reader = new FileReader()
+    reader.onload = () => {
+      imagePreview.value = reader.result as string
+    }
+    reader.readAsDataURL(file)
+    return
+  }
+
+  if (!props.asset) return
+  isUploadingImage.value = true
+  try {
+    const res = await assetApi.updateImage(props.asset.uuid, file)
+    imagePreview.value = res.data.data.image
+    queryClient.invalidateQueries({ queryKey: ['assets'] })
+    toast.success('Gambar aset berhasil diupdate.')
+  } catch (err: any) {
+    toast.error(err.response?.data?.message ?? 'Gagal upload gambar.')
+  } finally {
+    isUploadingImage.value = false
+  }
+}
+
+async function handleImageRemove() {
+  if (!isEdit.value) {
+    // Mode CREATE — cukup hapus dari state lokal, belum ada apa-apa di server
+    pendingImageFile.value = null
+    imagePreview.value = null
+    return
+  }
+
+  if (!props.asset) return
+  isUploadingImage.value = true
+  try {
+    const res = await assetApi.removeImage(props.asset.uuid)
+    imagePreview.value = res.data.data.image
+    queryClient.invalidateQueries({ queryKey: ['assets'] })
+    toast.success('Gambar aset berhasil dihapus.')
+  } catch (err: any) {
+    toast.error(err.response?.data?.message ?? 'Gagal menghapus gambar.')
+  } finally {
+    isUploadingImage.value = false
+  }
+}
 </script>
 
 <template>
@@ -230,6 +314,18 @@ const { mutate: saveAsset, isPending } = useMutation({
           />
         </div>
 
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-gray-700">Jumlah Stok (unit)</label>
+          <input
+            v-model.number="form.quantity"
+            type="number"
+            min="1"
+            placeholder="1"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p class="text-xs text-gray-400">Berapa unit fisik alat ini yang dimiliki lab.</p>
+        </div>
+
         <div class="col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Deskripsi</label>
           <textarea
@@ -240,6 +336,21 @@ const { mutate: saveAsset, isPending } = useMutation({
           />
         </div>
       </div>
+
+      <Separator />
+
+      <!-- Sekarang muncul baik di mode Tambah maupun Edit -->
+      <ImageUpload
+        v-model="imagePreview"
+        label="Gambar Aset"
+        aspect="video"
+        :loading="isUploadingImage"
+        @select="handleImageSelect"
+        @remove="handleImageRemove"
+      />
+      <p v-if="!isEdit && pendingImageFile" class="text-xs text-blue-600 -mt-3">
+        Gambar akan diupload otomatis setelah aset disimpan.
+      </p>
 
       <Separator />
 

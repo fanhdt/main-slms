@@ -37,4 +37,8 @@ export const labApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+
+  removeImage(uuid: string, type: 'logo' | 'hero_image' | 'favicon') {
+    return api.delete<ApiResponse<Lab>>(`/labs/${uuid}/image`, { params: { type } })
+  },
 }

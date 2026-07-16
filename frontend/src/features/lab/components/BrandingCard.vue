@@ -3,16 +3,14 @@ import { ref } from 'vue'
 import { useLabStore } from '@/features/lab/stores/useLabStore'
 import { labApi } from '@/features/lab/api/labApi'
 import { toast } from 'vue-sonner'
+import { ImageUpload } from '@/components/ui/image-upload'
 
 const labStore = useLabStore()
 const uploadingLogo = ref(false)
 const uploadingHero = ref(false)
 
-async function handleUpload(e: Event, type: 'logo' | 'hero_image') {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file || !labStore.activeLab) return
-
+async function handleSelect(file: File, type: 'logo' | 'hero_image') {
+  if (!labStore.activeLab) return
   const flag = type === 'logo' ? uploadingLogo : uploadingHero
   flag.value = true
   try {
@@ -23,7 +21,21 @@ async function handleUpload(e: Event, type: 'logo' | 'hero_image') {
     toast.error(err.response?.data?.message ?? 'Gagal upload gambar.')
   } finally {
     flag.value = false
-    input.value = ''
+  }
+}
+
+async function handleRemove(type: 'logo' | 'hero_image') {
+  if (!labStore.activeLab) return
+  const flag = type === 'logo' ? uploadingLogo : uploadingHero
+  flag.value = true
+  try {
+    const res = await labApi.removeImage(labStore.activeLab.uuid, type)
+    labStore.activeLab = res.data.data
+    toast.success(type === 'logo' ? 'Logo berhasil dihapus.' : 'Foto sampul berhasil dihapus.')
+  } catch (err: any) {
+    toast.error(err.response?.data?.message ?? 'Gagal menghapus gambar.')
+  } finally {
+    flag.value = false
   }
 }
 </script>
@@ -38,53 +50,24 @@ async function handleUpload(e: Event, type: 'logo' | 'hero_image') {
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-      <!-- Logo -->
-      <div class="space-y-2">
-        <label class="text-sm font-medium text-gray-700">Logo</label>
-        <div
-          class="w-24 h-24 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center"
-        >
-          <img
-            v-if="labStore.activeLab?.branding.logo"
-            :src="labStore.activeLab.branding.logo"
-            alt="Logo"
-            class="w-full h-full object-cover"
-          />
-          <span v-else class="text-xs text-gray-400">Belum ada</span>
-        </div>
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          :disabled="uploadingLogo"
-          @change="handleUpload($event, 'logo')"
-          class="text-xs"
-        />
-        <p v-if="uploadingLogo" class="text-xs text-gray-400">Mengupload...</p>
-      </div>
+      <ImageUpload
+        :model-value="labStore.activeLab?.branding.logo ?? null"
+        label="Logo"
+        shape="circle"
+        aspect="square"
+        :loading="uploadingLogo"
+        @select="(file) => handleSelect(file, 'logo')"
+        @remove="() => handleRemove('logo')"
+      />
 
-      <!-- Hero Image -->
-      <div class="space-y-2">
-        <label class="text-sm font-medium text-gray-700">Foto Sampul (Hero)</label>
-        <div
-          class="w-full aspect-video rounded-xl bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center"
-        >
-          <img
-            v-if="labStore.activeLab?.branding.hero_image"
-            :src="labStore.activeLab.branding.hero_image"
-            alt="Hero"
-            class="w-full h-full object-cover"
-          />
-          <span v-else class="text-xs text-gray-400">Belum ada</span>
-        </div>
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          :disabled="uploadingHero"
-          @change="handleUpload($event, 'hero_image')"
-          class="text-xs"
-        />
-        <p v-if="uploadingHero" class="text-xs text-gray-400">Mengupload...</p>
-      </div>
+      <ImageUpload
+        :model-value="labStore.activeLab?.branding.hero_image ?? null"
+        label="Foto Sampul (Hero)"
+        aspect="video"
+        :loading="uploadingHero"
+        @select="(file) => handleSelect(file, 'hero_image')"
+        @remove="() => handleRemove('hero_image')"
+      />
     </div>
   </div>
 </template>

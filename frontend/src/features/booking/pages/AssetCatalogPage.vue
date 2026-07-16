@@ -38,6 +38,7 @@ const { data: assets, isLoading } = useQuery({
       brand: string | null
       rental_price: string
       image: string | null
+      quantity: number
       category: { label: string }
     }[]
   },
@@ -46,19 +47,33 @@ const { data: assets, isLoading } = useQuery({
 
 const cartCount = computed(() => cartStore.itemCount(slug.value))
 
-function toggleCart(asset: NonNullable<typeof assets.value>[number]) {
-  if (cartStore.isInCart(slug.value, asset.uuid)) {
-    cartStore.removeItem(slug.value, asset.uuid)
-    toast.info(`${asset.name} dihapus dari keranjang.`)
-  } else {
-    cartStore.addItem(slug.value, {
-      uuid: asset.uuid,
-      name: asset.name,
-      brand: asset.brand,
-      rental_price: asset.rental_price,
-    })
-    toast.success(`${asset.name} ditambahkan ke keranjang.`)
+function addToCart(asset: NonNullable<typeof assets.value>[number]) {
+  cartStore.addItem(slug.value, {
+    uuid: asset.uuid,
+    name: asset.name,
+    brand: asset.brand,
+    rental_price: asset.rental_price,
+    max_quantity: asset.quantity,
+  })
+  toast.success(`${asset.name} ditambahkan ke keranjang.`)
+}
+
+function removeFromCart(asset: { uuid: string; name: string }) {
+  cartStore.removeItem(slug.value, asset.uuid)
+  toast.info(`${asset.name} dihapus dari keranjang.`)
+}
+
+function increment(asset: { uuid: string; name: string }) {
+  cartStore.incrementQuantity(slug.value, asset.uuid)
+}
+
+function decrement(asset: { uuid: string; name: string }) {
+  const qty = cartStore.getQuantity(slug.value, asset.uuid)
+  if (qty <= 1) {
+    removeFromCart(asset)
+    return
   }
+  cartStore.decrementQuantity(slug.value, asset.uuid)
 }
 
 function goToCart() {
@@ -130,32 +145,53 @@ function formatPrice(price: string | number) {
               />
               <Camera v-else class="size-8 text-gray-300" />
             </div>
-            <p class="text-xs text-gray-400">{{ asset.category?.label }}</p>
+            <div class="flex items-center justify-between">
+              <p class="text-xs text-gray-400">{{ asset.category?.label }}</p>
+              <Badge variant="outline" class="border-0 bg-gray-100 text-gray-500 text-[11px]">
+                Stok: {{ asset.quantity }}
+              </Badge>
+            </div>
             <h3 class="font-semibold text-gray-900">{{ asset.name }}</h3>
             <p class="text-sm text-gray-500 mb-2">{{ asset.brand }}</p>
             <p class="font-bold text-gray-900 mb-3">
               {{ formatPrice(asset.rental_price) }}
-              <span class="text-xs font-normal text-gray-400">/ hari</span>
+              <span class="text-xs font-normal text-gray-400">/ hari / unit</span>
             </p>
 
+            <!-- Belum di keranjang -->
             <Button
+              v-if="!cartStore.isInCart(slug, asset.uuid)"
               class="mt-auto w-full"
-              :variant="cartStore.isInCart(slug, asset.uuid) ? 'outline' : 'default'"
-              :class="
-                cartStore.isInCart(slug, asset.uuid)
-                  ? 'border-red-200 text-red-600 hover:bg-red-50'
-                  : ''
-              "
-              @click="toggleCart(asset)"
+              @click="addToCart(asset)"
             >
-              <Minus v-if="cartStore.isInCart(slug, asset.uuid)" class="size-4" />
-              <Plus v-else class="size-4" />
-              {{
-                cartStore.isInCart(slug, asset.uuid)
-                  ? 'Hapus dari Keranjang'
-                  : 'Tambah ke Keranjang'
-              }}
+              <Plus class="size-4" />
+              Tambah ke Keranjang
             </Button>
+
+            <!-- Sudah di keranjang: stepper quantity -->
+            <div v-else class="mt-auto flex items-center justify-between gap-2">
+              <Button
+                variant="outline"
+                size="icon-sm"
+                class="border-red-200 text-red-600 hover:bg-red-50"
+                @click="decrement(asset)"
+              >
+                <Minus class="size-3.5" />
+              </Button>
+              <span class="flex-1 text-center text-sm font-semibold text-gray-900">
+                {{ cartStore.getQuantity(slug, asset.uuid) }} unit
+              </span>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                :disabled="
+                  asset.quantity <= 1 || cartStore.getQuantity(slug, asset.uuid) >= asset.quantity
+                "
+                @click="increment(asset)"
+              >
+                <Plus class="size-3.5" />
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -169,7 +205,7 @@ function formatPrice(price: string | number) {
       <div class="max-w-4xl mx-auto flex items-center justify-between">
         <div class="flex items-center gap-2">
           <Badge variant="outline" class="border-0 bg-blue-50 text-blue-700">
-            {{ cartCount }} alat dipilih
+            {{ cartCount }} jenis alat &middot; {{ cartStore.totalQuantity(slug) }} unit
           </Badge>
         </div>
         <Button @click="goToCart">
