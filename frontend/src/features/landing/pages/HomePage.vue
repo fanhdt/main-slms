@@ -336,10 +336,7 @@ const testimonials = [
         ref="carouselTrackRef"
         class="relative flex gap-0 overflow-x-auto scrollbar-hide select-none cursor-grab active:cursor-grabbing h-[250px] sm:h-[420px] md:h-[560px] rounded-none"
         @mouseenter="isHovering = true"
-        @mouseleave="
-          isHovering = false
-          endCarouselDrag()
-        "
+        @mouseleave="((isHovering = false), endCarouselDrag())"
         @mousedown="onCarouselMouseDown"
         @mousemove="onCarouselMouseMove"
         @mouseup="endCarouselDrag"
