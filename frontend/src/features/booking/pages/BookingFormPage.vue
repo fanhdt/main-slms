@@ -92,9 +92,7 @@ const totalPrice = computed(() => {
   if (bookingType.value === 'asset_rental') {
     return assetRentalTotal.value
   }
-  if (itemType.value === 'service') {
-    return itemPrice.value * (schedule.value?.durationHours ?? 1)
-  }
+  // Service & Package — harga sudah fix, tidak bergantung jam
   return itemPrice.value
 })
 
@@ -118,11 +116,18 @@ const startDateTime = computed(() => {
   if (bookingType.value === 'asset_rental') {
     return rentalStartDate.value ? `${rentalStartDate.value}T08:00:00` : null
   }
+  if (bookingType.value === 'service') {
+    // Biar backend yang otomatis hitung berdasarkan durasi jasa/paket
+    return null
+  }
   return schedule.value ? `${schedule.value.date}T${schedule.value.start}:00` : null
 })
 const endDateTime = computed(() => {
   if (bookingType.value === 'asset_rental') {
     return rentalEndDate.value ? `${rentalEndDate.value}T17:00:00` : null
+  }
+  if (bookingType.value === 'service') {
+    return null
   }
   return schedule.value ? `${schedule.value.date}T${schedule.value.end}:00` : null
 })
@@ -160,7 +165,7 @@ const { mutate: submitBooking, isPending } = useMutation({
       items: [
         itemType.value === 'package'
           ? { package_uuid: item.value?.uuid, quantity: 1 }
-          : { service_uuid: item.value?.uuid, quantity: schedule.value?.durationHours ?? 1 },
+          : { service_uuid: item.value?.uuid, quantity: 1 },
       ],
     })
   },
@@ -194,7 +199,7 @@ function formatPrice(price: number) {
 }
 
 function handleSubmit() {
-  if (bookingType.value !== 'asset_rental' && !schedule.value) {
+  if (bookingType.value === 'lab_rental' && !schedule.value) {
     toast.error('Konfirmasi jadwal terlebih dahulu lewat kalender di bawah.')
     return
   }
@@ -401,8 +406,8 @@ const pageTitle = computed(() => {
             </CardContent>
           </Card>
 
-          <!-- Kalender jadwal (mode Pinjam Lab & Jasa) -->
-          <Card v-if="bookingType !== 'asset_rental'" class="p-0">
+          <!-- Kalender jadwal — HANYA untuk Pinjam Lab -->
+          <Card v-if="bookingType === 'lab_rental'" class="p-0">
             <CardHeader class="px-5 pt-5 pb-0">
               <CardTitle class="text-sm font-semibold">Pilih Jadwal</CardTitle>
             </CardHeader>
@@ -413,6 +418,17 @@ const pageTitle = computed(() => {
                 :min-date="minDate"
                 @confirm-slot="handleScheduleConfirm"
               />
+            </CardContent>
+          </Card>
+
+          <!-- Mode Jasa: info bahwa proses dikerjakan lab, tanpa perlu pilih jam -->
+          <Card v-if="bookingType === 'service'" class="p-0">
+            <CardContent class="p-5">
+              <p class="text-sm text-gray-600">
+                Booking ini akan diproses langsung oleh petugas lab setelah dikonfirmasi. Kamu akan
+                mendapat notifikasi begitu progresnya berubah — tidak perlu datang ke lab untuk
+                booking jenis ini.
+              </p>
             </CardContent>
           </Card>
 
