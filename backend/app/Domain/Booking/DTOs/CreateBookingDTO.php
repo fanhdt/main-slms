@@ -13,8 +13,8 @@ readonly class CreateBookingDTO
     public function __construct(
         public int $labId,
         public int $userId,
-        public string $startTime,
-        public string $endTime,
+        public ?string $startTime,
+        public ?string $endTime,
         public BookingType $bookingType,
         public array $items = [],
         public array $assets = [],
@@ -59,8 +59,8 @@ readonly class CreateBookingDTO
         return new self(
             labId:       $labId,
             userId:      $userId,
-            startTime:   $data['start_time'],
-            endTime:     $data['end_time'],
+            startTime:   $data['start_time'] ?? null,
+            endTime:     $data['end_time'] ?? null,
             bookingType: $bookingType,
             items:       $items,
             assets:      $assets,

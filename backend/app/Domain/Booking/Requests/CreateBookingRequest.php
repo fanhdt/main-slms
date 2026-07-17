@@ -21,8 +21,14 @@ class CreateBookingRequest extends FormRequest
 
         return [
             'lab_uuid'     => ['required', 'string', 'exists:labs,uuid'],
-            'start_time'   => ['required', 'date', 'after:now'],
-            'end_time'     => ['required', 'date', 'after:start_time'],
+            'start_time' => [
+                Rule::requiredIf(fn () => $this->input('booking_type') !== BookingType::Service->value),
+                'date',
+            ],
+            'end_time' => [
+                Rule::requiredIf(fn () => $this->input('booking_type') !== BookingType::Service->value),
+                'date',
+                ],
             'notes'        => ['nullable', 'string'],
             'booking_type' => ['required', Rule::in($bookingTypes)],
 
@@ -56,8 +62,8 @@ class CreateBookingRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'start_time.after'      => 'Waktu mulai harus di masa depan.',
-            'end_time.after'        => 'Waktu selesai harus setelah waktu mulai.',
+            '_time.after'      => 'Waktu mulai harus di masa depan.',
+            'end_time.afterstart'        => 'Waktu selesai harus setelah waktu mulai.',
             'items.required'        => 'Minimal harus ada 1 layanan atau paket yang dipilih.',
             'purpose.required'      => 'Keperluan peminjaman lab wajib dipilih.',
             'assets.required'  => 'Minimal harus ada 1 alat yang dipilih.',

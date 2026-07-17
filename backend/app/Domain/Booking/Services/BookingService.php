@@ -202,54 +202,64 @@ class BookingService extends BaseService
     /**
      * Jasa & Paket — alur booking yang sudah ada sebelumnya (Service/Package).
      */
-    private function createServiceBooking(CreateBookingDTO $dto): Booking
-    {
-        return DB::transaction(function () use ($dto) {
-            $totalPrice = 0;
-            $bookingItemsData = [];
+   private function createServiceBooking(CreateBookingDTO $dto): Booking
+{
+    return DB::transaction(function () use ($dto) {
+        $totalPrice = 0;
+        $bookingItemsData = [];
+        $maxDurationMinutes = 60 * 24 * 3; // default fallback: 3 hari dalam menit
 
-            foreach ($dto->items as $item) {
-                $price = 0;
+        foreach ($dto->items as $item) {
+            $price = 0;
+            $durationMinutes = null;
 
-                if (!empty($item['service_id'])) {
-                    $service = Service::findOrFail($item['service_id']);
-                    $price = $service->price;
-                } elseif (!empty($item['package_id'])) {
-                    $package = Package::findOrFail($item['package_id']);
-                    $price = $package->price - $package->discount;
-                }
-
-                $subtotal = $price * $item['quantity'];
-                $totalPrice += $subtotal;
-
-                $bookingItemsData[] = [
-                    'service_id' => $item['service_id'] ?? null,
-                    'package_id' => $item['package_id'] ?? null,
-                    'quantity'   => $item['quantity'],
-                    'price'      => $price,
-                    'subtotal'   => $subtotal,
-                ];
+            if (!empty($item['service_id'])) {
+                $service = Service::findOrFail($item['service_id']);
+                $price = $service->price;
+                $durationMinutes = $service->duration;
+            } elseif (!empty($item['package_id'])) {
+                $package = Package::findOrFail($item['package_id']);
+                $price = $package->price - $package->discount;
+                $durationMinutes = $package->duration;
             }
 
-            $booking = Booking::create([
-                'lab_id'         => $dto->labId,
-                'user_id'        => $dto->userId,
-                'booking_code'   => $this->generateBookingCode(),
-                'booking_type'   => BookingType::Service->value,
-                'start_time'     => $dto->startTime,
-                'end_time'       => $dto->endTime,
-                'status'         => BookingStatus::Pending,
-                'payment_status' => PaymentStatus::Unpaid,
-                'total_price'    => $totalPrice,
-                'notes'          => $dto->notes,
-            ]);
+            if ($durationMinutes) {
+                $maxDurationMinutes = max($maxDurationMinutes, $durationMinutes);
+            }
 
-            $booking->items()->createMany($bookingItemsData);
+            $subtotal = $price * $item['quantity'];
+            $totalPrice += $subtotal;
 
-            return $booking->load(['items', 'user', 'lab']);
-        });
-    }
+            $bookingItemsData[] = [
+                'service_id' => $item['service_id'] ?? null,
+                'package_id' => $item['package_id'] ?? null,
+                'quantity'   => $item['quantity'],
+                'price'      => $price,
+                'subtotal'   => $subtotal,
+            ];
+        }
 
+        $startTime = $dto->startTime ?? now();
+        $endTime = $dto->endTime ?? now()->addMinutes($maxDurationMinutes);
+
+        $booking = Booking::create([
+            'lab_id'         => $dto->labId,
+            'user_id'        => $dto->userId,
+            'booking_code'   => $this->generateBookingCode(),
+            'booking_type'   => BookingType::Service->value,
+            'start_time'     => $startTime,
+            'end_time'       => $endTime,
+            'status'         => BookingStatus::Pending,
+            'payment_status' => PaymentStatus::Unpaid,
+            'total_price'    => $totalPrice,
+            'notes'          => $dto->notes,
+        ]);
+
+        $booking->items()->createMany($bookingItemsData);
+
+        return $booking->load(['items', 'user', 'lab']);
+    });
+}
     private function generateBookingCode(): string
     {
         $dateCode = now()->format('Ymd');
@@ -281,6 +291,7 @@ class BookingService extends BaseService
             );
             event(new BookingStatusChanged($booking, $previousStatus));
         }
+        
 
         return $booking;
     }
