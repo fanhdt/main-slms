@@ -33,6 +33,7 @@ class ServiceResource extends JsonResource
             'image'        => $this->image_url,
             'is_active'    => $this->is_active,
             'created_at'   => $this->created_at->toISOString(),
+            'requires_schedule' => $this->type->requiresSchedule(),
         ];
     }
 }

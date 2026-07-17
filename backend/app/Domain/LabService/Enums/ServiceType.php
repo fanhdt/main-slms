@@ -28,4 +28,11 @@ enum ServiceType: string
             self::Other           => 'Lainnya',
         };
     }
+    public function requiresSchedule(): bool
+{
+    return match($this) {
+        self::Photography, self::StudioRental, self::EquipmentRental, self::Recording, self::Training => true,
+        self::PhotoEditing, self::Printing, self::Other => false,
+    };
+}
 }

@@ -4,6 +4,8 @@ namespace App\Domain\Booking\Requests;
 
 use App\Domain\Booking\Enums\BookingPurpose;
 use App\Domain\Booking\Enums\BookingType;
+use App\Domain\LabService\Models\Package;
+use App\Domain\LabService\Models\Service;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,14 +23,8 @@ class CreateBookingRequest extends FormRequest
 
         return [
             'lab_uuid'     => ['required', 'string', 'exists:labs,uuid'],
-            'start_time' => [
-                Rule::requiredIf(fn () => $this->input('booking_type') !== BookingType::Service->value),
-                'date',
-            ],
-            'end_time' => [
-                Rule::requiredIf(fn () => $this->input('booking_type') !== BookingType::Service->value),
-                'date',
-                ],
+            'start_time'   => ['nullable', 'date', 'after:now'],
+            'end_time'     => ['nullable', 'date', 'after:start_time'],
             'notes'        => ['nullable', 'string'],
             'booking_type' => ['required', Rule::in($bookingTypes)],
 
@@ -37,16 +33,15 @@ class CreateBookingRequest extends FormRequest
                 Rule::requiredIf(fn () => $this->input('booking_type') === BookingType::LabRental->value),
                 Rule::in($purposes),
             ],
-            // Kalau user belum punya NIM tersimpan tapi klaim mahasiswa (purpose academic/organization)
             'nim' => ['nullable', 'string', 'max:20'],
 
             // --- Sewa Alat ---
-           'assets'              => [
-    Rule::requiredIf(fn () => $this->input('booking_type') === BookingType::AssetRental->value),
-    'array', 'min:1',
-],
-'assets.*.asset_uuid' => ['required', 'string', 'exists:assets,uuid'],
-'assets.*.quantity'   => ['required', 'integer', 'min:1'],
+            'assets'             => [
+                Rule::requiredIf(fn () => $this->input('booking_type') === BookingType::AssetRental->value),
+                'array', 'min:1',
+            ],
+            'assets.*.asset_uuid' => ['required', 'string', 'exists:assets,uuid'],
+            'assets.*.quantity'   => ['required', 'integer', 'min:1'],
 
             // --- Jasa & Paket ---
             'items' => [
@@ -59,14 +54,53 @@ class CreateBookingRequest extends FormRequest
         ];
     }
 
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            if ($this->input('booking_type') !== BookingType::Service->value) {
+                return;
+            }
+
+            $items = $this->input('items', []);
+            $requiresSchedule = false;
+
+            foreach ($items as $item) {
+                if (!empty($item['service_uuid'])) {
+                    $service = Service::where('uuid', $item['service_uuid'])->first();
+                    if ($service?->type->requiresSchedule()) {
+                        $requiresSchedule = true;
+                    }
+                }
+
+                if (!empty($item['package_uuid'])) {
+                    $package = Package::with('items.service')
+                        ->where('uuid', $item['package_uuid'])
+                        ->first();
+
+                    $hasScheduledService = $package?->items->contains(
+                        fn ($pi) => $pi->service?->type->requiresSchedule()
+                    );
+
+                    if ($hasScheduledService) {
+                        $requiresSchedule = true;
+                    }
+                }
+            }
+
+            if ($requiresSchedule && !$this->input('start_time')) {
+                $validator->errors()->add('start_time', 'Jasa ini memerlukan pemilihan jadwal.');
+            }
+        });
+    }
+
     public function messages(): array
     {
         return [
-            '_time.after'      => 'Waktu mulai harus di masa depan.',
-            'end_time.afterstart'        => 'Waktu selesai harus setelah waktu mulai.',
+            'start_time.after'      => 'Waktu mulai harus di masa depan.',
+            'end_time.after'        => 'Waktu selesai harus setelah waktu mulai.',
             'items.required'        => 'Minimal harus ada 1 layanan atau paket yang dipilih.',
             'purpose.required'      => 'Keperluan peminjaman lab wajib dipilih.',
-            'assets.required'  => 'Minimal harus ada 1 alat yang dipilih.',
+            'assets.required'       => 'Minimal harus ada 1 alat yang dipilih.',
         ];
     }
 }

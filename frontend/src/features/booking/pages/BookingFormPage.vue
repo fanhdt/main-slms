@@ -58,6 +58,10 @@ const { data: item } = useQuery({
 const needsStudentVerification = computed(() => purpose.value !== 'public')
 const currentUserNim = computed(() => authStore.user?.nim ?? null)
 
+const needsScheduleForService = computed(() => {
+  return bookingType.value === 'service' && item.value?.requires_schedule === true
+})
+
 const itemPrice = computed(() => {
   if (!item.value) return 0
   return Number(item.value.final_price ?? item.value.price)
@@ -92,7 +96,9 @@ const totalPrice = computed(() => {
   if (bookingType.value === 'asset_rental') {
     return assetRentalTotal.value
   }
-  // Service & Package — harga sudah fix, tidak bergantung jam
+  if (needsScheduleForService.value && item.value?.pricing_type?.value === 'per_hour') {
+    return itemPrice.value * (schedule.value?.durationHours ?? 1)
+  }
   return itemPrice.value
 })
 
@@ -116,18 +122,11 @@ const startDateTime = computed(() => {
   if (bookingType.value === 'asset_rental') {
     return rentalStartDate.value ? `${rentalStartDate.value}T08:00:00` : null
   }
-  if (bookingType.value === 'service') {
-    // Biar backend yang otomatis hitung berdasarkan durasi jasa/paket
-    return null
-  }
   return schedule.value ? `${schedule.value.date}T${schedule.value.start}:00` : null
 })
 const endDateTime = computed(() => {
   if (bookingType.value === 'asset_rental') {
     return rentalEndDate.value ? `${rentalEndDate.value}T17:00:00` : null
-  }
-  if (bookingType.value === 'service') {
-    return null
   }
   return schedule.value ? `${schedule.value.date}T${schedule.value.end}:00` : null
 })
@@ -199,7 +198,7 @@ function formatPrice(price: number) {
 }
 
 function handleSubmit() {
-  if (bookingType.value === 'lab_rental' && !schedule.value) {
+  if ((bookingType.value === 'lab_rental' || needsScheduleForService.value) && !schedule.value) {
     toast.error('Konfirmasi jadwal terlebih dahulu lewat kalender di bawah.')
     return
   }
@@ -270,7 +269,7 @@ const pageTitle = computed(() => {
              KOLOM KIRI — Jadwal & detail spesifik tipe booking
         ============================================================= -->
         <div class="space-y-6 min-w-0">
-          <!-- Mode Pinjam Lab: pilih keperluan -->
+          <!-- Mode Pinjam Lab: pilih keperluan — HANYA lab_rental -->
           <Card v-if="bookingType === 'lab_rental'" class="p-0">
             <CardHeader class="px-5 pt-5 pb-0">
               <CardTitle class="text-sm font-semibold">Keperluan Peminjaman</CardTitle>
@@ -406,8 +405,8 @@ const pageTitle = computed(() => {
             </CardContent>
           </Card>
 
-          <!-- Kalender jadwal — HANYA untuk Pinjam Lab -->
-          <Card v-if="bookingType === 'lab_rental'" class="p-0">
+          <!-- Kalender jadwal — Pinjam Lab & Jasa yang butuh jadwal (Photography, StudioRental, dll) -->
+          <Card v-if="bookingType === 'lab_rental' || needsScheduleForService" class="p-0">
             <CardHeader class="px-5 pt-5 pb-0">
               <CardTitle class="text-sm font-semibold">Pilih Jadwal</CardTitle>
             </CardHeader>
@@ -421,8 +420,8 @@ const pageTitle = computed(() => {
             </CardContent>
           </Card>
 
-          <!-- Mode Jasa: info bahwa proses dikerjakan lab, tanpa perlu pilih jam -->
-          <Card v-if="bookingType === 'service'" class="p-0">
+          <!-- Mode Jasa yang TIDAK butuh jadwal: info proses full online -->
+          <Card v-if="bookingType === 'service' && item && !needsScheduleForService" class="p-0">
             <CardContent class="p-5">
               <p class="text-sm text-gray-600">
                 Booking ini akan diproses langsung oleh petugas lab setelah dikonfirmasi. Kamu akan

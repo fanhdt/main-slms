@@ -1,7 +1,5 @@
 <?php
-
 declare(strict_types=1);
-
 namespace App\Domain\LabService\Resources;
 
 use App\Domain\Asset\Resources\AssetResource;
@@ -26,6 +24,11 @@ class PackageResource extends JsonResource
             'image'       => $this->image_url,
             'is_active'   => $this->is_active,
             'is_custom'   => $this->is_custom,
+            'requires_schedule' => $this->whenLoaded('items', function () {
+                return $this->items->contains(
+                    fn ($item) => $item->service?->type->requiresSchedule() === true
+                );
+            }, false),
             'items'       => $this->whenLoaded('items', function () {
                 return $this->items->map(fn ($item) => [
                     'id'               => $item->id,
