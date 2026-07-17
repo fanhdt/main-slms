@@ -1,0 +1,2376 @@
+=== FILE: ./env.d.ts ===
+/// <reference types="vite/client" />
+-e 
+
+=== FILE: ./src/features/lab/api/labApi.ts ===
+import api from '@/lib/axios'
+import type { ApiResponse, PaginatedResponse, Lab } from '@/types'
+
+export const labApi = {
+  getAll(params?: Record<string, unknown>) {
+    return api.get<PaginatedResponse<Lab>>('/labs', { params })
+  },
+
+  getBySlug(slug: string) {
+    return api.get<ApiResponse<Lab>>(`/labs/${slug}`)
+  },
+
+  create(data: Record<string, unknown>) {
+    return api.post<ApiResponse<Lab>>('/labs', data)
+  },
+
+  update(uuid: string, data: Record<string, unknown>) {
+    return api.put<ApiResponse<Lab>>(`/labs/${uuid}`, data)
+  },
+
+  delete(uuid: string) {
+    return api.delete(`/labs/${uuid}`)
+  },
+
+  updateRentalRates(
+    uuid: string,
+    data: { student_price_per_hour: number; public_price_per_hour: number },
+  ) {
+    return api.patch<ApiResponse<Lab>>(`/labs/${uuid}/rental-rates`, data)
+  },
+
+  updateImage(uuid: string, type: 'logo' | 'hero_image' | 'favicon', file: File) {
+    const formData = new FormData()
+    formData.append('type', type)
+    formData.append('image', file)
+    return api.post(`/labs/${uuid}/image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
+  removeImage(uuid: string, type: 'logo' | 'hero_image' | 'favicon') {
+    return api.delete<ApiResponse<Lab>>(`/labs/${uuid}/image`, { params: { type } })
+  },
+}
+-e 
+
+=== FILE: ./src/features/lab/stores/useLabStore.ts ===
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import type { Lab } from '@/types'
+import { labApi } from '@/features/lab/api/labApi'
+import { useAuthStore } from '@/features/auth/stores/useAuthStore'
+import { toast } from 'vue-sonner'
+import api from '@/lib/axios'
+
+export const useLabStore = defineStore('lab', () => {
+  const activeLab = ref<Lab | null>(null)
+  const labs = ref<Lab[]>([])
+  const managedLabs = ref<Lab[]>([])
+  const loading = ref(false)
+
+  const branding = computed(() => activeLab.value?.branding ?? null)
+  const primaryColor = computed(() => branding.value?.primary_color ?? '#3b82f6')
+  const secondaryColor = computed(() => branding.value?.secondary_color ?? '#e94560')
+
+  async function fetchLabs() {
+    loading.value = true
+    try {
+      const res = await labApi.getAll({ per_page: 100, is_active: true })
+      labs.value = res.data.data.data
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Daftar lab yang user PUNYA AKSES ADMIN atasnya — SATU-SATUNYA sumber
+   * kebenaran untuk otorisasi (router guard requiresLabAccess) dan sidebar
+   * "masuk ke lab" di admin layout. Jangan pernah dicampur dengan fetchLabs().
+   */
+  async function fetchManagedLabs() {
+    loading.value = true
+    const authStore = useAuthStore()
+    try {
+      if (authStore.hasRole('super_admin')) {
+        const res = await labApi.getAll({ per_page: 100 })
+        managedLabs.value = res.data.data.data
+      } else {
+        if (!authStore.user?.uuid) {
+          console.warn('[fetchManagedLabs] authStore.user belum ter-load, skip fetch.')
+          return
+        }
+        const res = await api.get(`/users/${authStore.user?.uuid}/labs`)
+        managedLabs.value = res.data.data.data
+      }
+    } catch (err: any) {
+      console.error('[fetchManagedLabs] gagal:', err)
+      toast.error('Gagal memuat daftar lab: ' + (err.response?.data?.message ?? err.message))
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function setActiveLab(slug: string) {
+    loading.value = true
+    try {
+      const res = await labApi.getBySlug(slug)
+      activeLab.value = res.data.data
+      applyBranding()
+      localStorage.setItem('active_lab', slug)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function applyBranding() {
+    if (!activeLab.value) return
+    const root = document.documentElement
+    const { primary_color, secondary_color } = activeLab.value.branding
+    if (primary_color) root.style.setProperty('--color-primary', primary_color)
+    if (secondary_color) root.style.setProperty('--color-secondary', secondary_color)
+  }
+
+  async function restoreFromStorage() {
+    const slug = localStorage.getItem('active_lab')
+    if (slug) await setActiveLab(slug)
+  }
+
+  const labName = computed(() => activeLab.value?.name ?? 'SLMS')
+
+  return {
+    activeLab,
+    labs,
+    managedLabs,
+    loading,
+    branding,
+    primaryColor,
+    secondaryColor,
+    labName,
+    fetchLabs,
+    fetchManagedLabs,
+    setActiveLab,
+    applyBranding,
+    restoreFromStorage,
+  }
+})
+-e 
+
+=== FILE: ./src/features/lab/types/index.ts ===
+export interface CreateLabForm {
+  name: string
+  slug: string
+  description: string
+  primary_color: string
+  secondary_color: string
+  is_active: boolean
+  student_price_per_hour: number | null
+  public_price_per_hour: number | null
+  contact: {
+    email: string
+    phone: string
+    address: string
+  }
+  logoPreview: string | null
+  heroPreview: string | null
+}
+
+export interface UpdateLabForm extends Partial<CreateLabForm> {}
+
+export const defaultCreateLabForm = (): CreateLabForm => ({
+  name: '',
+  slug: '',
+  description: '',
+  primary_color: '#1a1a2e',
+  secondary_color: '#e94560',
+  is_active: true,
+  student_price_per_hour: 0,
+  public_price_per_hour: 0,
+  contact: {
+    email: '',
+    phone: '',
+    address: '',
+  },
+  logoPreview: null,
+  heroPreview: null,
+})
+-e 
+
+=== FILE: ./src/features/photo/api/photoApi.ts ===
+import api from '@/lib/axios'
+import type { ApiResponse, PaginatedResponse } from '@/types'
+import type { PhotoProject, PhotoFile } from '../types'
+
+export const photoApi = {
+  getAll(params?: Record<string, unknown>) {
+    return api.get<PaginatedResponse<PhotoProject>>('/photo-projects', { params })
+  },
+
+  getByUuid(uuid: string) {
+    return api.get<ApiResponse<PhotoProject>>(`/photo-projects/${uuid}`)
+  },
+
+  create(data: { booking_uuid: string; max_selection?: number }) {
+    return api.post<ApiResponse<PhotoProject>>('/photo-projects', data)
+  },
+
+  updateMaxSelection(uuid: string, max_selection: number) {
+    return api.patch(`/photo-projects/${uuid}/max-selection`, { max_selection })
+  },
+
+  uploadPreviews(uuid: string, files: File[]) {
+    const formData = new FormData()
+    files.forEach((f) => formData.append('files[]', f))
+    return api.post<ApiResponse<PhotoFile[]>>(`/photo-projects/${uuid}/previews`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
+  uploadEdited(uuid: string, files: File[]) {
+    const formData = new FormData()
+    files.forEach((f) => formData.append('files[]', f))
+    return api.post<ApiResponse<PhotoFile[]>>(`/photo-projects/${uuid}/edited`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
+  submitSelection(uuid: string, photo_file_uuids: string[], customer_note?: string) {
+    return api.post<ApiResponse<PhotoProject>>(`/photo-projects/${uuid}/selection`, {
+      photo_file_uuids,
+      customer_note,
+    })
+  },
+
+  submitForApproval(uuid: string) {
+    return api.post<ApiResponse<PhotoProject>>(`/photo-projects/${uuid}/submit-approval`)
+  },
+
+  resolveApproval(uuid: string, decision: 'approve' | 'revise', revision_note?: string) {
+    return api.post<ApiResponse<PhotoProject>>(`/photo-projects/${uuid}/approval`, {
+      decision,
+      revision_note,
+    })
+  },
+
+  downloadFile(uuid: string, fileUuid: string) {
+    return api.get<ApiResponse<{ url: string; filename: string }>>(
+      `/photo-projects/${uuid}/files/${fileUuid}/download`,
+    )
+  },
+
+  downloadAll(uuid: string) {
+    return api.get(`/photo-projects/${uuid}/download-all`, { responseType: 'blob' })
+  },
+}
+-e 
+
+=== FILE: ./src/features/photo/types/index.ts ===
+export interface PhotoFile {
+  uuid: string
+  type: { value: 'preview' | 'edited' | 'final'; label: string }
+  filename: string
+  url: string
+  size: number
+  mime_type: string | null
+  is_selected: boolean
+  order: number
+  created_at: string
+}
+
+export interface PhotoProject {
+  uuid: string
+  booking: {
+    uuid: string
+    booking_code: string
+    user: { uuid: string; name: string }
+  }
+  lab_id: string
+  status: { value: string; label: string }
+  preview_count: number
+  selection_count: number
+  max_selection: number
+  notes: string | null
+  customer_note: string | null
+  editor_note: string | null
+  expires_at: string | null
+  is_expired: boolean
+  previews: PhotoFile[]
+  edited_files: PhotoFile[]
+  files: PhotoFile[]
+  created_at: string
+}
+-e 
+
+=== FILE: ./src/features/labservice/api/serviceApi.ts ===
+import api from '@/lib/axios'
+import type { ApiResponse, PaginatedResponse, Service } from '@/types'
+
+export const serviceApi = {
+  getAll(params?: Record<string, unknown>) {
+    return api.get<PaginatedResponse<Service>>('/services', { params })
+  },
+
+  getByUuid(uuid: string) {
+    return api.get<ApiResponse<Service>>(`/services/${uuid}`)
+  },
+
+  create(data: Record<string, unknown>) {
+    return api.post<ApiResponse<Service>>('/services', data)
+  },
+
+  update(uuid: string, data: Record<string, unknown>) {
+    return api.put<ApiResponse<Service>>(`/services/${uuid}`, data)
+  },
+
+  updateImage(uuid: string, file: File) {
+    const formData = new FormData()
+    formData.append('image', file)
+    return api.post(`/services/${uuid}/image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
+  delete(uuid: string) {
+    return api.delete(`/services/${uuid}`)
+  },
+
+  removeImage(uuid: string) {
+    return api.delete(`/services/${uuid}/image`)
+  },
+}
+-e 
+
+=== FILE: ./src/features/labservice/api/packageApi.ts ===
+import api from '@/lib/axios'
+
+export const packageApi = {
+  getAll(params?: Record<string, unknown>) {
+    return api.get('/packages', { params })
+  },
+  getByUuid(uuid: string) {
+    return api.get(`/packages/${uuid}`)
+  },
+  create(data: Record<string, unknown>) {
+    return api.post('/packages', data)
+  },
+  update(uuid: string, data: Record<string, unknown>) {
+    return api.patch(`/packages/${uuid}`, data)
+  },
+  delete(uuid: string) {
+    return api.delete(`/packages/${uuid}`)
+  },
+  updateImage(uuid: string, file: File) {
+    const formData = new FormData()
+    formData.append('image', file)
+    return api.post(`/packages/${uuid}/image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
+  removeImage(uuid: string) {
+    return api.delete(`/packages/${uuid}/image`)
+  },
+}
+-e 
+
+=== FILE: ./src/features/labservice/types/index.ts ===
+export interface CreateServiceForm {
+  name: string
+  type: string
+  description: string
+  pricing_type: string
+  price: string
+  duration: string
+  min_quantity: number
+  max_quantity: string
+  includes_text: string
+  is_active: boolean
+  lab_id: number
+  imagePreview: string | null
+}
+
+export const defaultCreateServiceForm = (labId: number): CreateServiceForm => ({
+  name: '',
+  type: 'photography',
+  description: '',
+  pricing_type: 'per_session',
+  price: '',
+  duration: '',
+  min_quantity: 1,
+  max_quantity: '',
+  includes_text: '',
+  is_active: true,
+  lab_id: labId,
+  imagePreview: null,
+})
+-e 
+
+=== FILE: ./src/features/asset/api/assetApi.ts ===
+import api from '@/lib/axios'
+import type { ApiResponse, PaginatedResponse, Asset } from '@/types'
+
+export const assetApi = {
+  getAll(params?: Record<string, unknown>) {
+    return api.get<PaginatedResponse<Asset>>('/assets', { params })
+  },
+
+  getByUuid(uuid: string) {
+    return api.get<ApiResponse<Asset>>(`/assets/${uuid}`)
+  },
+
+  create(data: Record<string, unknown>) {
+    return api.post<ApiResponse<Asset>>('/assets', data)
+  },
+
+  update(uuid: string, data: Record<string, unknown>) {
+    return api.put<ApiResponse<Asset>>(`/assets/${uuid}`, data)
+  },
+
+  updateStatus(uuid: string, status: string) {
+    return api.patch(`/assets/${uuid}/status`, { status })
+  },
+
+  delete(uuid: string) {
+    return api.delete(`/assets/${uuid}`)
+  },
+
+  updateImage(uuid: string, file: File) {
+    const formData = new FormData()
+    formData.append('image', file)
+    return api.post<ApiResponse<Asset>>(`/assets/${uuid}/image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  removeImage(uuid: string) {
+    return api.delete<ApiResponse<Asset>>(`/assets/${uuid}/image`)
+  },
+}
+-e 
+
+=== FILE: ./src/features/auth/stores/useAuthStore.ts ===
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import type { User } from '@/types'
+import api from '@/lib/axios'
+
+export const useAuthStore = defineStore('auth', () => {
+  // ---- State ----
+  const user = ref<User | null>(null)
+  const token = ref<string | null>(localStorage.getItem('token'))
+  const loading = ref(false)
+
+  // ---- Getters ----
+  const isAuthenticated = computed(() => !!token.value)
+  const isAdmin = computed(
+    () => user.value?.roles.includes('super_admin') || user.value?.roles.includes('lab_admin'),
+  )
+  const hasPermission = (permission: string) =>
+    user.value?.permissions.includes(permission) ?? false
+
+  // ---- Actions ----
+  async function login(email: string, password: string) {
+    loading.value = true
+    try {
+      const response = await api.post('/auth/login', { email, password })
+      const { user: userData, token: tokenData } = response.data.data
+
+      user.value = userData
+      token.value = tokenData
+      localStorage.setItem('token', tokenData)
+
+      return { success: true }
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message ?? 'Login gagal.',
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+  async function register(payload: {
+    name: string
+    email: string
+    password: string
+    password_confirmation: string
+    phone?: string
+  }) {
+    loading.value = true
+    try {
+      const response = await api.post('/auth/register', payload)
+      return { success: true, message: response.data.message }
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message ?? 'Registrasi gagal.',
+        errors: error.response?.data?.errors,
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function resendVerification(email: string) {
+    loading.value = true
+    try {
+      const response = await api.post('/auth/email/resend', { email })
+      return { success: true, message: response.data.message }
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message ?? 'Gagal mengirim ulang email verifikasi.',
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function logout() {
+    loading.value = true
+    try {
+      await api.post('/auth/logout')
+    } finally {
+      user.value = null
+      token.value = null
+      localStorage.removeItem('token')
+      loading.value = false
+    }
+  }
+
+  async function fetchUser() {
+    if (!token.value) return
+    try {
+      const response = await api.get('/auth/me')
+      user.value = response.data.data
+    } catch {
+      user.value = null
+      token.value = null
+      localStorage.removeItem('token')
+    }
+  }
+
+  function hasRole(role: string) {
+    return user.value?.roles.includes(role) ?? false
+  }
+
+  // NEW — kirim link reset password ke email
+  async function forgotPassword(email: string) {
+    loading.value = true
+    try {
+      await api.post('/auth/forgot-password', { email })
+      return { success: true }
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message ?? 'Gagal mengirim link reset password.',
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // NEW — reset password pakai token dari email
+  async function resetPassword(payload: {
+    token: string
+    email: string
+    password: string
+    password_confirmation: string
+  }) {
+    loading.value = true
+    try {
+      await api.post('/auth/reset-password', payload)
+      return { success: true }
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message ?? 'Gagal mereset password.',
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateAvatar(file: File) {
+    loading.value = true
+    try {
+      const formData = new FormData()
+      formData.append('avatar', file)
+      const response = await api.post('/auth/me/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      user.value = response.data.data
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, message: error.response?.data?.message ?? 'Gagal upload avatar.' }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateProfile(payload: { name?: string; email?: string; phone?: string }) {
+    loading.value = true
+    try {
+      const response = await api.put('/auth/me', payload)
+      user.value = response.data.data
+      return { success: true }
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message ?? 'Gagal update profil.',
+        errors: error.response?.data?.errors,
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function deleteAccount(password: string) {
+    loading.value = true
+    try {
+      await api.delete('/auth/me', { data: { password } })
+      user.value = null
+      token.value = null
+      localStorage.removeItem('token')
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, message: error.response?.data?.message ?? 'Gagal menghapus akun.' }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function changePassword(payload: {
+    current_password: string
+    password: string
+    password_confirmation: string
+  }) {
+    loading.value = true
+    try {
+      await api.put('/auth/me/password', payload)
+      return { success: true }
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message ?? 'Gagal mengubah password.',
+        errors: error.response?.data?.errors,
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return {
+    user,
+    token,
+    loading,
+    isAuthenticated,
+    isAdmin,
+    login,
+    logout,
+    fetchUser,
+    hasPermission,
+    hasRole,
+    forgotPassword,
+    resetPassword,
+    register,
+    resendVerification,
+    updateProfile,
+    updateAvatar,
+    deleteAccount,
+    changePassword,
+  }
+})
+-e 
+
+=== FILE: ./src/features/portfolio/api/portfolioApi.ts ===
+import api from '@/lib/axios'
+import type { ApiResponse, PaginatedResponse } from '@/types'
+import type { PhotographerPortfolio } from '@/features/portfolio/types'
+
+export const portfolioApi = {
+  // ---- Admin ----
+  getAll(params?: Record<string, unknown>) {
+    return api.get<PaginatedResponse<PhotographerPortfolio>>('/portfolios', { params })
+  },
+
+  create(data: {
+    lab_id: number
+    photographer_id: number
+    image: File
+    caption?: string
+    order?: number
+  }) {
+    const formData = new FormData()
+    formData.append('lab_id', String(data.lab_id))
+    formData.append('photographer_id', String(data.photographer_id))
+    formData.append('image', data.image)
+    if (data.caption) formData.append('caption', data.caption)
+    if (data.order !== undefined) formData.append('order', String(data.order))
+
+    return api.post<ApiResponse<PhotographerPortfolio>>('/portfolios', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
+  update(uuid: string, data: Record<string, unknown>) {
+    return api.put<ApiResponse<PhotographerPortfolio>>(`/portfolios/${uuid}`, data)
+  },
+
+  updateImage(uuid: string, file: File) {
+    const formData = new FormData()
+    formData.append('image', file)
+    return api.post<ApiResponse<PhotographerPortfolio>>(`/portfolios/${uuid}/image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
+  delete(uuid: string) {
+    return api.delete(`/portfolios/${uuid}`)
+  },
+
+  getGalleryByPhotographer(labId: number, photographerUuid: string, page = 1, perPage = 12) {
+    return api.get<PaginatedResponse<PhotographerPortfolio>>(
+      `/labs/${labId}/portfolios/${photographerUuid}`,
+      { params: { page, per_page: perPage } },
+    )
+  },
+}
+-e 
+
+=== FILE: ./src/features/portfolio/api/photographerApi.ts ===
+import api from '@/lib/axios'
+import type { ApiResponse } from '@/types'
+import type { Photographer } from '@/features/portfolio/types'
+
+export const photographerApi = {
+  getAll(params?: Record<string, unknown>) {
+    return api.get<ApiResponse<Photographer[]>>('/photographers', { params })
+  },
+
+  getPublicForLab(labId: number) {
+    return api.get<ApiResponse<Photographer[]>>(`/labs/${labId}/photographers`, {
+      params: { active_only: 1 },
+    })
+  },
+
+  create(data: { lab_id: number; name: string; bio?: string; instagram?: string; photo?: File }) {
+    const formData = new FormData()
+    formData.append('lab_id', String(data.lab_id))
+    formData.append('name', data.name)
+    if (data.bio) formData.append('bio', data.bio)
+    if (data.instagram) formData.append('instagram', data.instagram)
+    if (data.photo) formData.append('photo', data.photo)
+
+    return api.post<ApiResponse<Photographer>>('/photographers', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
+  update(uuid: string, data: Record<string, unknown>) {
+    return api.put<ApiResponse<Photographer>>(`/photographers/${uuid}`, data)
+  },
+
+  updatePhoto(uuid: string, file: File) {
+    const formData = new FormData()
+    formData.append('photo', file)
+    return api.post<ApiResponse<Photographer>>(`/photographers/${uuid}/photo`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
+  delete(uuid: string) {
+    return api.delete(`/photographers/${uuid}`)
+  },
+}
+-e 
+
+=== FILE: ./src/features/portfolio/types/index.ts ===
+export interface Photographer {
+  id: number
+  uuid: string
+  lab_id: number
+  name: string
+  photo: string | null
+  bio: string | null
+  instagram: string | null
+  order: number
+  is_active: boolean
+}
+
+export interface PhotographerPortfolio {
+  uuid: string
+  lab_id: number
+  photographer_id: number
+  photographer?: { uuid: string; name: string } | null
+  image: string
+  caption: string | null
+  order: number
+  created_at: string
+}
+-e 
+
+=== FILE: ./src/features/booking/api/bookingApi.ts ===
+import api from '@/lib/axios'
+import type { ApiResponse, PaginatedResponse, Booking } from '@/types'
+
+export const bookingApi = {
+  getAll(params?: Record<string, unknown>) {
+    return api.get<PaginatedResponse<Booking>>('/bookings', { params })
+  },
+
+  getByUuid(uuid: string) {
+    return api.get<ApiResponse<Booking>>(`/bookings/${uuid}`)
+  },
+
+  create(data: Record<string, unknown>) {
+    return api.post<ApiResponse<Booking>>('/bookings', data)
+  },
+
+  updateStatus(uuid: string, status: string) {
+    return api.patch(`/bookings/${uuid}/status`, { status })
+  },
+
+  updatePaymentStatus(uuid: string, payment_status: string) {
+    return api.patch(`/bookings/${uuid}/payment-status`, { payment_status })
+  },
+
+  checkin(code: string) {
+    return api.post<ApiResponse<Booking>>('/bookings/checkin', { code })
+  },
+
+  cancel(uuid: string) {
+    return api.post(`/bookings/${uuid}/cancel`)
+  },
+}
+-e 
+
+=== FILE: ./src/features/booking/api/availabilityApi.ts ===
+import api from '@/lib/axios'
+
+export interface OperationalHours {
+  open: string
+  close: string
+}
+
+export interface MonthAvailability {
+  operational_hours: OperationalHours
+  days: Record<string, 'available' | 'partial' | 'full'>
+}
+
+export interface DaySlot {
+  start: string
+  end: string
+  available: boolean
+}
+
+export interface DayActivity {
+  start: string
+  end: string
+  label: string
+}
+
+export interface DayAvailability {
+  operational_hours: OperationalHours
+  occupied_ranges: { start: string; end: string }[]
+  activities: DayActivity[] 
+  slots: DaySlot[]
+}
+
+export const availabilityApi = {
+  getMonth(slug: string, month: string) {
+    return api.get<{ data: MonthAvailability }>(`/labs/${slug}/availability`, {
+      params: { month },
+    })
+  },
+
+  getDay(slug: string, date: string) {
+    return api.get<{ data: DayAvailability }>(`/labs/${slug}/availability/${date}`)
+  },
+}
+-e 
+
+=== FILE: ./src/features/booking/stores/useCartStore.ts ===
+import { defineStore } from 'pinia'
+import { ref, watch } from 'vue'
+
+export interface CartItem {
+  uuid: string
+  name: string
+  brand: string | null
+  rental_price: string
+  quantity: number
+  max_quantity: number
+}
+
+export type CartItemInput = Omit<CartItem, 'quantity'> & { quantity?: number }
+
+const STORAGE_KEY = 'slms_rental_cart'
+
+function loadFromStorage(): Record<string, CartItem[]> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
+    // Migrasi data lama + pastikan quantity/max_quantity selalu number valid
+    for (const slug in parsed) {
+      parsed[slug] = parsed[slug].map((item: any) => {
+        const maxQty = Number(item.max_quantity)
+        const qty = Number(item.quantity)
+        return {
+          ...item,
+          max_quantity: Number.isFinite(maxQty) && maxQty > 0 ? maxQty : 1,
+          quantity: Number.isFinite(qty) && qty > 0 ? qty : 1,
+        }
+      })
+    }
+    return parsed
+  } catch {
+    return {}
+  }
+}
+
+export const useCartStore = defineStore('cart', () => {
+  // Cart terpisah per lab (key = slug lab), karena aset tiap lab beda.
+  const cartByLab = ref<Record<string, CartItem[]>>(loadFromStorage())
+
+  watch(
+    cartByLab,
+    (value) => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
+    },
+    { deep: true },
+  )
+
+  function getItems(slug: string): CartItem[] {
+    return cartByLab.value[slug] ?? []
+  }
+
+  function itemCount(slug: string): number {
+    return getItems(slug).length
+  }
+
+  function totalQuantity(slug: string): number {
+    return getItems(slug).reduce((sum, item) => sum + item.quantity, 0)
+  }
+
+  function isInCart(slug: string, uuid: string): boolean {
+    return getItems(slug).some((item) => item.uuid === uuid)
+  }
+
+  function getQuantity(slug: string, uuid: string): number {
+    return getItems(slug).find((item) => item.uuid === uuid)?.quantity ?? 0
+  }
+
+  function addItem(slug: string, item: CartItemInput) {
+    if (!cartByLab.value[slug]) cartByLab.value[slug] = []
+    if (isInCart(slug, item.uuid)) return
+
+    const maxQty = Number(item.max_quantity)
+    const safeMaxQty = Number.isFinite(maxQty) && maxQty > 0 ? maxQty : 1
+    const qty = Number(item.quantity)
+    const safeQty = Number.isFinite(qty) && qty > 0 ? qty : 1
+
+    cartByLab.value[slug].push({
+      ...item,
+      max_quantity: safeMaxQty,
+      quantity: Math.min(safeQty, safeMaxQty),
+    })
+  }
+
+  function setQuantity(slug: string, uuid: string, quantity: number) {
+    const item = cartByLab.value[slug]?.find((i) => i.uuid === uuid)
+    if (!item) return
+
+    const safeQuantity = Number.isFinite(quantity) ? quantity : 1
+    const clamped = Math.max(1, Math.min(safeQuantity, item.max_quantity))
+    item.quantity = clamped
+  }
+
+  function incrementQuantity(slug: string, uuid: string) {
+    const item = cartByLab.value[slug]?.find((i) => i.uuid === uuid)
+    if (!item) return
+    // Jangan increment kalau sudah mentok stok (misal stok cuma 1)
+    if (item.quantity >= item.max_quantity) return
+    setQuantity(slug, uuid, item.quantity + 1)
+  }
+
+  function decrementQuantity(slug: string, uuid: string) {
+    const item = cartByLab.value[slug]?.find((i) => i.uuid === uuid)
+    if (!item) return
+    setQuantity(slug, uuid, item.quantity - 1)
+  }
+
+  function removeItem(slug: string, uuid: string) {
+    if (!cartByLab.value[slug]) return
+    cartByLab.value[slug] = cartByLab.value[slug].filter((item) => item.uuid !== uuid)
+  }
+
+  function clearCart(slug: string) {
+    cartByLab.value[slug] = []
+  }
+
+  return {
+    cartByLab,
+    getItems,
+    itemCount,
+    totalQuantity,
+    isInCart,
+    getQuantity,
+    addItem,
+    setQuantity,
+    incrementQuantity,
+    decrementQuantity,
+    removeItem,
+    clearCart,
+  }
+})
+-e 
+
+=== FILE: ./src/features/booking/types/index.ts ===
+
+
+-e 
+
+=== FILE: ./src/features/user/api/userApi.ts ===
+import api from '@/lib/axios'
+import type { ApiResponse, PaginatedResponse, User, Lab } from '@/types'
+
+export const userApi = {
+  getAll(params?: Record<string, unknown>) {
+    return api.get<PaginatedResponse<User>>('/users', { params })
+  },
+
+  getByUuid(uuid: string) {
+    return api.get<ApiResponse<User>>(`/users/${uuid}`)
+  },
+
+  create(data: Record<string, unknown>) {
+    return api.post<ApiResponse<User>>('/users', data)
+  },
+
+  update(uuid: string, data: Record<string, unknown>) {
+    return api.put<ApiResponse<User>>(`/users/${uuid}`, data)
+  },
+
+  delete(uuid: string) {
+    return api.delete(`/users/${uuid}`)
+  },
+
+  assignRole(uuid: string, role: string) {
+    return api.post(`/users/${uuid}/assign-role`, { role })
+  },
+
+  assignRfid(uuid: string, rfid_uid: string) {
+    return api.patch(`/users/${uuid}/rfid`, { rfid_uid })
+  },
+
+  lookupByRfid(uid: string) {
+    return api.get(`/users/rfid/${uid}/bookings`)
+  },
+
+  // === Akses lab per user ===
+  getUserLabs(uuid: string) {
+    return api.get<ApiResponse<{ data: Lab[] }>>(`/users/${uuid}/labs`)
+  },
+
+  assignLab(uuid: string, lab_uuid: string, role?: string) {
+    return api.post(`/users/${uuid}/labs`, { lab_uuid, role })
+  },
+
+  revokeLab(uuid: string, lab_uuid: string) {
+    return api.delete(`/users/${uuid}/labs`, { data: { lab_uuid } })
+  },
+
+  getLabCustomers(labId: number, params?: Record<string, unknown>) {
+    return api.get<PaginatedResponse<User>>(`/users/lab/${labId}/customers`, { params })
+  },
+}
+-e 
+
+=== FILE: ./src/features/notification/api/notificationApi.ts ===
+import api from '@/lib/axios'
+import type { ApiResponse, PaginatedResponse, AppNotification } from '@/types'
+
+export const notificationApi = {
+  getAll(params?: Record<string, unknown>) {
+    return api.get<PaginatedResponse<AppNotification>>('/notifications', { params })
+  },
+
+  unreadCount() {
+    return api.get<ApiResponse<{ unread_count: number }>>('/notifications/unread-count')
+  },
+
+  markAsRead(uuid: string) {
+    return api.post(`/notifications/${uuid}/read`)
+  },
+
+  markAllAsRead() {
+    return api.post('/notifications/read-all')
+  },
+}
+-e 
+
+=== FILE: ./src/components/ui/sonner/index.ts ===
+export { default as Toaster } from "./Sonner.vue"
+-e 
+
+=== FILE: ./src/components/ui/button/index.ts ===
+import type { VariantProps } from "class-variance-authority"
+import { cva } from "class-variance-authority"
+
+export { default as Button } from "./Button.vue"
+
+export const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  {
+    variants: {
+      variant: {
+        default:
+          "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive:
+          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+        outline:
+          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost:
+          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        "default": "h-9 px-4 py-2 has-[>svg]:px-3",
+        "sm": "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+        "lg": "h-10 rounded-md px-6 has-[>svg]:px-4",
+        "icon": "size-9",
+        "icon-sm": "size-8",
+        "icon-lg": "size-10",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  },
+)
+export type ButtonVariants = VariantProps<typeof buttonVariants>
+-e 
+
+=== FILE: ./src/components/ui/separator/index.ts ===
+export { default as Separator } from "./Separator.vue"
+-e 
+
+=== FILE: ./src/components/ui/badge/index.ts ===
+import type { VariantProps } from "class-variance-authority"
+import { cva } from "class-variance-authority"
+
+export { default as Badge } from "./Badge.vue"
+
+export const badgeVariants = cva(
+  "inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
+  {
+    variants: {
+      variant: {
+        default:
+          "border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
+        secondary:
+          "border-transparent bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
+        destructive:
+         "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+        outline:
+          "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  },
+)
+export type BadgeVariants = VariantProps<typeof badgeVariants>
+-e 
+
+=== FILE: ./src/components/ui/image-upload/index.ts ===
+export { default as ImageUpload } from './ImageUpload.vue'
+-e 
+
+=== FILE: ./src/components/ui/label/index.ts ===
+export { default as Label } from "./Label.vue"
+-e 
+
+=== FILE: ./src/components/ui/avatar/index.ts ===
+export { default as Avatar } from "./Avatar.vue"
+export { default as AvatarFallback } from "./AvatarFallback.vue"
+export { default as AvatarImage } from "./AvatarImage.vue"
+-e 
+
+=== FILE: ./src/components/ui/card/index.ts ===
+export { default as Card } from "./Card.vue"
+export { default as CardAction } from "./CardAction.vue"
+export { default as CardContent } from "./CardContent.vue"
+export { default as CardDescription } from "./CardDescription.vue"
+export { default as CardFooter } from "./CardFooter.vue"
+export { default as CardHeader } from "./CardHeader.vue"
+export { default as CardTitle } from "./CardTitle.vue"
+-e 
+
+=== FILE: ./src/components/ui/skeleton/index.ts ===
+export { default as Skeleton } from './Skeleton.vue'
+-e 
+
+=== FILE: ./src/components/ui/input/index.ts ===
+export { default as Input } from "./Input.vue"
+-e 
+
+=== FILE: ./src/composables/useAvailabilityColor.ts ===
+export function useAvailabilityColor() {
+  const CELL_COLOR: Record<string, string> = {
+    available: 'bg-green-50 hover:bg-green-100 text-green-700',
+    partial: 'bg-yellow-50 hover:bg-yellow-100 text-yellow-700',
+    full: 'bg-red-50 text-red-400 cursor-not-allowed',
+  }
+
+  function cellColor(status: string | null | undefined) {
+    return CELL_COLOR[status ?? 'available'] ?? CELL_COLOR.available
+  }
+
+  return { cellColor }
+}-e 
+
+=== FILE: ./src/composables/useBranding.ts ===
+import { computed } from 'vue'
+import { useLabStore } from '@/features/lab/stores/useLabStore'
+
+export function useBranding() {
+  const labStore = useLabStore()
+
+  const primaryColor = computed(() => labStore.primaryColor)
+  const secondaryColor = computed(() => labStore.secondaryColor)
+  const labName = computed(() => labStore.activeLab?.name ?? 'SLMS')
+  const labLogo = computed(() => labStore.activeLab?.branding.logo ?? null)
+  const labSlug = computed(() => labStore.activeLab?.slug ?? null)
+
+  /**
+   * Menghasilkan style object untuk dipakai di komponen
+   * yang butuh warna dinamis via inline style.
+   */
+  const brandingStyle = computed(() => ({
+    '--color-primary': primaryColor.value,
+    '--color-secondary': secondaryColor.value,
+  }))
+
+  /**
+   * Class Tailwind tidak bisa dinamis karena Tailwind
+   * scan saat build. Gunakan inline style untuk warna dinamis.
+   */
+  const primaryBgStyle = computed(() => ({
+    backgroundColor: primaryColor.value,
+  }))
+
+  const primaryTextStyle = computed(() => ({
+    color: primaryColor.value,
+  }))
+
+  const primaryBorderStyle = computed(() => ({
+    borderColor: primaryColor.value,
+  }))
+
+  return {
+    primaryColor,
+    secondaryColor,
+    labName,
+    labLogo,
+    labSlug,
+    brandingStyle,
+    primaryBgStyle,
+    primaryTextStyle,
+    primaryBorderStyle,
+  }
+}
+-e 
+
+=== FILE: ./src/composables/useStatusBadge.ts ===
+import type { EnumField } from '@/types'
+
+type StatusInput = EnumField | string | undefined
+
+function getValue(status: StatusInput): string {
+  if (!status) return ''
+  return typeof status === 'string' ? status : status.value
+}
+
+export interface StatusStyle {
+  bg: string
+  text: string
+}
+
+const FALLBACK_STYLE: StatusStyle = { bg: '#f3f4f6', text: '#4b5563' } // gray-100 / gray-600
+
+export function useStatusBadge() {
+  // ==========================================================
+  // Booking status — pending, approved, ongoing, completed, canceled, rejected
+  // ==========================================================
+  const BOOKING_STYLES: Record<string, StatusStyle> = {
+    pending: { bg: '#fef9c3', text: '#a16207' }, // yellow-100 / yellow-700
+    approved: { bg: '#dbeafe', text: '#1d4ed8' }, // blue-100 / blue-700
+    ongoing: { bg: '#f3e8ff', text: '#7e22ce' }, // purple-100 / purple-700
+    completed: { bg: '#dcfce7', text: '#15803d' }, // green-100 / green-700
+    canceled: { bg: '#fee2e2', text: '#b91c1c' }, // red-100 / red-700
+    rejected: { bg: '#fee2e2', text: '#b91c1c' }, // red-100 / red-700
+  }
+
+  // ==========================================================
+  // Payment status — unpaid, paid, refunded
+  // ==========================================================
+  const PAYMENT_STYLES: Record<string, StatusStyle> = {
+    unpaid: { bg: '#fee2e2', text: '#b91c1c' }, // red-100 / red-700
+    pending: { bg: '#fef9c3', text: '#a16207' }, // yellow-100 / yellow-700
+    paid: { bg: '#dcfce7', text: '#15803d' }, // green-100 / green-700
+    refunded: { bg: '#f3f4f6', text: '#4b5563' }, // gray-100 / gray-600
+  }
+
+  // ==========================================================
+  // Photo project status — sinkron dengan PhotoStatusBadge.vue
+  // ==========================================================
+  const PHOTO_STYLES: Record<string, StatusStyle> = {
+    pending: { bg: '#f3f4f6', text: '#4b5563' }, // gray-100 / gray-600
+    preview_uploaded: { bg: '#dbeafe', text: '#1d4ed8' }, // blue-100 / blue-700
+    selection: { bg: '#fef9c3', text: '#a16207' }, // yellow-100 / yellow-700
+    editing: { bg: '#f3e8ff', text: '#7e22ce' }, // purple-100 / purple-700
+    approval: { bg: '#ffedd5', text: '#c2410c' }, // orange-100 / orange-700
+    delivered: { bg: '#dcfce7', text: '#15803d' }, // green-100 / green-700
+    expired: { bg: '#fee2e2', text: '#b91c1c' }, // red-100 / red-700
+  }
+
+  // ==========================================================
+  // Asset status — sinkron dengan AssetListPage.vue
+  // ==========================================================
+  const ASSET_STYLES: Record<string, StatusStyle> = {
+    available: { bg: '#dcfce7', text: '#15803d' }, // green-100 / green-700
+    in_use: { bg: '#dbeafe', text: '#1d4ed8' }, // blue-100 / blue-700
+    maintenance: { bg: '#fef9c3', text: '#a16207' }, // yellow-100 / yellow-700
+    retired: { bg: '#fee2e2', text: '#b91c1c' }, // red-100 / red-700
+  }
+
+  function bookingStatusStyle(status: StatusInput): StatusStyle {
+    return BOOKING_STYLES[getValue(status)] ?? FALLBACK_STYLE
+  }
+
+  function paymentStatusStyle(status: StatusInput): StatusStyle {
+    return PAYMENT_STYLES[getValue(status)] ?? FALLBACK_STYLE
+  }
+
+  function photoStatusStyle(status: StatusInput): StatusStyle {
+    return PHOTO_STYLES[getValue(status)] ?? FALLBACK_STYLE
+  }
+
+  function assetStatusStyle(status: StatusInput): StatusStyle {
+    return ASSET_STYLES[getValue(status)] ?? FALLBACK_STYLE
+  }
+
+  return {
+    bookingStatusStyle,
+    paymentStatusStyle,
+    photoStatusStyle,
+    assetStatusStyle,
+  }
+}
+-e 
+
+=== FILE: ./src/composables/useBookingFlowMode.ts ===
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+/**
+ * Satu sumber kebenaran untuk membedakan booking flow customer vs staff.
+ * Staff masuk lewat query `?mode=staff` (di-set sekali dari tombol
+ * "Buat Booking Manual" di LabDashboardPage), lalu di-forward otomatis
+ * ke setiap navigasi berikutnya dalam flow (catalog -> cart -> form),
+ * supaya admin tidak keluar context sampai booking selesai dibuat.
+ */
+export function useBookingFlowMode() {
+  const route = useRoute()
+  const router = useRouter()
+
+  const isStaffMode = computed(() => route.query.mode === 'staff')
+
+  // Bungkus query navigasi berikutnya, sisipkan mode=staff kalau lagi staff mode
+  function withMode(query: Record<string, any> = {}) {
+    return isStaffMode.value ? { ...query, mode: 'staff' } : query
+  }
+
+  function goBack(labSlug: string) {
+    if (isStaffMode.value) {
+      router.push({ name: 'lab-bookings', params: { labSlug } })
+    } else {
+      router.back()
+    }
+  }
+
+  return { isStaffMode, withMode, goBack }
+}
+-e 
+
+=== FILE: ./src/composables/useKioskSession.ts ===
+import { useAuthStore } from '@/features/auth/stores/useAuthStore'
+import { useRouter } from 'vue-router'
+
+const KIOSK_FLAG_KEY = 'kiosk_session_lab_slug'
+const IDLE_TIMEOUT_MS = 3 * 60 * 1000 // 3 menit tanpa aktivitas -> auto logout
+
+let idleTimer: ReturnType<typeof setTimeout> | null = null
+let listenersAttached = false
+
+/**
+ * Dipanggil sekali begitu tap kartu berhasil di RfidKioskPage,
+ * menandai sesi ini sebagai sesi kios (bukan login manual biasa).
+ */
+export function markKioskSession(labSlug: string) {
+  sessionStorage.setItem(KIOSK_FLAG_KEY, labSlug)
+}
+
+export function isKioskSession(): string | null {
+  return sessionStorage.getItem(KIOSK_FLAG_KEY)
+}
+
+export function clearKioskSession() {
+  sessionStorage.removeItem(KIOSK_FLAG_KEY)
+}
+
+/**
+ * Dipasang sekali di App.vue. Memantau aktivitas user (klik, ketik, sentuh)
+ * di seluruh aplikasi. Kalau sesi ini ditandai sebagai kios DAN idle melebihi
+ * batas waktu, otomatis logout dan kembali ke halaman tap kartu.
+ */
+export function useKioskIdleWatcher() {
+  const authStore = useAuthStore()
+  const router = useRouter()
+
+  function resetTimer() {
+    const labSlug = isKioskSession()
+    if (!labSlug) return // bukan sesi kios, tidak perlu auto-logout
+
+    if (idleTimer) clearTimeout(idleTimer)
+    idleTimer = setTimeout(async () => {
+      authStore.user = null
+      authStore.token = null
+      localStorage.removeItem('token')
+      clearKioskSession()
+      router.push({ name: 'lab-rfid-kiosk', params: { slug: labSlug } })
+    }, IDLE_TIMEOUT_MS)
+  }
+
+  function attachListeners() {
+    if (listenersAttached) return
+    listenersAttached = true
+    ;['click', 'keydown', 'touchstart', 'mousemove'].forEach((event) => {
+      window.addEventListener(event, resetTimer, { passive: true })
+    })
+    resetTimer()
+  }
+
+  attachListeners()
+}
+-e 
+
+=== FILE: ./src/composables/useNotifications.ts ===
+import { ref, computed } from 'vue'
+import { toast } from 'vue-sonner'
+import { useAuthStore } from '@/features/auth/stores/useAuthStore'
+import { useLabStore } from '@/features/lab/stores/useLabStore'
+import { notificationApi } from '@/features/notification/api/notificationApi'
+import { initEcho, disconnectEcho } from '@/lib/echo'
+import type { AppNotification } from '@/types'
+
+const notifications = ref<AppNotification[]>([])
+const unreadCount = ref(0)
+const loading = ref(false)
+let subscribed = false
+
+const EVENT_LABELS: Record<string, string> = {
+  'booking.created': 'Booking baru masuk',
+  'booking.status-changed': 'Status booking diperbarui',
+  'booking.checked-in': 'Booking di-checkin',
+  'photo.preview-uploaded': 'Foto preview sudah siap',
+  'photo.selection-submitted': 'Customer sudah pilih foto',
+  'photo.approval-requested': 'Hasil edit siap direview',
+  'photo.delivered': 'Foto siap didownload',
+}
+
+export function useNotifications() {
+  const authStore = useAuthStore()
+  const labStore = useLabStore()
+
+  const hasUnread = computed(() => unreadCount.value > 0)
+
+  async function fetchNotifications() {
+    loading.value = true
+    try {
+      const res = await notificationApi.getAll({ per_page: 20 })
+      notifications.value = res.data.data.data
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchUnreadCount() {
+    const res = await notificationApi.unreadCount()
+    unreadCount.value = res.data.data.unread_count
+  }
+
+  async function markAsRead(uuid: string) {
+    await notificationApi.markAsRead(uuid)
+    const notif = notifications.value.find((n) => n.uuid === uuid)
+    if (notif) notif.read_at = new Date().toISOString()
+    unreadCount.value = Math.max(0, unreadCount.value - 1)
+  }
+
+  async function markAllAsRead() {
+    await notificationApi.markAllAsRead()
+    notifications.value.forEach((n) => (n.read_at = n.read_at ?? new Date().toISOString()))
+    unreadCount.value = 0
+  }
+
+  function handleIncoming(eventName: string, payload: Record<string, unknown>) {
+    unreadCount.value += 1
+    toast.info(EVENT_LABELS[eventName] ?? 'Notifikasi baru', {
+      description:
+        (payload.booking_code as string) ?? (payload.project_uuid as string) ?? undefined,
+    })
+    // Refresh list biar konsisten dengan DB (uuid notif dibuat di backend, bukan di payload broadcast)
+    fetchNotifications()
+  }
+
+  /**
+   * Subscribe ke channel personal user + channel lab aktif (kalau staff).
+   * Aman dipanggil berkali-kali — hanya subscribe sekali per session.
+   */
+  function subscribeRealtime() {
+    if (subscribed || !authStore.token || !authStore.user) return
+    subscribed = true
+
+    const echo = initEcho(authStore.token)
+
+    // Channel personal — semua role (customer & staff) dengar ini
+    const userChannel = echo.private(`App.Models.User.${authStore.user.id}`)
+    Object.keys(EVENT_LABELS).forEach((event) => {
+      userChannel.listen(`.${event}`, (payload: Record<string, unknown>) =>
+        handleIncoming(event, payload),
+      )
+    })
+
+    // Channel per-lab — hanya relevan untuk staff yang punya activeLab
+    if (labStore.activeLab?.id && !authStore.hasRole('customer')) {
+      const labChannel = echo.private(`Lab.${labStore.activeLab.id}`)
+      Object.keys(EVENT_LABELS).forEach((event) => {
+        labChannel.listen(`.${event}`, (payload: Record<string, unknown>) =>
+          handleIncoming(event, payload),
+        )
+      })
+    }
+  }
+
+  function unsubscribeRealtime() {
+    disconnectEcho()
+    subscribed = false
+  }
+
+  return {
+    notifications,
+    unreadCount,
+    hasUnread,
+    loading,
+    fetchNotifications,
+    fetchUnreadCount,
+    markAsRead,
+    markAllAsRead,
+    subscribeRealtime,
+    unsubscribeRealtime,
+  }
+}
+-e 
+
+=== FILE: ./src/composables/useAuthLayout.ts ===
+import {
+  inject,
+  watchEffect,
+  type InjectionKey,
+  type MaybeRefOrGetter,
+  type Ref,
+  toValue,
+} from 'vue'
+
+export interface AuthLayoutContext {
+  title: Ref<string | undefined>
+  subtitle: Ref<string | undefined>
+  hideHeader: Ref<boolean>
+}
+
+export const authLayoutKey: InjectionKey<AuthLayoutContext> = Symbol('authLayout')
+
+interface UseAuthLayoutOptions {
+  title?: MaybeRefOrGetter<string | undefined>
+  subtitle?: MaybeRefOrGetter<string | undefined>
+  hideHeader?: MaybeRefOrGetter<boolean>
+}
+
+/**
+ * Dipanggil dari setiap halaman auth (Login, Register, dst) untuk
+ * mengisi title/subtitle/hideHeader pada <AuthLayout> yang mem-parent-i
+ * halaman ini lewat nested route. Terima ref/getter supaya reaktif
+ * (misal RegisterPage bisa sembunyikan header setelah submit sukses).
+ */
+export function useAuthLayout(options: UseAuthLayoutOptions) {
+  const layout = inject(authLayoutKey)
+
+  if (!layout) {
+    throw new Error(
+      'useAuthLayout() harus dipanggil di dalam halaman yang di-render oleh <AuthLayout>.',
+    )
+  }
+
+  watchEffect(() => {
+    layout.title.value = toValue(options.title)
+    layout.subtitle.value = toValue(options.subtitle)
+    layout.hideHeader.value = toValue(options.hideHeader) ?? false
+  })
+}
+-e 
+
+=== FILE: ./src/router/index.ts ===
+import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/features/auth/stores/useAuthStore'
+import { useLabStore } from '@/features/lab/stores/useLabStore'
+import CustomerLayout from '@/layouts/CustomerLayout.vue'
+
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes: [
+    // =========================================================
+    // PUBLIC ROUTES
+    // =========================================================
+    {
+      path: '/',
+      name: 'home',
+      component: () => import('@/features/landing/pages/HomePage.vue'),
+    },
+    {
+      path: '/lab/:slug/kiosk',
+      name: 'lab-rfid-kiosk',
+      component: () => import('@/features/user/pages/RfidKioskPage.vue'),
+    },
+    {
+      path: '/lab/:slug',
+      name: 'lab-landing',
+      component: () => import('@/features/landing/pages/LabLandingPage.vue'),
+    },
+
+    // =========================================================
+    // CUSTOMER ROUTES (Using Customer Layout)
+    // =========================================================
+    {
+      path: '/',
+      component: CustomerLayout,
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: '/home',
+          name: 'user-dashboard',
+          component: () => import('@/features/dashboard/pages/UserDashboardPage.vue'),
+        },
+        {
+          path: '/profile',
+          name: 'profile',
+          component: () => import('@/features/auth/pages/ProfilePage.vue'),
+        },
+        {
+          path: '/booking',
+          name: 'booking',
+          component: () => import('@/features/booking/pages/BookingPage.vue'),
+        },
+        {
+          path: '/my-bookings',
+          name: 'my-bookings',
+          component: () => import('@/features/booking/pages/MyBookingsPage.vue'),
+        },
+        {
+          path: '/my-bookings/photo/:uuid/select',
+          name: 'photo-selection',
+          component: () => import('@/features/photo/pages/PhotoSelectionPage.vue'),
+        },
+        {
+          path: '/my-bookings/photo/:uuid/delivery',
+          name: 'photo-delivery',
+          component: () => import('@/features/photo/pages/PhotoDeliveryPage.vue'),
+        },
+      ],
+    },
+
+    // =========================================================
+    // STANDALONE CUSTOMER ROUTES (Auth Required, No Layout)
+    // =========================================================
+    {
+      path: '/booking/:slug',
+      name: 'booking-lab',
+      component: () => import('@/features/booking/pages/BookingLabPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/booking/:slug/form',
+      name: 'booking-form',
+      component: () => import('@/features/booking/pages/BookingFormPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/booking/:slug/success/:code',
+      name: 'booking-success',
+      component: () => import('@/features/booking/pages/BookingSuccessPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/booking/:slug/catalog',
+      name: 'asset-catalog',
+      component: () => import('@/features/booking/pages/AssetCatalogPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/booking/:slug/cart',
+      name: 'booking-cart',
+      component: () => import('@/features/booking/pages/CartPage.vue'),
+      meta: { requiresAuth: true },
+    },
+
+    // =========================================================
+    // AUTH ROUTES
+    // =========================================================
+    {
+      path: '/login',
+      name: 'login',
+      component: () => import('@/features/auth/pages/LoginPage.vue'),
+      meta: { requiresGuest: true },
+    },
+    {
+      path: '/register',
+      name: 'register',
+      component: () => import('@/features/auth/pages/RegisterPage.vue'),
+      meta: { requiresGuest: true },
+    },
+    {
+      path: '/email-verified',
+      name: 'email-verified',
+      component: () => import('@/features/auth/pages/EmailVerifiedPage.vue'),
+    },
+    {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('@/features/auth/pages/ForgotPasswordPage.vue'),
+      meta: { requiresGuest: true },
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('@/features/auth/pages/ResetPasswordPage.vue'),
+      meta: { requiresGuest: true },
+    },
+
+    // =========================================================
+    // DASHBOARD — Lab Selector
+    // =========================================================
+    {
+      path: '/dashboard',
+      name: 'dashboard',
+      component: () => import('@/features/dashboard/pages/LabSelectorPage.vue'),
+      meta: { requiresAuth: true, requiresStaff: true },
+    },
+
+    // =========================================================
+    // SUPER ADMIN — Global Dashboard
+    // =========================================================
+    {
+      path: '/admin',
+      component: () => import('@/layouts/AdminLayout.vue'),
+      meta: { requiresAuth: true, requiresRole: 'super_admin' },
+      children: [
+        {
+          path: '',
+          name: 'admin-dashboard',
+          component: () => import('@/features/admin/pages/AdminDashboardPage.vue'),
+        },
+        {
+          path: 'labs',
+          name: 'admin-labs',
+          component: () => import('@/features/lab/pages/LabListPage.vue'),
+        },
+        {
+          path: 'users',
+          name: 'admin-users',
+          component: () => import('@/features/user/pages/UserListPage.vue'),
+        },
+      ],
+    },
+
+    // =========================================================
+    // LAB DASHBOARD — Per Lab
+    // =========================================================
+    {
+      path: '/dashboard/lab/:labSlug',
+      component: () => import('@/layouts/LabDashboardLayout.vue'),
+      meta: { requiresAuth: true, requiresStaff: true, requiresLabAccess: true },
+      children: [
+        {
+          path: '',
+          name: 'lab-dashboard',
+          component: () => import('@/features/dashboard/pages/LabDashboardPage.vue'),
+        },
+        {
+          path: 'bookings',
+          name: 'lab-bookings',
+          component: () => import('@/features/booking/pages/BookingListPage.vue'),
+        },
+        {
+          path: 'assets',
+          name: 'lab-assets',
+          component: () => import('@/features/asset/pages/AssetListPage.vue'),
+        },
+        {
+          path: 'users',
+          name: 'lab-users',
+          component: () => import('@/features/user/pages/UserListPage.vue'),
+        },
+        {
+          path: 'services',
+          name: 'lab-services',
+          component: () => import('@/features/labservice/pages/ServiceListPage.vue'),
+        },
+        {
+          path: 'packages',
+          name: 'lab-packages',
+          component: () => import('@/features/labservice/pages/PackageListPage.vue'),
+        },
+        {
+          path: 'scan',
+          name: 'lab-scan',
+          component: () => import('@/features/booking/pages/QRScanPage.vue'),
+        },
+        {
+          path: 'photo-projects',
+          name: 'lab-photo-projects',
+          component: () => import('@/features/photo/pages/PhotoProjectListPage.vue'),
+        },
+        {
+          path: 'photo-projects/:uuid',
+          name: 'lab-photo-project-detail',
+          component: () => import('@/features/photo/pages/PhotoProjectDetailPage.vue'),
+        },
+        {
+          path: 'photographers',
+          name: 'lab-photographers',
+          component: () => import('@/features/portfolio/pages/PhotographerListPage.vue'),
+        },
+        {
+          path: 'portfolio',
+          name: 'lab-portfolio',
+          component: () => import('@/features/portfolio/pages/PortfolioListPage.vue'),
+        },
+        {
+          path: 'rfid-checkin',
+          name: 'lab-rfid-checkin',
+          component: () => import('@/features/user/pages/RfidLookupPage.vue'),
+        },
+        {
+          path: 'settings',
+          name: 'lab-settings',
+          component: () => import('@/features/lab/pages/LabSettingsPage.vue'),
+        },
+      ],
+    },
+
+    // =========================================================
+    // 404 CATCH ALL
+    // =========================================================
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('@/features/dashboard/pages/NotFoundPage.vue'),
+    },
+  ],
+})
+
+// =========================================================
+// Navigation Guard
+// =========================================================
+router.beforeEach(async (to) => {
+  const authStore = useAuthStore()
+
+  // Ambil user data jika ada token tapi belum ada data user
+  if (authStore.token && !authStore.user) {
+    await authStore.fetchUser()
+  }
+
+  // Cek Authentication
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    return { name: 'login' }
+  }
+
+  // Redirect Guest yang sudah login
+  if (to.meta.requiresGuest && authStore.isAuthenticated) {
+    if (authStore.hasRole('super_admin')) {
+      return { name: 'admin-dashboard' }
+    }
+    if (authStore.hasRole('customer')) {
+      return { name: 'user-dashboard' }
+    }
+    return { name: 'dashboard' }
+  }
+
+  // Pengecekan Role Super Admin
+  if (to.meta.requiresRole === 'super_admin') {
+    if (!authStore.hasRole('super_admin')) {
+      return { name: 'dashboard' }
+    }
+  }
+
+  // Pengecekan Staff untuk /dashboard dan Lab Admin
+  if (to.meta.requiresStaff) {
+    if (!authStore.hasRole('lab_admin') && !authStore.hasRole('super_admin')) {
+      return { name: 'user-dashboard' }
+    }
+  }
+
+  // Pengecekan Akses Lab Spesifik
+  if (to.meta.requiresLabAccess) {
+    const labStore = useLabStore()
+    if (!authStore.hasRole('super_admin')) {
+      if (!labStore.managedLabs.length) {
+        await labStore.fetchManagedLabs()
+      }
+      const allowed = labStore.managedLabs.some((l) => l.slug === to.params.labSlug)
+      if (!allowed) {
+        return { name: 'dashboard' }
+      }
+    }
+  }
+})
+
+export default router
+-e 
+
+=== FILE: ./src/lib/utils.ts ===
+import type { ClassValue } from "clsx"
+import { clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+-e 
+
+=== FILE: ./src/lib/echo.ts ===
+import Echo from 'laravel-echo'
+import Pusher from 'pusher-js'
+
+declare global {
+  interface Window {
+    Pusher: typeof Pusher
+    Echo: Echo<'reverb'>
+  }
+}
+
+window.Pusher = Pusher
+
+let echoInstance: Echo<'reverb'> | null = null
+
+/**
+ * Inisialisasi (atau reuse) koneksi Echo ke Reverb.
+ * Dipanggil setelah user login / token tersedia, karena
+ * otorisasi private channel butuh Authorization header.
+ */
+export function initEcho(token: string): Echo<'reverb'> {
+  if (echoInstance) {
+    return echoInstance
+  }
+
+  echoInstance = new Echo({
+    broadcaster: 'reverb',
+    key: import.meta.env.VITE_REVERB_APP_KEY,
+    wsHost: import.meta.env.VITE_REVERB_HOST,
+    wsPort: 80,
+    wssPort: 443,
+    forceTLS: false,
+    enabledTransports: ['ws', 'wss'],
+    authEndpoint: `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost/api/v1'}/broadcasting/auth`,
+    auth: {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+      },
+    },
+  })
+
+  window.Echo = echoInstance
+
+  return echoInstance
+}
+
+export function disconnectEcho(): void {
+  echoInstance?.disconnect()
+  echoInstance = null
+}
+
+export function getEcho(): Echo<'reverb'> | null {
+  return echoInstance
+}
+-e 
+
+=== FILE: ./src/lib/axios.ts ===
+import axios from 'axios'
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost/api/v1',
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
+})
+
+// Request interceptor — tambahkan token ke setiap request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const hadToken = !!localStorage.getItem('token')
+
+    if (error.response?.status === 401 && hadToken) {
+  
+      localStorage.removeItem('token')
+      window.location.href = '/login'
+    }
+   
+    return Promise.reject(error)
+  },
+)
+
+export default api
+-e 
+
+=== FILE: ./src/types/index.ts ===
+// =============================================================================
+// API Response Types
+// =============================================================================
+
+export interface ApiResponse<T> {
+  success: boolean
+  message: string
+  data: T
+}
+
+export interface PaginatedResponse<T> {
+  success: boolean
+  message: string
+  data: {
+    data: T[]
+    meta: PaginationMeta
+    links: PaginationLinks
+  }
+}
+
+export interface PaginationMeta {
+  current_page: number
+  last_page: number
+  per_page: number
+  total: number
+  from: number
+  to: number
+}
+
+export interface PaginationLinks {
+  first: string | null
+  last: string | null
+  prev: string | null
+  next: string | null
+}
+
+// =============================================================================
+// Auth Types
+// =============================================================================
+
+export interface User {
+  id: number
+  uuid: string
+  name: string
+  email: string
+  rfid_uid: string | null
+  phone: string | null
+  avatar: string | null
+  is_active: boolean
+  roles: string[]
+  permissions: string[]
+  created_at: string
+  nim: string | null
+}
+
+export interface AuthResponse {
+  user: User
+  token: string
+}
+
+export interface LoginPayload {
+  email: string
+  password: string
+}
+
+export interface RegisterPayload {
+  name: string
+  email: string
+  password: string
+  password_confirmation: string
+  phone?: string
+}
+
+// =============================================================================
+// Lab Types
+// =============================================================================
+
+export interface Lab {
+  id: number
+  uuid: string
+  name: string
+  slug: string
+  description: string | null
+  is_active: boolean
+  is_photography_lab: boolean
+  branding: LabBranding
+  contact: LabContact | null
+  settings: Record<string, unknown> | null
+  lab_rental_rates: LabRentalRates | null
+  created_at: string
+}
+
+export interface LabRentalRates {
+  student_price_per_hour: number
+  public_price_per_hour: number
+}
+
+export interface LabBranding {
+  primary_color: string | null
+  secondary_color: string | null
+  logo: string | null
+  hero_image: string | null
+  favicon: string | null
+}
+
+export interface LabContact {
+  email: string | null
+  phone: string | null
+  address: string | null
+}
+
+export interface LabBranding {
+  primary_color: string | null
+  secondary_color: string | null
+  logo: string | null
+  hero_image: string | null
+  favicon: string | null
+}
+
+export interface LabContact {
+  email: string | null
+  phone: string | null
+  address: string | null
+}
+
+// =============================================================================
+// Asset Types
+// =============================================================================
+
+export interface Asset {
+  uuid: string
+  lab_id: string
+  name: string
+  code: string
+  category: EnumField
+  brand: string | null
+  model: string | null
+  description: string | null
+  serial_number: string | null
+  status: EnumField
+  specifications: Record<string, unknown> | null
+  image: string | null
+  is_rentable: boolean
+  rental_price: string | null
+  purchase_price: string | null
+  purchase_date: string | null
+  quantity: number
+  created_at: string
+}
+
+// =============================================================================
+// Shared Types
+// =============================================================================
+
+export interface EnumField {
+  value: string
+  label: string
+}
+
+export interface SelectOption {
+  value: string
+  label: string
+}
+
+export interface Booking {
+  uuid: string
+  booking_code: string
+  lab_id: string
+  user: {
+    uuid: string
+    name: string
+    email: string
+  }
+  status: EnumField
+  payment_status: EnumField
+  checked_in_at: string | null
+  photo_project: {
+    uuid: string
+    status: EnumField
+  } | null
+  start_time: string
+  end_time: string
+  total_price: string
+  notes: string | null
+  created_at: string
+}
+
+export interface AppNotification {
+  uuid: string
+  type: string
+  title: string
+  body: string | null
+  data: Record<string, unknown> | null
+  read_at: string | null
+  created_at: string
+}
+
+export interface Service {
+  uuid: string
+  lab_id: number
+  name: string
+  type: EnumField
+  description: string | null
+  pricing_type: EnumField
+  price: string
+  duration: number | null
+  min_quantity: number
+  max_quantity: number | null
+  includes: string[] | null
+  image: string | null
+  is_active: boolean
+  created_at: string
+}
+-e 
+
+=== FILE: ./src/main.ts ===
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import { VueQueryPlugin } from '@tanstack/vue-query'
+
+import App from './App.vue'
+import router from './router'
+import './assets/main.css'
+import 'vue-sonner/style.css' 
+
+const app = createApp(App)
+
+app.use(createPinia())
+app.use(router)
+app.use(VueQueryPlugin, {
+  queryClientConfig: {
+    defaultOptions: {
+      queries: {
+        retry: 1,
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+      },
+    },
+  },
+})
+
+app.mount('#app')
+-e 
+
+=== FILE: ./vite.config.ts ===
+import { fileURLToPath, URL } from 'node:url'
+
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import vueDevTools from 'vite-plugin-vue-devtools'
+import tailwindcss from '@tailwindcss/vite'
+
+// https://vite.dev/config/
+export default defineConfig({
+  server: {
+    host: 'localhost',
+    port: 5173,
+    allowedHosts: ['.ngrok-free.dev', '.ngrok-free.app'],
+  },
+
+  plugins: [vue(), vueDevTools(), tailwindcss()],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+}) 
+-e 
+
+=== FILE: ./eslint.config.ts ===
+import { globalIgnores } from 'eslint/config'
+import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript'
+import pluginVue from 'eslint-plugin-vue'
+import pluginVitest from '@vitest/eslint-plugin'
+import pluginOxlint from 'eslint-plugin-oxlint'
+import skipFormatting from 'eslint-config-prettier/flat'
+
+// To allow more languages other than `ts` in `.vue` files, uncomment the following lines:
+// import { configureVueProject } from '@vue/eslint-config-typescript'
+// configureVueProject({ scriptLangs: ['ts', 'tsx'] })
+// More info at https://github.com/vuejs/eslint-config-typescript/#advanced-setup
+
+export default defineConfigWithVueTs(
+  {
+    name: 'app/files-to-lint',
+    files: ['**/*.{vue,ts,mts,tsx}'],
+  },
+
+  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**']),
+
+  ...pluginVue.configs['flat/essential'],
+  vueTsConfigs.recommended,
+
+  {
+    ...pluginVitest.configs.recommended,
+    files: ['src/**/__tests__/*'],
+  },
+
+  ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),
+
+  skipFormatting,
+)
+-e 
+
+=== FILE: ./vitest.config.ts ===
+import { fileURLToPath } from 'node:url'
+import { mergeConfig, defineConfig, configDefaults } from 'vitest/config'
+import viteConfig from './vite.config'
+
+export default mergeConfig(
+  viteConfig,
+  defineConfig({
+    test: {
+      environment: 'jsdom',
+      exclude: [...configDefaults.exclude, 'e2e/**'],
+      root: fileURLToPath(new URL('./', import.meta.url)),
+    },
+  }),
+)
+-e 
+

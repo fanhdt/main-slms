@@ -553,6 +553,74 @@ const testimonials = [
     </section>
 
     <!-- ================================================================
+     CARA PEMESANAN
+================================================================ -->
+<section class="py-20 sm:py-28 bg-white">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-14">
+      <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
+        Cara Pemesanan
+      </h2>
+      <p class="text-gray-500 mt-3 text-base sm:text-lg">
+        Booking lab hanya dalam 4 langkah mudah
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+      <div
+        v-for="(step, idx) in [
+          {
+            icon: ClipboardList,
+            title: 'Pilih Lab & Layanan',
+            desc: 'Jelajahi laboratorium dan pilih layanan yang kamu butuhkan.',
+          },
+          {
+            icon: CalendarDays,
+            title: 'Pilih Jadwal',
+            desc: 'Cek ketersediaan dan pilih tanggal serta jam yang kosong.',
+          },
+          {
+            icon: CreditCard,
+            title: 'Booking & Bayar',
+            desc: 'Lengkapi detail booking dan selesaikan pembayaran online.',
+          },
+          {
+            icon: CheckCircle,
+            title: 'Datang & Gunakan',
+            desc: 'Tunjukkan kode booking di lokasi dan mulai gunakan lab.',
+          },
+        ]"
+        :key="idx"
+        class="relative bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+      >
+        <span
+          class="absolute top-4 right-4 text-4xl font-black text-blue-600/[0.08] select-none"
+        >
+          {{ idx + 1 }}
+        </span>
+
+        <div class="size-11 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-4">
+          <component :is="step.icon" class="size-5 text-blue-600" />
+        </div>
+
+        <h3 class="font-semibold text-gray-900 tracking-tight">{{ step.title }}</h3>
+        <p class="text-sm text-gray-500 mt-1.5 leading-relaxed">{{ step.desc }}</p>
+      </div>
+    </div>
+
+    <div class="text-center mt-10">
+      
+      <a href="#layanan"
+        class="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl font-semibold text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/20 hover:shadow-blue-500/30 hover:-translate-y-0.5 transition-all duration-300"
+      >
+        Lihat Laboratorium
+        <ArrowRight class="size-4" />
+      </a>
+    </div>
+  </div>
+</section>
+
+    <!-- ================================================================
          FOOTER
     ================================================================ -->
     <footer class="bg-[#0f1826] pt-16 pb-8">
