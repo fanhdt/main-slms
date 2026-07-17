@@ -21,6 +21,10 @@ import {
   ArrowRight,
   Sparkles,
   CheckCircle2,
+  CalendarDays,
+  ClipboardList,
+  CreditCard,
+  CheckCircle,
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -313,8 +317,34 @@ function formatSelectedDate(dateStr: string) {
             </div>
 
             <!-- Right column: hero illustration -->
+            <!-- Right column: hero illustration -->
             <div class="relative hidden lg:flex items-center justify-center">
+              <!-- Foto lab (kalau ada branding hero_image/logo) -->
               <div
+                v-if="lab.branding?.hero_image || lab.branding?.logo"
+                class="relative size-80 xl:size-96 rounded-3xl overflow-hidden border border-white/10 shadow-2xl shadow-black/30"
+              >
+                <img
+                  :src="lab.branding.hero_image || lab.branding.logo"
+                  :alt="lab.name"
+                  class="w-full h-full object-cover"
+                />
+                <!-- subtle overlay biar konsisten sama gaya glass di section lain -->
+                <div
+                  class="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"
+                />
+
+                <div
+                  class="absolute -top-4 -right-4 size-20 rounded-2xl border border-white/10 backdrop-blur-md flex items-center justify-center shadow-lg"
+                  :style="{ backgroundColor: lab.branding.secondary_color + '30' }"
+                >
+                  <Images class="size-8 text-white/70" stroke-width="1.5" />
+                </div>
+              </div>
+
+              <!-- Fallback ilustrasi ikon (kalau lab belum punya foto) -->
+              <div
+                v-else
                 class="relative size-80 xl:size-96 rounded-3xl border border-white/10 backdrop-blur-md flex items-center justify-center shadow-2xl shadow-black/30"
                 :style="{ backgroundColor: 'rgba(255,255,255,0.06)' }"
               >
@@ -593,77 +623,77 @@ function formatSelectedDate(dateStr: string) {
       <!-- ================================================================
      CARA PEMESANAN
 ================================================================ -->
-<section id="cara-pesan" class="py-16 sm:py-20 bg-gray-50">
-  <div class="max-w-6xl mx-auto px-6">
-    <div class="text-center mb-12">
-      <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
-        Cara Pemesanan
-      </h2>
-      <p class="text-gray-500 mt-2">Booking lab hanya dalam 4 langkah mudah</p>
-    </div>
+      <section id="cara-pesan" class="py-16 sm:py-20 bg-gray-50">
+        <div class="max-w-6xl mx-auto px-6">
+          <div class="text-center mb-12">
+            <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+              Cara Pemesanan
+            </h2>
+            <p class="text-gray-500 mt-2">Booking lab hanya dalam 4 langkah mudah</p>
+          </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div
-        v-for="(step, idx) in [
-          {
-            icon: ClipboardList,
-            title: 'Pilih Layanan',
-            desc: 'Pilih layanan atau paket yang sesuai kebutuhanmu.',
-          },
-          {
-            icon: CalendarDays,
-            title: 'Pilih Jadwal',
-            desc: 'Cek ketersediaan lab dan pilih tanggal serta jam yang kosong.',
-          },
-          {
-            icon: CreditCard,
-            title: 'Booking & Bayar',
-            desc: 'Isi detail booking dan selesaikan pembayaran secara online.',
-          },
-          {
-            icon: CheckCircle,
-            title: 'Datang & Gunakan',
-            desc: 'Tunjukkan kode booking/QR di lokasi dan mulai gunakan lab.',
-          },
-        ]"
-        :key="idx"
-        class="relative bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-      >
-        <span
-          class="absolute top-4 right-4 text-4xl font-black opacity-[0.08] select-none"
-          :style="{ color: lab.branding.primary_color ?? '#1a1a2e' }"
-        >
-          {{ idx + 1 }}
-        </span>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div
+              v-for="(step, idx) in [
+                {
+                  icon: ClipboardList,
+                  title: 'Pilih Layanan',
+                  desc: 'Pilih layanan atau paket yang sesuai kebutuhanmu.',
+                },
+                {
+                  icon: CalendarDays,
+                  title: 'Pilih Jadwal',
+                  desc: 'Cek ketersediaan lab dan pilih tanggal serta jam yang kosong.',
+                },
+                {
+                  icon: CreditCard,
+                  title: 'Booking & Bayar',
+                  desc: 'Isi detail booking dan selesaikan pembayaran secara online.',
+                },
+                {
+                  icon: CheckCircle,
+                  title: 'Datang & Gunakan',
+                  desc: 'Tunjukkan kode booking/QR di lokasi dan mulai gunakan lab.',
+                },
+              ]"
+              :key="idx"
+              class="relative bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+            >
+              <span
+                class="absolute top-4 right-4 text-4xl font-black opacity-[0.08] select-none"
+                :style="{ color: lab.branding.primary_color ?? '#1a1a2e' }"
+              >
+                {{ idx + 1 }}
+              </span>
 
-        <div
-          class="size-11 rounded-2xl flex items-center justify-center mb-4"
-          :style="{ backgroundColor: (lab.branding.secondary_color ?? '#e94560') + '15' }"
-        >
-          <component
-            :is="step.icon"
-            class="size-5"
-            :style="{ color: lab.branding.secondary_color ?? '#e94560' }"
-          />
+              <div
+                class="size-11 rounded-2xl flex items-center justify-center mb-4"
+                :style="{ backgroundColor: (lab.branding.secondary_color ?? '#e94560') + '15' }"
+              >
+                <component
+                  :is="step.icon"
+                  class="size-5"
+                  :style="{ color: lab.branding.secondary_color ?? '#e94560' }"
+                />
+              </div>
+
+              <h3 class="font-semibold text-gray-900 tracking-tight">{{ step.title }}</h3>
+              <p class="text-sm text-gray-500 mt-1.5 leading-relaxed">{{ step.desc }}</p>
+            </div>
+          </div>
+
+          <div class="text-center mt-10">
+            <button
+              @click="handleBooking"
+              class="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-white shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
+              :style="{ backgroundColor: lab.branding.secondary_color ?? '#e94560' }"
+            >
+              Mulai Booking
+              <ArrowRight class="size-4" />
+            </button>
+          </div>
         </div>
-
-        <h3 class="font-semibold text-gray-900 tracking-tight">{{ step.title }}</h3>
-        <p class="text-sm text-gray-500 mt-1.5 leading-relaxed">{{ step.desc }}</p>
-      </div>
-    </div>
-
-    <div class="text-center mt-10">
-      <button
-        @click="handleBooking"
-        class="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-white shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
-        :style="{ backgroundColor: lab.branding.secondary_color ?? '#e94560' }"
-      >
-        Mulai Booking
-        <ArrowRight class="size-4" />
-      </button>
-    </div>
-  </div>
-</section>
+      </section>
 
       <!-- ================================================================
            CONTACT SECTION
