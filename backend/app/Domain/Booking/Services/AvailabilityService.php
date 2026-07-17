@@ -17,10 +17,6 @@ class AvailabilityService extends BaseService
     private const DEFAULT_OPEN = '07:00';
     private const DEFAULT_CLOSE = '16:00';
 
-    /**
-     * Status booking yang dianggap "menempati" slot waktu.
-     * Canceled & Rejected tidak menempati apapun.
-     */
     private const OCCUPYING_STATUSES = [
         BookingStatus::Pending,
         BookingStatus::Approved,
@@ -28,12 +24,6 @@ class AvailabilityService extends BaseService
         BookingStatus::Completed,
     ];
 
-    /**
-     * Jam buka/tutup operasional lab. Default 07:00–16:00,
-     * bisa dioverride lewat Lab::settings['operational_hours'].
-     *
-     * @return array{open: string, close: string}
-     */
     public function operationalHours(Lab $lab): array
     {
         $settings = $lab->settings['operational_hours'] ?? [];
@@ -44,15 +34,9 @@ class AvailabilityService extends BaseService
         ];
     }
 
-    /**
-     * Ringkasan ketersediaan per hari dalam 1 bulan, untuk render kalender bulan.
-     * Tiap hari diberi status: 'available' (belum ada booking), 'partial'
-     * (ada booking tapi masih ada jam kosong), atau 'full' (semua jam operasional terisi).
-     *
-     * @return array{operational_hours: array, days: array<string, string>}
-     */
     public function monthSummary(Lab $lab, string $month): array
     {
+        // ... TIDAK BERUBAH, biarkan seperti sebelumnya ...
         $hours = $this->operationalHours($lab);
         $start = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
         $end = $start->copy()->endOfMonth();
@@ -90,13 +74,8 @@ class AvailabilityService extends BaseService
     }
 
     /**
-     * Detail slot per jam untuk 1 hari spesifik: mana yang occupied, mana yang available.
-     *
-     * @return array{
-     *     operational_hours: array,
-     *     occupied_ranges: array<int, array{start: string, end: string}>,
-     *     slots: array<int, array{start: string, end: string, available: bool}>
-     * }
+     * Detail slot per jam untuk 1 hari, DITAMBAH ringkasan aktivitas (jam + label generik)
+     * untuk ditampilkan publik di landing page — TANPA data pribadi customer.
      */
     public function dayDetail(Lab $lab, string $date): array
     {
@@ -109,14 +88,20 @@ class AvailabilityService extends BaseService
             ->whereIn('booking_type', [BookingType::LabRental->value, BookingType::Service->value])
             ->whereDate('start_time', $date)
             ->orderBy('start_time')
-            ->get(['start_time', 'end_time']);
+            ->get(['start_time', 'end_time', 'booking_type', 'purpose']);
 
         $occupiedRanges = $bookings->map(fn ($b) => [
             'start' => $b->start_time->format('H:i'),
             'end'   => $b->end_time->format('H:i'),
         ])->values()->all();
 
-        // Generate slot per jam (07:00-08:00, 08:00-09:00, dst)
+        // NEW — ringkasan aktivitas untuk ditampilkan publik (generik, tanpa nama/catatan customer)
+        $activities = $bookings->map(fn ($b) => [
+            'start' => $b->start_time->format('H:i'),
+            'end'   => $b->end_time->format('H:i'),
+            'label' => $this->activityLabel($b->booking_type, $b->purpose),
+        ])->values()->all();
+
         $slots = [];
         $cursor = $dayStart->copy();
         while ($cursor->lt($dayEnd)) {
@@ -138,8 +123,27 @@ class AvailabilityService extends BaseService
         return [
             'operational_hours' => $hours,
             'occupied_ranges'   => $occupiedRanges,
+            'activities'        => $activities, // NEW
             'slots'             => $slots,
         ];
+    }
+
+    /**
+     * Label generik untuk aktivitas — sengaja tidak menyertakan nama/catatan
+     * customer supaya aman ditampilkan di landing page publik.
+     */
+    private function activityLabel(BookingType $type, ?\App\Domain\Booking\Enums\BookingPurpose $purpose): string
+    {
+        return match ($type) {
+            BookingType::LabRental => match ($purpose) {
+                \App\Domain\Booking\Enums\BookingPurpose::Academic     => 'Kegiatan Akademik / Perkuliahan',
+                \App\Domain\Booking\Enums\BookingPurpose::Organization => 'Kegiatan Organisasi Mahasiswa',
+                \App\Domain\Booking\Enums\BookingPurpose::Public       => 'Kegiatan Umum',
+                default => 'Peminjaman Lab',
+            },
+            BookingType::Service => 'Sesi Jasa / Paket',
+            BookingType::AssetRental => 'Sewa Peralatan',
+        };
     }
 
     private function timeToMinutes(string $time): int
@@ -149,11 +153,6 @@ class AvailabilityService extends BaseService
         return ($h * 60) + $m;
     }
 
-    /**
-     * Hitung berapa menit dari sebuah booking yang overlap dengan jam operasional.
-     *
-     * @param  array{open: string, close: string}  $hours
-     */
     private function overlapMinutes(Carbon $start, Carbon $end, array $hours): int
     {
         $opStart = $start->copy()->setTimeFromTimeString($hours['open']);

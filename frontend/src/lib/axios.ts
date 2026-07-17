@@ -17,15 +17,18 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Response interceptor — handle error global
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Token expired atau invalid — redirect ke login
-    if (error.response?.status === 401) {
+    const hadToken = !!localStorage.getItem('token')
+
+    if (error.response?.status === 401 && hadToken) {
+  
       localStorage.removeItem('token')
       window.location.href = '/login'
     }
+   
     return Promise.reject(error)
   },
 )

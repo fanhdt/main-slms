@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import { availabilityApi, type DaySlot } from '@/features/booking/api/availabilityApi'
 import { useAvailabilityColor } from '@/composables/useAvailabilityColor'
@@ -15,6 +15,16 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'confirm-slot': [payload: { date: string; start: string; end: string; durationHours: number }]
+  // NEW — dipancarkan tiap kali tanggal/data hari berubah, dipakai LabLandingPage
+  // untuk menampilkan aside daftar jadwal di luar komponen ini.
+  'day-changed': [
+    payload: {
+      date: string | null
+      loading: boolean
+      operationalHours: { open: string; close: string } | null
+      activities: { start: string; end: string; label: string }[]
+    },
+  ]
 }>()
 
 const today = new Date()
@@ -58,6 +68,20 @@ const { data: dayData, isLoading: dayLoading } = useQuery({
   },
   enabled: computed(() => !!selectedDate.value),
 })
+
+// NEW — pancarkan perubahan ke parent tiap kali tanggal/loading/data berubah
+watch(
+  [selectedDate, dayLoading, dayData],
+  () => {
+    emit('day-changed', {
+      date: selectedDate.value,
+      loading: dayLoading.value,
+      operationalHours: dayData.value?.operational_hours ?? null,
+      activities: dayData.value?.activities ?? [],
+    })
+  },
+  { immediate: true },
+)
 
 const monthLabel = computed(() =>
   new Date(currentYear.value, currentMonth.value - 1, 1).toLocaleDateString('id-ID', {

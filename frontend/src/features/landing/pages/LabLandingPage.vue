@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
+
 import api from '@/lib/axios'
 import AvailabilityCalendar from '@/components/AvailabilityCalendar.vue'
 import PhotographerPortfolioSection from '@/features/portfolio/components/PhotographerPortfolioSection.vue'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Mail, Phone, MapPin, Images, Camera } from 'lucide-vue-next'
+import { Mail, Phone, MapPin, Images, Camera, CalendarClock, Info } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -45,6 +46,18 @@ const { data: packages } = useQuery({
   enabled: computed(() => !!lab.value),
 })
 
+const selectedDayInfo = ref<{
+  date: string | null
+  loading: boolean
+  operationalHours: { open: string; close: string } | null
+  activities: { start: string; end: string; label: string }[]
+}>({
+  date: null,
+  loading: false,
+  operationalHours: null,
+  activities: [],
+})
+
 function handleBooking() {
   if (authStore.isAuthenticated) {
     router.push(`/booking/${slug.value}`)
@@ -59,6 +72,18 @@ function formatPrice(price: string) {
     currency: 'IDR',
     minimumFractionDigits: 0,
   }).format(Number(price))
+}
+
+function handleDayChanged(payload: typeof selectedDayInfo.value) {
+  selectedDayInfo.value = payload
+}
+
+function formatSelectedDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
 }
 </script>
 
@@ -156,8 +181,9 @@ function formatPrice(price: string) {
             >
               Book Sekarang
             </button>
-            
-              <a href="#services"
+
+            <a
+              href="#services"
               class="px-8 py-4 rounded-xl font-semibold text-white/80 border border-white/20 hover:bg-white/10 transition-colors text-lg"
             >
               Lihat Layanan
@@ -172,7 +198,54 @@ function formatPrice(price: string) {
 
       <section class="max-w-5xl mx-auto px-6 py-10">
         <h2 class="text-xl font-bold text-gray-900 mb-4">Jadwal Ketersediaan Lab</h2>
-        <AvailabilityCalendar :slug="slug" :interactive="false" class="max-w-md" />
+
+        <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4 items-start">
+          <AvailabilityCalendar :slug="slug" :interactive="false" @day-changed="handleDayChanged" />
+
+          <aside class="bg-white rounded-xl border border-gray-200 p-4 lg:top-4">
+            <div class="flex items-center gap-2 mb-1">
+              <CalendarClock class="size-4 text-gray-400 shrink-0" />
+              <p class="text-sm font-semibold text-gray-900">Jam Terpakai</p>
+            </div>
+            <p v-if="selectedDayInfo.date" class="text-xs text-gray-400 mb-4">
+              {{ formatSelectedDate(selectedDayInfo.date) }}
+            </p>
+            <p v-else class="text-xs text-gray-400 mb-4">Pilih tanggal untuk lihat jadwal</p>
+
+            <div v-if="selectedDayInfo.loading" class="space-y-2">
+              <div v-for="i in 3" :key="i" class="h-14 rounded-lg bg-gray-100 animate-pulse" />
+            </div>
+
+            <div v-else-if="selectedDayInfo.activities.length" class="space-y-2">
+              <div
+                v-for="(activity, idx) in selectedDayInfo.activities"
+                :key="idx"
+                class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5"
+              >
+                <div class="flex items-start justify-between gap-2">
+                  <p class="text-sm font-medium text-gray-900 leading-snug">{{ activity.label }}</p>
+                  <span
+                    class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-600 shrink-0 whitespace-nowrap"
+                  >
+                    Terpakai
+                  </span>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">{{ activity.start }} – {{ activity.end }}</p>
+              </div>
+            </div>
+
+            <div
+              v-else-if="selectedDayInfo.date"
+              class="flex flex-col items-center text-center gap-2 py-8 px-2"
+            >
+              <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center">
+                <Info class="size-4.5 text-green-600" />
+              </div>
+              <p class="text-sm font-medium text-gray-700">Lab kosong hari ini</p>
+              <p class="text-xs text-gray-400">Belum ada kegiatan terjadwal pada tanggal ini.</p>
+            </div>
+          </aside>
+        </div>
       </section>
 
       <!-- ================================================================
@@ -204,7 +277,9 @@ function formatPrice(price: string) {
               </span>
               <div
                 class="w-full h-40 rounded-xl overflow-hidden mb-4 flex items-center justify-center"
-                :style="!service.image ? { backgroundColor: lab.branding.primary_color + '15' } : {}"
+                :style="
+                  !service.image ? { backgroundColor: lab.branding.primary_color + '15' } : {}
+                "
               >
                 <img
                   v-if="service.image"
@@ -212,7 +287,11 @@ function formatPrice(price: string) {
                   :alt="service.name"
                   class="w-full h-full object-cover"
                 />
-                <Camera v-else class="size-8" :style="{ color: lab.branding.primary_color ?? '#1a1a2e' }" />
+                <Camera
+                  v-else
+                  class="size-8"
+                  :style="{ color: lab.branding.primary_color ?? '#1a1a2e' }"
+                />
               </div>
               <h3 class="font-semibold text-gray-900 text-lg">{{ service.name }}</h3>
               <p class="text-gray-500 text-sm mt-1 line-clamp-2">{{ service.description }}</p>
@@ -259,7 +338,10 @@ function formatPrice(price: string) {
               class="rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-shadow"
               :style="{ borderColor: lab.branding.primary_color ?? '#1a1a2e' }"
             >
-              <div class="p-6 text-white" :style="{ backgroundColor: lab.branding.primary_color ?? '#1a1a2e' }">
+              <div
+                class="p-6 text-white"
+                :style="{ backgroundColor: lab.branding.primary_color ?? '#1a1a2e' }"
+              >
                 <h3 class="text-xl font-bold">{{ pkg.name }}</h3>
                 <p class="text-white/60 text-sm mt-1">{{ pkg.description }}</p>
               </div>
@@ -320,7 +402,11 @@ function formatPrice(price: string) {
       <!-- ================================================================
            CONTACT SECTION
       ================================================================ -->
-      <section id="contact" class="py-20" :style="{ backgroundColor: lab.branding.primary_color ?? '#1a1a2e' }">
+      <section
+        id="contact"
+        class="py-20"
+        :style="{ backgroundColor: lab.branding.primary_color ?? '#1a1a2e' }"
+      >
         <div class="max-w-4xl mx-auto px-6 text-center">
           <h2 class="text-3xl font-bold text-white mb-2">Hubungi Kami</h2>
           <p class="text-white/60 mb-10">Ada pertanyaan? Jangan ragu untuk menghubungi kami</p>

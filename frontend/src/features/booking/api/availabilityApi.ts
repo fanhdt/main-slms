@@ -16,9 +16,16 @@ export interface DaySlot {
   available: boolean
 }
 
+export interface DayActivity {
+  start: string
+  end: string
+  label: string
+}
+
 export interface DayAvailability {
   operational_hours: OperationalHours
   occupied_ranges: { start: string; end: string }[]
+  activities: DayActivity[] 
   slots: DaySlot[]
 }
 
