@@ -17,6 +17,7 @@ const queryClient = useQueryClient()
 const labStore = useLabStore()
 const page = ref(1)
 const filterPhotographerId = ref<number | null>(null)
+const lightboxItem = ref<PhotographerPortfolio | null>(null)
 
 const { data, isLoading } = useQuery({
   queryKey: ['portfolios', labStore.activeLab?.id, page, filterPhotographerId],
@@ -74,6 +75,14 @@ function resetFilter() {
   filterPhotographerId.value = null
   page.value = 1
 }
+
+function openLightbox(item: PhotographerPortfolio) {
+  lightboxItem.value = item
+}
+
+function closeLightbox() {
+  lightboxItem.value = null
+}
 </script>
 
 <template>
@@ -128,7 +137,7 @@ function resetFilter() {
             :key="item.uuid"
             class="p-0 overflow-hidden group relative"
           >
-            <div class="aspect-square bg-gray-100">
+            <div class="aspect-square bg-gray-100 cursor-pointer" @click="openLightbox(item)">
               <img :src="item.image" alt="" class="w-full h-full object-cover" />
             </div>
             <CardContent class="p-2">
@@ -184,5 +193,32 @@ function resetFilter() {
     </div>
 
     <PortfolioEditModal :show="showEditModal" :portfolio="selectedPortfolio" @close="closeEdit" />
+    <Teleport to="body">
+      <div
+        v-if="lightboxItem"
+        class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+        @click.self="closeLightbox"
+      >
+        <button
+          type="button"
+          title="Tutup"
+          class="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+          @click="closeLightbox"
+        >
+          <X class="size-5" />
+        </button>
+        <div class="max-w-4xl max-h-[85vh] flex flex-col items-center gap-3">
+          <img
+            :src="lightboxItem.image"
+            alt=""
+            class="max-w-full max-h-[75vh] object-contain rounded-lg"
+          />
+          <p class="text-white/80 text-sm">
+            {{ lightboxItem.photographer?.name }}
+            <span v-if="lightboxItem.caption"> — {{ lightboxItem.caption }}</span>
+          </p>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
