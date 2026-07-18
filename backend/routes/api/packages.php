@@ -2,8 +2,7 @@
 declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [\App\Domain\LabService\Controllers\PackageController::class, 'index']);
-Route::get('/{uuid}', [\App\Domain\LabService\Controllers\PackageController::class, 'show']);
+// ---- PROTECTED ----
 Route::post('/', [\App\Domain\LabService\Controllers\PackageController::class, 'store'])
     ->middleware('can:packages.create');
 Route::match(['put', 'patch'], '/{uuid}', [\App\Domain\LabService\Controllers\PackageController::class, 'update'])

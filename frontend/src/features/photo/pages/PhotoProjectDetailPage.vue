@@ -67,6 +67,21 @@ const { mutate: uploadEdited, isPending: isUploadingEdited } = useMutation({
   onError: (err: any) => toast.error(err.response?.data?.message ?? 'Gagal upload hasil edit.'),
 })
 
+const { mutate: deleteFile } = useMutation({
+  mutationFn: (fileUuid: string) => photoApi.deleteFile(uuid.value, fileUuid),
+  onSuccess: () => {
+    toast.success('Foto berhasil dihapus.')
+    invalidate()
+  },
+  onError: (err: any) => toast.error(err.response?.data?.message ?? 'Gagal menghapus foto.'),
+})
+
+function confirmDeleteFile(fileUuid: string) {
+  if (confirm('Hapus foto ini? Tindakan ini tidak bisa dibatalkan.')) {
+    deleteFile(fileUuid)
+  }
+}
+
 const { mutate: submitApproval, isPending: isSubmitting } = useMutation({
   mutationFn: () => photoApi.submitForApproval(uuid.value),
   onSuccess: () => {
@@ -162,7 +177,9 @@ const { mutate: submitApproval, isPending: isSubmitting } = useMutation({
 
       <section v-if="selectedPreviews.length" class="space-y-3">
         <h3 class="font-semibold text-gray-900 flex items-center gap-2">
-          <span class="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center">
+          <span
+            class="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center"
+          >
             <CheckCheck class="size-3" />
           </span>
           Dipilih Customer ({{ selectedPreviews.length }})
@@ -176,7 +193,7 @@ const { mutate: submitApproval, isPending: isSubmitting } = useMutation({
       <section v-if="unselectedPreviews.length" class="space-y-3">
         <h3 class="font-semibold text-gray-500">Tidak Dipilih ({{ unselectedPreviews.length }})</h3>
         <div class="opacity-60">
-          <PhotoGrid :files="unselectedPreviews" />
+          <PhotoGrid :files="unselectedPreviews" deletable @delete="confirmDeleteFile" />
         </div>
       </section>
 
@@ -197,7 +214,10 @@ const { mutate: submitApproval, isPending: isSubmitting } = useMutation({
       </Card>
 
       <template v-else>
-        <div v-if="project.editor_note" class="rounded-xl border-2 border-orange-200 bg-orange-50 p-4">
+        <div
+          v-if="project.editor_note"
+          class="rounded-xl border-2 border-orange-200 bg-orange-50 p-4"
+        >
           <p class="text-sm font-semibold text-orange-800 flex items-center gap-2">
             <AlertTriangle class="size-4" />
             Customer meminta revisi
@@ -213,7 +233,7 @@ const { mutate: submitApproval, isPending: isSubmitting } = useMutation({
         <section class="space-y-3">
           <h3 class="font-semibold text-gray-900">Upload Hasil Edit ({{ editedFiles.length }})</h3>
           <PhotoUploader :disabled="isUploadingEdited" @upload="uploadEdited" />
-          <PhotoGrid :files="editedFiles" />
+          <PhotoGrid :files="editedFiles" deletable @delete="confirmDeleteFile" />
 
           <Button
             v-if="project.status.value === 'editing'"

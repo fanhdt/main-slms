@@ -251,6 +251,35 @@ class PhotoDeliveryService extends BaseService
         return $project;
     }
 
+    public function deleteFile(PhotoProject $project, string $fileUuid): void
+{
+    $file = PhotoFile::where('project_id', $project->id)
+        ->where('uuid', $fileUuid)
+        ->first();
+
+    if (!$file) {
+        throw ApiException::notFound('File foto');
+    }
+
+    if ($file->type === PhotoFileType::Final) {
+        throw ApiException::forbidden('File final tidak bisa dihapus langsung.');
+    }
+
+    if (Storage::disk($file->disk)->exists($file->path)) {
+        Storage::disk($file->disk)->delete($file->path);
+    }
+
+    $wasPreview = $file->type === PhotoFileType::Preview;
+    $file->delete();
+
+    if ($wasPreview) {
+        $project->preview_count = PhotoFile::where('project_id', $project->id)
+            ->where('type', PhotoFileType::Preview->value)
+            ->count();
+        $project->save();
+    }
+}
+
     /**
      * Customer approve hasil edit, atau minta revisi.
      */

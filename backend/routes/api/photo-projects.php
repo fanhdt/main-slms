@@ -36,3 +36,6 @@ Route::post('/{uuid}/approval', [PhotoDeliveryController::class, 'resolveApprova
 Route::get('/{uuid}/files/{fileUuid}/download', [PhotoDeliveryController::class, 'downloadFile']);
 
 Route::get('/{uuid}/download-all', [PhotoDeliveryController::class, 'downloadAll']);
+
+Route::delete('/{uuid}/files/{fileUuid}', [PhotoDeliveryController::class, 'deleteFile'])
+    ->middleware('can:media.upload');

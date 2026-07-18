@@ -125,6 +125,18 @@ class PhotoDeliveryController extends ApiController
     }
 
     /**
+ * Staff hapus 1 file foto individual (preview/edited, bukan final).
+ * DELETE /photo-projects/{uuid}/files/{fileUuid}
+ */
+public function deleteFile(string $uuid, string $fileUuid): JsonResponse
+{
+    $project = $this->photoService->findByUuid($uuid, ['files']);
+    $this->photoService->deleteFile($project, $fileUuid);
+
+    return $this->successMessage('Foto berhasil dihapus.');
+}
+
+    /**
      * Download semua file final sekaligus dalam 1 file ZIP.
      * GET /photo-projects/{uuid}/download-all
      */

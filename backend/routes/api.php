@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Broadcast;
 |--------------------------------------------------------------------------
 | API Routes — SLMS
 |--------------------------------------------------------------------------
-|
+|l
 | Semua route API dikelompokkan dalam prefix /api/v1.
 | Versi API dibuat eksplisit dari awal agar mudah ditambahkan v2 nanti
 | tanpa breaking change.
@@ -23,6 +23,8 @@ Route::prefix('v1')->group(function () {
 
     // ---- Lab public info (untuk landing page per lab) ----
     Route::prefix('labs')->group(base_path('routes/api/labs-public.php'));
+
+    Route::group([], base_path('routes/api/services-packages-public.php'));
 
     // ---- Protected routes (butuh Sanctum token) ----
     Route::middleware(['auth:sanctum'])->group(function () {

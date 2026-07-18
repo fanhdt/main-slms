@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PhotoFile } from '../types'
+import { Trash2, Expand } from 'lucide-vue-next'
 
 defineProps<{
   file: PhotoFile

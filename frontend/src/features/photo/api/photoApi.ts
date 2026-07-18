@@ -53,6 +53,10 @@ export const photoApi = {
     })
   },
 
+  deleteFile(uuid: string, fileUuid: string) {
+    return api.delete(`/photo-projects/${uuid}/files/${fileUuid}`)
+  },
+
   downloadFile(uuid: string, fileUuid: string) {
     return api.get<ApiResponse<{ url: string; filename: string }>>(
       `/photo-projects/${uuid}/files/${fileUuid}/download`,
