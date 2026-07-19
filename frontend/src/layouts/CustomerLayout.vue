@@ -81,8 +81,13 @@ const PAGE_TITLES: Record<string, string> = {
     >
       <div class="h-16 flex items-center justify-between px-5 border-b border-gray-200 shrink-0">
         <RouterLink to="/home" class="flex items-center gap-2.5">
-          <img src="/images/logo-lab.svg" alt="Logo SLMS" class="w-7 h-7 object-contain" />
-          <span class="font-semibold text-sm text-gray-900">SLMS</span>
+          <img src="/images/logo-lab.svg" alt="Logo SLMS" class="w-7 h-7 object-contain shrink-0" />
+          <span class="h-5 w-px bg-gray-200 shrink-0" aria-hidden="true" />
+          <img
+            src="/images/logo-upi.svg"
+            alt="Logo UPI"
+            class="h-6 w-auto max-w-16 object-contain shrink-0"
+          />
         </RouterLink>
         <button class="lg:hidden" @click="mobileNavOpen = false" aria-label="Tutup menu">
           <X :size="18" class="text-gray-500" />

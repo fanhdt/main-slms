@@ -16,9 +16,15 @@ async function handleLogout() {
 <template>
   <div class="min-h-screen bg-gray-50 flex">
     <aside class="w-64 bg-gray-900 flex flex-col">
-      <div class="h-16 flex items-center px-6 border-b border-gray-700">
-        <span class="text-xl font-bold text-white">SLMS</span>
-        <span class="text-xs text-gray-400 ml-2">Super Admin</span>
+      <div class="h-16 flex items-center gap-2.5 px-6 border-b border-gray-700">
+        <img src="/images/logo-lab.svg" alt="Logo SLMS" class="w-7 h-7 object-contain shrink-0" />
+        <span class="h-5 w-px bg-gray-600 shrink-0" aria-hidden="true" />
+        <img
+          src="/images/logo-upi.svg"
+          alt="Logo UPI"
+          class="h-6 w-auto max-w-16 object-contain shrink-0 brightness-0 invert"
+        />
+        <span class="text-xs text-gray-400 ml-1">Super Admin</span>
       </div>
 
       <nav class="flex-1 px-4 py-4 space-y-1">

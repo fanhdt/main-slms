@@ -154,6 +154,12 @@ const checkinNavItems = computed(() => [
         class="h-16 flex items-center px-5 border-b border-gray-200 gap-3 shrink-0"
         :style="primaryBgStyle"
       >
+        <img
+          src="/images/logo-upi.svg"
+          alt="Logo UPI"
+          class="h-8 w-auto max-w-14 object-contain shrink-0 brightness-0 invert"
+        />
+        <span class="h-6 w-px bg-white/25 shrink-0" aria-hidden="true" />
         <div class="flex-1 min-w-0">
           <p class="text-white font-semibold text-sm truncate">{{ labName }}</p>
           <p class="text-white/60 text-xs">Lab Dashboard</p>
