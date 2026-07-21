@@ -21,7 +21,7 @@ Proyek ini dikembangkan sebagai **Tugas Akhir (Skripsi)** dan direncanakan untuk
 
 ### 🎯 Tujuan
 
-Menyediakan satu sistem terpusat untuk mengelola booking, aset, layanan, dan pengguna di berbagai laboratorium — masing-masing dengan branding dan konfigurasi sendiri.
+Menyediakan satu sistem terpusat untuk mengelola booking, aset, layanan, dan pengguna di berbagai laboratorium - masing-masing dengan branding dan konfigurasi sendiri.
 
 ### 🧩 Masalah yang Diselesaikan
 
