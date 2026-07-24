@@ -225,21 +225,23 @@ async function handleImageRemove() {
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Kategori</label>
           <select
-            v-model="form.category"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="camera">Kamera</option>
-            <option value="lens">Lensa</option>
-            <option value="lighting">Lighting</option>
-            <option value="drone">Drone</option>
-            <option value="tripod">Tripod</option>
-            <option value="computer">Komputer</option>
-            <option value="projector">Proyektor</option>
-            <option value="audio">Audio</option>
-            <option value="microphone">Mikrofon</option>
-            <option value="printer">Printer</option>
-            <option value="other">Lainnya</option>
-          </select>
+  v-model="form.category"
+  class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+>
+  <option value="camera">Kamera</option>
+  <option value="lens">Lensa</option>
+  <option value="lighting">Lighting</option>
+  <option value="drone">Drone</option>
+  <option value="tripod">Tripod</option>
+  <option value="computer">Komputer</option>
+  <option value="projector">Proyektor</option>
+  <option value="audio">Audio</option>
+  <option value="microphone">Mikrofon</option>
+  <option value="printer">Printer</option>
+  <option value="backdrop">Backdrop / Properti</option>
+  <option value="costume">Kostum / Aksesoris</option>
+  <option value="other">Lainnya</option>
+</select>
         </div>
 
         <div class="space-y-1.5">

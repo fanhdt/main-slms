@@ -5,23 +5,16 @@ declare(strict_types=1);
 namespace App\Domain\User\Policies;
 
 use App\Domain\Booking\Models\Booking;
+use App\Domain\User\Enums\UserRole;
 use App\Domain\User\Models\User;
 
 class UserPolicy
 {
-    /**
-     * Lihat daftar user (global, lintas lab).
-     * HANYA super_admin (di-bypass otomatis lewat Gate::before di AppServiceProvider).
-     * lab_admin/staff lain tidak boleh lihat daftar user global sama sekali.
-     */
     public function viewAny(User $authUser): bool
     {
         return false;
     }
 
-    /**
-     * Buat user baru. HANYA super_admin.
-     */
     public function create(User $authUser): bool
     {
         return false;
@@ -29,23 +22,34 @@ class UserPolicy
 
     /**
      * Update data user (nama, role, status aktif, dll). HANYA super_admin.
-     * lab_admin TIDAK boleh mengubah status/role pengguna manapun.
+     * Super Admin lain TIDAK BOLEH diubah lewat aplikasi sama sekali —
+     * termasuk oleh sesama super_admin — untuk mencegah satu akun super_admin
+     * yang disusupi bisa mengubah/mendemote super_admin lain diam-diam.
      */
     public function update(User $authUser, User $targetUser): bool
     {
-        return false;
+        if ($targetUser->hasRole(UserRole::SuperAdmin->value)) {
+            return false;
+        }
+
+        return false; // di-bypass Gate::before untuk super_admin yang login
     }
 
     /**
      * Hapus user.
-     * - super_admin: bebas (sudah di-bypass Gate::before).
+     * - super_admin: bebas, KECUALI menghapus sesama super_admin (dicegah di bawah).
      * - lab_admin: HANYA boleh hapus akun customer yang punya riwayat booking
-     *   di lab yang dia kelola (dipakai untuk hapus akun pelanggar). Tidak boleh
-     *   hapus sesama staff/admin, dan tidak boleh hapus customer di lab lain.
+     *   di lab yang dia kelola.
      * - role lain: tidak boleh sama sekali.
      */
     public function delete(User $authUser, User $targetUser): bool
     {
+        // Super Admin tidak boleh dihapus lewat aplikasi oleh siapapun,
+        // termasuk oleh dirinya sendiri atau super_admin lain.
+        if ($targetUser->hasRole(UserRole::SuperAdmin->value)) {
+            return false;
+        }
+
         if ($authUser->hasRole('lab_admin')) {
             if (!$targetUser->hasRole('customer')) {
                 return false;

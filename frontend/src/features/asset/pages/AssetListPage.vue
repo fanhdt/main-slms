@@ -61,6 +61,27 @@ function statusColor(status: string) {
   return STATUS_STYLES[status] ?? 'bg-gray-100 text-gray-600'
 }
 
+// Warna badge per kategori — biar tabel lebih gampang dipindai matanya,
+// tidak monoton satu warna untuk semua kategori.
+const CATEGORY_STYLES: Record<string, string> = {
+  camera: 'bg-purple-50 text-purple-700',
+  lens: 'bg-indigo-50 text-indigo-700',
+  lighting: 'bg-amber-50 text-amber-700',
+  drone: 'bg-cyan-50 text-cyan-700',
+  tripod: 'bg-teal-50 text-teal-700',
+  computer: 'bg-slate-100 text-slate-700',
+  projector: 'bg-orange-50 text-orange-700',
+  audio: 'bg-pink-50 text-pink-700',
+  microphone: 'bg-rose-50 text-rose-700',
+  printer: 'bg-lime-50 text-lime-700',
+  backdrop: 'bg-fuchsia-50 text-fuchsia-700',
+  costume: 'bg-emerald-50 text-emerald-700',
+  other: 'bg-gray-100 text-gray-600',
+}
+function categoryColor(category: string) {
+  return CATEGORY_STYLES[category] ?? 'bg-gray-100 text-gray-600'
+}
+
 function formatPrice(price: string | null) {
   if (!price) return '-'
   return new Intl.NumberFormat('id-ID', {
@@ -134,7 +155,12 @@ function openEdit(asset: Asset) {
           <option value="drone">Drone</option>
           <option value="tripod">Tripod</option>
           <option value="computer">Komputer</option>
+          <option value="projector">Proyektor</option>
           <option value="audio">Audio</option>
+          <option value="microphone">Mikrofon</option>
+          <option value="printer">Printer</option>
+          <option value="backdrop">Backdrop / Properti</option>
+          <option value="costume">Kostum / Aksesoris</option>
           <option value="other">Lainnya</option>
         </select>
       </CardContent>
@@ -176,7 +202,15 @@ function openEdit(asset: Asset) {
                 </div>
               </td>
               <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ asset.code }}</td>
-              <td class="px-4 py-3 text-gray-600">{{ asset.category.label }}</td>
+              <td class="px-4 py-3">
+                <Badge
+                  variant="outline"
+                  class="border-0"
+                  :class="categoryColor(asset.category.value)"
+                >
+                  {{ asset.category.label }}
+                </Badge>
+              </td>
               <td class="px-4 py-3">
                 <Badge variant="outline" class="border-0" :class="statusColor(asset.status.value)">
                   {{ asset.status.label }}

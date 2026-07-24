@@ -13,7 +13,7 @@ class SuperAdminSeeder extends Seeder
     public function run(): void
     {
         $admin = User::firstOrCreate(
-            ['email' => 'admin@slms.local'],
+            ['email' => 'prodtest@slms.local'],
             [
                 'name'      => 'Super Admin',
                 'password'  => bcrypt('password'),
@@ -24,7 +24,7 @@ class SuperAdminSeeder extends Seeder
 
         $admin->assignRole(UserRole::SuperAdmin->value);
 
-        $this->command->info("Super Admin seeded: admin@slms.local / password");
+        $this->command->info("Super Admin seeded: prodtest@slms.local / password");
         $this->command->warn("⚠ Ganti password sebelum production!");
     }
 }

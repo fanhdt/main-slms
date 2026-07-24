@@ -16,6 +16,8 @@ enum AssetCategory: string
     case Audio      = 'audio';
     case Microphone = 'microphone';
     case Printer    = 'printer';
+    case Backdrop   = 'backdrop';
+    case Costume    = 'costume';
     case Other      = 'other';
 
     public function label(): string
@@ -31,7 +33,22 @@ enum AssetCategory: string
             self::Audio      => 'Audio',
             self::Microphone => 'Mikrofon',
             self::Printer    => 'Printer',
+            self::Backdrop   => 'Backdrop / Properti',
+            self::Costume    => 'Kostum / Aksesoris',
             self::Other      => 'Lainnya',
         };
+    }
+
+    /**
+     * Ikon Lucide yang dipakai di frontend untuk kategori ini.
+     * Dipetakan manual di frontend (bukan dikirim dari sini),
+     * daftar ini cuma referensi biar konsisten.
+     */
+    public static function groupedOptions(): array
+    {
+        return array_map(
+            fn (self $c) => ['value' => $c->value, 'label' => $c->label()],
+            self::cases()
+        );
     }
 }

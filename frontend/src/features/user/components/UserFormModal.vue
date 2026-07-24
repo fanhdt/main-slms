@@ -9,7 +9,7 @@ import type { User } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { CreditCard, ScanLine } from 'lucide-vue-next'
+import { CreditCard, ScanLine, ShieldAlert } from 'lucide-vue-next'
 
 const props = defineProps<{
   show: boolean
@@ -22,6 +22,24 @@ const emit = defineEmits<{
 
 const queryClient = useQueryClient()
 
+// Deskripsi tugas & kewenangan tiap role — ditampilkan otomatis di bawah
+// dropdown role supaya admin paham konsekuensi memilih role tertentu.
+// super_admin SENGAJA tidak dimasukkan di sini karena tidak bisa dipilih
+// lewat form ini sama sekali.
+const ROLE_DESCRIPTIONS: Record<string, string> = {
+  lab_admin:
+    'Mengelola satu laboratorium penuh: booking, aset, layanan, paket, portofolio, dan pengaturan lab. Tidak berwenang mengelola akun/role pengguna secara global.',
+  operator:
+    'Operasional harian lab: menerima & memproses booking, memantau ketersediaan aset, dan check-in pelanggan.',
+  photographer:
+    'Mengunggah foto preview hasil sesi pemotretan dan melihat jadwal booking yang berkaitan.',
+  editor:
+    'Mengunggah hasil edit foto, menindaklanjuti revisi dari customer, dan menyiapkan file final.',
+  customer:
+    'Pengguna umum: membuat booking, melihat riwayat booking sendiri, memilih & mengunduh hasil foto.',
+  guest: 'Hanya bisa melihat daftar layanan dan paket publik, tanpa membuat booking.',
+}
+
 const form = ref({
   name: '',
   email: '',
@@ -33,6 +51,8 @@ const form = ref({
 })
 
 const errors = ref<Record<string, string>>({})
+
+const isSuperAdminUser = computed(() => props.user?.roles.includes('super_admin') ?? false)
 
 watch(
   () => props.user,
@@ -228,6 +248,18 @@ function handleRfidScan() {
     @close="$emit('close')"
   >
     <form @submit.prevent="() => saveUser()" class="space-y-5">
+      <!-- Peringatan khusus kalau user ini super_admin -->
+      <div
+        v-if="isSuperAdminUser"
+        class="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-lg p-3"
+      >
+        <ShieldAlert class="size-4 text-amber-600 shrink-0 mt-0.5" />
+        <p class="text-xs text-amber-800">
+          User ini adalah <strong>Super Admin</strong>. Role Super Admin tidak bisa diubah lewat
+          form ini demi keamanan — hanya bisa diatur langsung oleh developer di server.
+        </p>
+      </div>
+
       <div class="space-y-1.5">
         <label class="text-sm font-medium text-gray-700">Nama Lengkap</label>
         <input
@@ -262,13 +294,16 @@ function handleRfidScan() {
         />
       </div>
 
-      <div class="space-y-1.5">
+      <!-- Role — super_admin SENGAJA tidak ada di daftar ini.
+           Kalau ada kebutuhan menjadikan seseorang super_admin, itu harus
+           dilakukan langsung oleh developer lewat CLI di server, bukan
+           lewat aplikasi, supaya tidak ada celah privilege escalation. -->
+      <div v-if="!isSuperAdminUser" class="space-y-1.5">
         <label class="text-sm font-medium text-gray-700">Role</label>
         <select
           v-model="form.role"
           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="super_admin">Super Admin</option>
           <option value="lab_admin">Lab Admin</option>
           <option value="operator">Operator</option>
           <option value="photographer">Photographer</option>
@@ -276,10 +311,13 @@ function handleRfidScan() {
           <option value="customer">Customer</option>
           <option value="guest">Guest</option>
         </select>
+        <p class="text-xs text-gray-400 mt-1 leading-relaxed">
+          {{ ROLE_DESCRIPTIONS[form.role] ?? '' }}
+        </p>
       </div>
 
       <!-- Akses Laboratorium -->
-      <template v-if="needsLabAccess">
+      <template v-if="needsLabAccess && !isSuperAdminUser">
         <Separator />
         <div class="space-y-2">
           <label class="text-sm font-medium text-gray-700">
@@ -344,6 +382,9 @@ function handleRfidScan() {
           :class="{ 'border-red-400': errors.password }"
         />
         <p v-if="errors.password" class="text-xs text-red-500">{{ errors.password }}</p>
+        <p class="text-xs text-gray-400">
+          Minimal 8 karakter, kombinasi huruf besar, huruf kecil, angka, dan simbol (misal: !@#$%).
+        </p>
       </div>
 
       <div class="space-y-1.5">
