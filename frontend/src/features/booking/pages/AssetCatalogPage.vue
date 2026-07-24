@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import api from '@/lib/axios'
@@ -39,12 +39,52 @@ const { data: assets, isLoading } = useQuery({
       rental_price: string
       image: string | null
       quantity: number
-      category: { label: string }
+      category: { value: string; label: string }
     }[]
   },
   enabled: computed(() => !!lab.value?.id),
 })
 
+// ============================================================
+// Kategori & Filter
+// ============================================================
+const CATEGORY_LABELS: Record<string, string> = {
+  all: 'Semua',
+  camera: 'Kamera',
+  lens: 'Lensa',
+  lighting: 'Lighting',
+  drone: 'Drone',
+  tripod: 'Tripod',
+  computer: 'Komputer',
+  projector: 'Proyektor',
+  audio: 'Audio',
+  microphone: 'Mikrofon',
+  printer: 'Printer',
+  backdrop: 'Backdrop / Properti',
+  costume: 'Kostum / Aksesoris',
+  other: 'Lainnya',
+}
+
+const activeCategory = ref<string>('all')
+
+// Hanya tampilkan tab kategori yang benar-benar ada isinya di lab ini
+const availableCategories = computed(() => {
+  const set = new Set((assets.value ?? []).map((a) => a.category.value))
+  return ['all', ...Array.from(set)]
+})
+
+const filteredAssets = computed(() => {
+  if (activeCategory.value === 'all') return assets.value ?? []
+  return (assets.value ?? []).filter((a) => a.category.value === activeCategory.value)
+})
+
+function selectCategory(cat: string) {
+  activeCategory.value = cat
+}
+
+// ============================================================
+// Keranjang
+// ============================================================
 const cartCount = computed(() => cartStore.itemCount(slug.value))
 
 function addToCart(asset: NonNullable<typeof assets.value>[number]) {
@@ -124,77 +164,106 @@ function formatPrice(price: string | number) {
         <Skeleton v-for="i in 4" :key="i" class="h-72 w-full rounded-xl" />
       </div>
 
-      <!-- Empty -->
+      <!-- Empty total (belum ada aset sama sekali) -->
       <div v-else-if="!assets?.length" class="text-center py-16">
         <PackageX class="size-9 mx-auto text-gray-300 mb-2" />
         <p class="text-gray-400 text-sm">Belum ada alat yang tersedia untuk disewa.</p>
       </div>
 
-      <!-- Grid -->
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card v-for="asset in assets" :key="asset.uuid" class="p-0 flex flex-col">
-          <CardContent class="p-4 flex flex-col flex-1">
-            <div
-              class="aspect-video bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden"
-            >
-              <img
-                v-if="asset.image"
-                :src="asset.image"
-                :alt="asset.name"
-                class="w-full h-full object-cover"
-              />
-              <Camera v-else class="size-8 text-gray-300" />
-            </div>
-            <div class="flex items-center justify-between">
-              <p class="text-xs text-gray-400">{{ asset.category?.label }}</p>
-              <Badge variant="outline" class="border-0 bg-gray-100 text-gray-500 text-[11px]">
-                Stok: {{ asset.quantity }}
-              </Badge>
-            </div>
-            <h3 class="font-semibold text-gray-900">{{ asset.name }}</h3>
-            <p class="text-sm text-gray-500 mb-2">{{ asset.brand }}</p>
-            <p class="font-bold text-gray-900 mb-3">
-              {{ formatPrice(asset.rental_price) }}
-              <span class="text-xs font-normal text-gray-400">/ hari / unit</span>
-            </p>
+      <template v-else>
+        <!-- Tab Kategori -->
+        <div class="flex gap-2 overflow-x-auto pb-1 mb-5 -mx-1 px-1">
+          <button
+            v-for="cat in availableCategories"
+            :key="cat"
+            @click="selectCategory(cat)"
+            class="px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors shrink-0 border"
+            :class="
+              activeCategory === cat
+                ? 'bg-gray-900 text-white border-gray-900'
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+            "
+          >
+            {{ CATEGORY_LABELS[cat] ?? cat }}
+          </button>
+        </div>
 
-            <!-- Belum di keranjang -->
-            <Button
-              v-if="!cartStore.isInCart(slug, asset.uuid)"
-              class="mt-auto w-full"
-              @click="addToCart(asset)"
-            >
-              <Plus class="size-4" />
-              Tambah ke Keranjang
-            </Button>
+        <!-- Empty state per kategori -->
+        <div
+          v-if="filteredAssets.length === 0"
+          class="text-center py-16 text-gray-400 text-sm"
+        >
+          Tidak ada alat di kategori "{{ CATEGORY_LABELS[activeCategory] ?? activeCategory }}".
+        </div>
 
-            <!-- Sudah di keranjang: stepper quantity -->
-            <div v-else class="mt-auto flex items-center justify-between gap-2">
-              <Button
-                variant="outline"
-                size="icon-sm"
-                class="border-red-200 text-red-600 hover:bg-red-50"
-                @click="decrement(asset)"
+        <!-- Grid -->
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card v-for="asset in filteredAssets" :key="asset.uuid" class="p-0 flex flex-col">
+            <CardContent class="p-4 flex flex-col flex-1">
+              <div
+                class="aspect-video bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden"
               >
-                <Minus class="size-3.5" />
-              </Button>
-              <span class="flex-1 text-center text-sm font-semibold text-gray-900">
-                {{ cartStore.getQuantity(slug, asset.uuid) }} unit
-              </span>
+                <img
+                  v-if="asset.image"
+                  :src="asset.image"
+                  :alt="asset.name"
+                  class="w-full h-full object-cover"
+                />
+                <Camera v-else class="size-8 text-gray-300" />
+              </div>
+              <div class="flex items-center justify-between">
+                <Badge variant="outline" class="border-0 bg-blue-50 text-blue-700 text-[11px]">
+                  {{ asset.category?.label }}
+                </Badge>
+                <Badge variant="outline" class="border-0 bg-gray-100 text-gray-500 text-[11px]">
+                  Stok: {{ asset.quantity }}
+                </Badge>
+              </div>
+              <h3 class="font-semibold text-gray-900 mt-2">{{ asset.name }}</h3>
+              <p class="text-sm text-gray-500 mb-2">{{ asset.brand }}</p>
+              <p class="font-bold text-gray-900 mb-3">
+                {{ formatPrice(asset.rental_price) }}
+                <span class="text-xs font-normal text-gray-400">/ hari / unit</span>
+              </p>
+
+              <!-- Belum di keranjang -->
               <Button
-                variant="outline"
-                size="icon-sm"
-                :disabled="
-                  asset.quantity <= 1 || cartStore.getQuantity(slug, asset.uuid) >= asset.quantity
-                "
-                @click="increment(asset)"
+                v-if="!cartStore.isInCart(slug, asset.uuid)"
+                class="mt-auto w-full"
+                @click="addToCart(asset)"
               >
-                <Plus class="size-3.5" />
+                <Plus class="size-4" />
+                Tambah ke Keranjang
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+
+              <!-- Sudah di keranjang: stepper quantity -->
+              <div v-else class="mt-auto flex items-center justify-between gap-2">
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  class="border-red-200 text-red-600 hover:bg-red-50"
+                  @click="decrement(asset)"
+                >
+                  <Minus class="size-3.5" />
+                </Button>
+                <span class="flex-1 text-center text-sm font-semibold text-gray-900">
+                  {{ cartStore.getQuantity(slug, asset.uuid) }} unit
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  :disabled="
+                    asset.quantity <= 1 || cartStore.getQuantity(slug, asset.uuid) >= asset.quantity
+                  "
+                  @click="increment(asset)"
+                >
+                  <Plus class="size-3.5" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </template>
     </div>
 
     <!-- Floating checkout bar -->
