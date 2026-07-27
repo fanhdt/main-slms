@@ -9,7 +9,16 @@ import { toast } from 'vue-sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Check, Clock, Wallet, RotateCcw, ListChecks, Home, LayoutDashboard } from 'lucide-vue-next'
+import {
+  Check,
+  Clock,
+  Wallet,
+  RotateCcw,
+  ListChecks,
+  Home,
+  LayoutDashboard,
+  Download,
+} from 'lucide-vue-next'
 
 declare const snap: any
 
@@ -96,6 +105,14 @@ function goHome() {
     router.push('/')
   }
 }
+
+function downloadQR() {
+  if (!qrDataUrl.value) return
+  const link = document.createElement('a')
+  link.href = qrDataUrl.value
+  link.download = `QR-Booking-${code.value}.png`
+  link.click()
+}
 </script>
 
 <template>
@@ -159,9 +176,19 @@ function goHome() {
               </div>
             </div>
 
-            <p class="text-sm text-gray-500 mb-6">
+            <p class="text-sm text-gray-500 mb-4">
               Tunjukkan QR Code ini ke admin saat datang ke lokasi untuk check-in otomatis.
             </p>
+
+            <Button
+              variant="outline"
+              class="w-full mb-6"
+              :disabled="!qrDataUrl"
+              @click="downloadQR"
+            >
+              <Download class="size-4" />
+              Download QR Code
+            </Button>
           </template>
 
           <div class="flex flex-col gap-3">

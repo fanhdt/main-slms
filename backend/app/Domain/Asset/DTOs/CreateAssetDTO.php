@@ -22,6 +22,7 @@ readonly class CreateAssetDTO
         public ?string $image = null,
         public bool    $isRentable = true,
         public ?float  $rentalPrice = null,
+        public int     $quantity = 1,
     ) {}
 
     public static function fromRequest(array $data): self
@@ -42,6 +43,7 @@ readonly class CreateAssetDTO
             image:          $data['image'] ?? null,
             isRentable:     $data['is_rentable'] ?? true,
             rentalPrice:    $data['rental_price'] ?? null,
+            quantity:       isset($data['quantity']) ? (int) $data['quantity'] : 1,
         );
     }
 }

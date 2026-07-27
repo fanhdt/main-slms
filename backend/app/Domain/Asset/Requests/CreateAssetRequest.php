@@ -39,6 +39,7 @@ class CreateAssetRequest extends FormRequest
             'image'          => ['nullable', 'string'],
             'is_rentable'    => ['nullable', 'boolean'],
             'rental_price'   => ['nullable', 'numeric', 'min:0'],
+            'quantity' => ['nullable', 'integer', 'min:1'],
         ];
     }
 

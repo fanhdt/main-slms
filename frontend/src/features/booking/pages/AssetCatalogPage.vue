@@ -39,6 +39,7 @@ const { data: assets, isLoading } = useQuery({
       rental_price: string
       image: string | null
       quantity: number
+      available_now: number
       category: { value: string; label: string }
     }[]
   },
@@ -67,7 +68,6 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const activeCategory = ref<string>('all')
 
-// Hanya tampilkan tab kategori yang benar-benar ada isinya di lab ini
 const availableCategories = computed(() => {
   const set = new Set((assets.value ?? []).map((a) => a.category.value))
   return ['all', ...Array.from(set)]
@@ -88,12 +88,19 @@ function selectCategory(cat: string) {
 const cartCount = computed(() => cartStore.itemCount(slug.value))
 
 function addToCart(asset: NonNullable<typeof assets.value>[number]) {
+  if (asset.available_now <= 0) {
+    toast.error(`${asset.name} sedang tidak tersedia (stok habis).`)
+    return
+  }
   cartStore.addItem(slug.value, {
     uuid: asset.uuid,
     name: asset.name,
     brand: asset.brand,
     rental_price: asset.rental_price,
-    max_quantity: asset.quantity,
+    // PENTING: batas kuantitas mengikuti stok yang BENAR-BENAR tersisa
+    // (available_now), bukan total stok fisik (quantity). Kalau pakai
+    // quantity, user masih bisa nambah walau stoknya sedang habis/dipakai.
+    max_quantity: asset.available_now,
   })
   toast.success(`${asset.name} ditambahkan ke keranjang.`)
 }
@@ -189,10 +196,7 @@ function formatPrice(price: string | number) {
         </div>
 
         <!-- Empty state per kategori -->
-        <div
-          v-if="filteredAssets.length === 0"
-          class="text-center py-16 text-gray-400 text-sm"
-        >
+        <div v-if="filteredAssets.length === 0" class="text-center py-16 text-gray-400 text-sm">
           Tidak ada alat di kategori "{{ CATEGORY_LABELS[activeCategory] ?? activeCategory }}".
         </div>
 
@@ -215,8 +219,14 @@ function formatPrice(price: string | number) {
                 <Badge variant="outline" class="border-0 bg-blue-50 text-blue-700 text-[11px]">
                   {{ asset.category?.label }}
                 </Badge>
-                <Badge variant="outline" class="border-0 bg-gray-100 text-gray-500 text-[11px]">
-                  Stok: {{ asset.quantity }}
+                <Badge
+                  variant="outline"
+                  class="border-0 text-[11px]"
+                  :class="
+                    asset.available_now > 0 ? 'bg-gray-100 text-gray-500' : 'bg-red-50 text-red-600'
+                  "
+                >
+                  Stok: {{ asset.available_now }} / {{ asset.quantity }}
                 </Badge>
               </div>
               <h3 class="font-semibold text-gray-900 mt-2">{{ asset.name }}</h3>
@@ -226,9 +236,18 @@ function formatPrice(price: string | number) {
                 <span class="text-xs font-normal text-gray-400">/ hari / unit</span>
               </p>
 
-              <!-- Belum di keranjang -->
+              <!-- Stok benar-benar habis: tombol nonaktif total -->
               <Button
-                v-if="!cartStore.isInCart(slug, asset.uuid)"
+                v-if="!cartStore.isInCart(slug, asset.uuid) && asset.available_now <= 0"
+                class="mt-auto w-full"
+                disabled
+              >
+                Stok Habis
+              </Button>
+
+              <!-- Belum di keranjang, stok masih ada -->
+              <Button
+                v-else-if="!cartStore.isInCart(slug, asset.uuid)"
                 class="mt-auto w-full"
                 @click="addToCart(asset)"
               >
@@ -236,7 +255,7 @@ function formatPrice(price: string | number) {
                 Tambah ke Keranjang
               </Button>
 
-              <!-- Sudah di keranjang: stepper quantity -->
+              <!-- Sudah di keranjang: stepper quantity, dibatasi available_now -->
               <div v-else class="mt-auto flex items-center justify-between gap-2">
                 <Button
                   variant="outline"
@@ -253,7 +272,8 @@ function formatPrice(price: string | number) {
                   variant="outline"
                   size="icon-sm"
                   :disabled="
-                    asset.quantity <= 1 || cartStore.getQuantity(slug, asset.uuid) >= asset.quantity
+                    asset.available_now <= 1 ||
+                    cartStore.getQuantity(slug, asset.uuid) >= asset.available_now
                   "
                   @click="increment(asset)"
                 >

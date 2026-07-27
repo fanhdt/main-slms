@@ -444,26 +444,27 @@ function formatSelectedDate(dateStr: string) {
             <p class="text-gray-500 mt-2">Pilih layanan yang sesuai kebutuhanmu</p>
           </div>
 
-          <div v-if="services?.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div v-if="services?.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <
             <div
               v-for="service in services"
               :key="service.uuid"
-              class="group relative bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+              class="group relative bg-white rounded-xl border border-gray-100 shadow-sm p-3 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
             >
               <span
                 v-if="service.type?.value === 'photography'"
-                class="absolute top-4 right-4 z-10 text-[11px] font-medium px-2.5 py-1 rounded-full flex items-center gap-1 backdrop-blur-sm"
+                class="absolute top-2 right-2 z-10 text-[9px] font-medium px-1.5 py-0.5 rounded-full flex items-center gap-1 backdrop-blur-sm"
                 :style="{
                   backgroundColor: lab.branding.secondary_color + '15',
                   color: lab.branding.secondary_color ?? '#e94560',
                 }"
               >
-                <Images class="size-3" />
-                Dapat Galeri Foto
+                <Images class="size-2.5" />
+                Galeri
               </span>
 
               <div
-                class="w-full h-40 rounded-xl overflow-hidden mb-4 flex items-center justify-center"
+                class="w-full h-20 sm:h-24 rounded-lg overflow-hidden mb-2 flex items-center justify-center"
                 :style="
                   !service.image ? { backgroundColor: lab.branding.primary_color + '10' } : {}
                 "
@@ -476,30 +477,38 @@ function formatSelectedDate(dateStr: string) {
                 />
                 <Camera
                   v-else
-                  class="size-8"
+                  class="size-5"
                   :style="{ color: lab.branding.primary_color ?? '#1a1a2e' }"
                 />
               </div>
 
-              <h3 class="font-semibold text-gray-900 text-lg tracking-tight">{{ service.name }}</h3>
-              <p class="text-gray-500 text-sm mt-1 leading-relaxed line-clamp-2">
+              <h3 class="font-semibold text-gray-900 text-xs sm:text-sm tracking-tight truncate">
+                {{ service.name }}
+              </h3>
+              <p class="text-gray-500 text-[11px] mt-0.5 leading-snug line-clamp-2">
                 {{ service.description }}
               </p>
 
-              <div class="mt-5 flex items-center justify-between">
-                <div>
-                  <p class="text-xs text-gray-400">Mulai dari</p>
-                  <p
-                    class="font-bold text-lg"
-                    :style="{ color: lab.branding.primary_color ?? '#1a1a2e' }"
-                  >
-                    {{ formatPrice(service.price) }}
+              <div class="mt-2 flex items-end justify-between gap-1.5">
+                <div class="min-w-0">
+                  <template v-if="service.price !== null">
+                    <p
+                      class="font-bold text-xs sm:text-sm truncate"
+                      :style="{ color: lab.branding.primary_color ?? '#1a1a2e' }"
+                    >
+                      {{ formatPrice(service.price) }}
+                    </p>
+                    <p class="text-[10px] text-gray-400 truncate">
+                      {{ service.pricing_type?.label }}
+                    </p>
+                  </template>
+                  <p v-else class="text-[10px] font-medium text-blue-600 leading-snug">
+                    Sesuai pilihan editing
                   </p>
-                  <p class="text-xs text-gray-400">{{ service.pricing_type?.label }}</p>
                 </div>
                 <button
                   @click="handleBooking"
-                  class="relative overflow-hidden text-sm font-medium px-4 py-2.5 rounded-xl text-white shadow-sm hover:shadow-md active:scale-[0.97] transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                  class="text-[11px] font-medium px-2.5 py-1.5 rounded-lg text-white shadow-sm hover:shadow-md active:scale-[0.97] transition-all duration-200 shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                   :style="{ backgroundColor: lab.branding.secondary_color ?? '#e94560' }"
                 >
                   Pesan

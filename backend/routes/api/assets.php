@@ -15,3 +15,4 @@ Route::delete('/{uuid}', [\App\Domain\Asset\Controllers\AssetController::class, 
     ->middleware('can:assets.delete');
 Route::patch('/{uuid}/status', [\App\Domain\Asset\Controllers\AssetController::class, 'updateStatus'])
     ->middleware('can:assets.update');
+Route::get('/availability', [\App\Domain\Asset\Controllers\AssetController::class, 'checkAvailability']);

@@ -11,7 +11,7 @@ import api from '@/lib/axios'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Inbox, Images, Smartphone, Wallet, X } from 'lucide-vue-next'
+import { Inbox, Images, Smartphone, Wallet, X, Download } from 'lucide-vue-next'
 
 declare const snap: any
 const router = useRouter()
@@ -169,6 +169,8 @@ const { mutate: cancelBooking, isPending: isCanceling } = useMutation({
   onSuccess: () => {
     toast.success('Booking berhasil dibatalkan.')
     queryClient.invalidateQueries({ queryKey: ['my-bookings'] })
+    queryClient.invalidateQueries({ queryKey: ['rentable-assets'] })
+    queryClient.invalidateQueries({ queryKey: ['assets'] })
   },
   onError: (err: any) => {
     toast.error(err.response?.data?.message ?? 'Gagal membatalkan booking.')
@@ -183,6 +185,15 @@ function confirmCancel(booking: any) {
 
 function canCancel(booking: any) {
   return ['pending', 'approved'].includes(booking.status.value)
+}
+
+function downloadQR() {
+  if (!qrDataUrl.value || !selectedBooking.value) return
+  const code = selectedBooking.value.booking_code ?? selectedBooking.value.code
+  const link = document.createElement('a')
+  link.href = qrDataUrl.value
+  link.download = `QR-Booking-${code}.png`
+  link.click()
 }
 </script>
 
@@ -348,10 +359,16 @@ function canCancel(booking: any) {
               {{ selectedBooking?.booking_code ?? selectedBooking?.code }}
             </p>
             <p class="text-xs text-gray-400 mb-6">{{ selectedBooking?.status?.label }}</p>
-            <Button variant="outline" class="w-full" @click="closeQR">
-              <X class="size-4" />
-              Tutup
-            </Button>
+            <div class="flex gap-2">
+              <Button variant="outline" class="flex-1" :disabled="!qrDataUrl" @click="downloadQR">
+                <Download class="size-4" />
+                Download QR
+              </Button>
+              <Button variant="outline" class="flex-1" @click="closeQR">
+                <X class="size-4" />
+                Tutup
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

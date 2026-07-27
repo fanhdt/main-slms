@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import { bookingApi } from '@/features/booking/api/bookingApi'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import VerifyAssetReturnModal from '@/features/asset/components/VerifyAssetReturnModal.vue'
 import type { Booking } from '@/types'
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
@@ -20,6 +21,8 @@ const authStore = useAuthStore()
 const labStore = useLabStore()
 const queryClient = useQueryClient()
 const showScanner = ref(false)
+const showReturnModal = ref(false)
+const selectedBookingForReturn = ref<any>(null)
 
 const { data, isLoading } = useQuery({
   queryKey: ['bookings', labStore.activeLab?.id, search, page, filterStatus],
@@ -75,6 +78,10 @@ function formatDate(date: string) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+function openReturnModal(booking: any) {
+  selectedBookingForReturn.value = booking
+  showReturnModal.value = true
 }
 </script>
 
@@ -197,6 +204,16 @@ function formatDate(date: string) {
                     >
                       Selesai
                     </button>
+                    <button
+                      v-if="
+                        booking.booking_type.value === 'asset_rental' &&
+                        booking.status.value === 'ongoing'
+                      "
+                      @click="openReturnModal(booking)"
+                      class="text-xs font-medium text-blue-600 hover:underline"
+                    >
+                      Verifikasi Alat
+                    </button>
                   </template>
                   <span v-else class="text-xs text-gray-400">{{ booking.status.label }}</span>
                 </div>
@@ -231,5 +248,10 @@ function formatDate(date: string) {
     </Card>
 
     <QrCheckinModal :show="showScanner" @close="showScanner = false" @success="onCheckinSuccess" />
+    <VerifyAssetReturnModal
+      :show="showReturnModal"
+      :booking="selectedBookingForReturn"
+      @close="showReturnModal = false"
+    />
   </div>
 </template>

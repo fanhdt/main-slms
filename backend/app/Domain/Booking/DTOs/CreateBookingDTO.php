@@ -7,6 +7,7 @@ use App\Domain\Booking\Enums\BookingType;
 use App\Domain\Lab\Models\Lab;
 use App\Domain\LabService\Models\Service;
 use App\Domain\LabService\Models\Package;
+use App\Domain\LabService\Models\ServiceOption;
 
 readonly class CreateBookingDTO
 {
@@ -37,6 +38,26 @@ readonly class CreateBookingDTO
             if (!empty($item['package_uuid'])) {
                 $resolved['package_id'] = Package::where('uuid', $item['package_uuid'])->value('id');
             }
+
+            // Resolve UUID opsi tambahan jadi ID, biar service layer tinggal pakai ID.
+            $resolved['option_ids'] = collect($item['option_uuids'] ?? [])
+                ->map(fn ($uuid) => ServiceOption::where('uuid', $uuid)->value('id'))
+                ->filter()
+                ->values()
+                ->toArray();
+
+            $resolved['photo_count'] = $item['photo_count'] ?? null;
+
+            // map custom harga (per-option, tipe custom biasa)
+            $resolved['custom_prices'] = collect($item['custom_prices'] ?? [])
+                ->mapWithKeys(function ($price, $optionUuid) {
+                    $optionId = ServiceOption::where('uuid', $optionUuid)->value('id');
+                    return $optionId ? [$optionId => (float) $price] : [];
+                })
+                ->toArray();
+
+            // NEW — catatan permintaan custom untuk service dengan is_custom_pricing
+            $resolved['custom_note'] = $item['custom_note'] ?? null;
 
             return $resolved;
         })->toArray();

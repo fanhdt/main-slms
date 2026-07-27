@@ -186,6 +186,7 @@ function openEdit(asset: Asset) {
               <th class="text-left px-4 py-3 font-medium text-gray-600">Kategori</th>
               <th class="text-left px-4 py-3 font-medium text-gray-600">Status</th>
               <th class="text-left px-4 py-3 font-medium text-gray-600">Harga Sewa</th>
+              <th class="text-left px-4 py-3 font-medium text-gray-600">Stok</th>
               <th class="text-right px-4 py-3 font-medium text-gray-600">Aksi</th>
             </tr>
           </thead>
@@ -234,6 +235,14 @@ function openEdit(asset: Asset) {
                     <Trash2 class="size-4" />
                   </button>
                 </div>
+              </td>
+              <td class="px-4 py-3">
+                <span
+                  class="text-sm font-medium"
+                  :class="asset.available_now > 0 ? 'text-gray-700' : 'text-red-600'"
+                >
+                  {{ asset.available_now }} / {{ asset.quantity }}
+                </span>
               </td>
             </tr>
           </tbody>

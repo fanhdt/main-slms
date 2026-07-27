@@ -8,6 +8,7 @@ use App\Domain\LabService\Models\Package;
 use App\Domain\LabService\Models\Service;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BookingItem extends Model
 {
@@ -43,4 +44,8 @@ class BookingItem extends Model
     {
         return $this->belongsTo(Package::class);
     }
+    public function options(): HasMany
+{
+    return $this->hasMany(BookingItemOption::class);
+}
 }

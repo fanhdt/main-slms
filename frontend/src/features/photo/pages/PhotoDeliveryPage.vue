@@ -181,7 +181,11 @@ async function downloadAll() {
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           <div v-for="file in finalFiles" :key="file.uuid" class="space-y-2">
-            <img :src="file.url" :alt="file.filename" class="w-full h-40 object-cover rounded-xl" />
+            <img
+              :src="file.url"
+              :alt="file.filename"
+              class="w-full aspect-video object-cover rounded-xl"
+            />
             <Button size="sm" class="w-full" @click="download(file.uuid, file.filename)">
               Download
             </Button>
@@ -205,7 +209,10 @@ async function downloadAll() {
 
     <!-- TAB: Riwayat & Preview Awal -->
     <template v-else>
-      <div v-if="project.editor_note" class="rounded-xl border-2 border-orange-200 bg-orange-50 p-4">
+      <div
+        v-if="project.editor_note"
+        class="rounded-xl border-2 border-orange-200 bg-orange-50 p-4"
+      >
         <p class="text-sm font-semibold text-orange-800">
           Catatan revisi terakhir yang kamu kirim:
         </p>

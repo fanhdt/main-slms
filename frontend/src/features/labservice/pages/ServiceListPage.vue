@@ -59,7 +59,8 @@ function confirmDelete(service: Service) {
   }
 }
 
-function formatPrice(price: string) {
+function formatPrice(price: string | number | null) {
+  if (price === null || price === undefined) return null
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
@@ -190,8 +191,11 @@ function openEdit(service: Service) {
               </td>
               <td class="px-4 py-3 text-gray-600">{{ service.type.label }}</td>
               <td class="px-4 py-3">
-                <span class="font-medium text-gray-900">{{ formatPrice(service.price) }}</span>
-                <span class="text-xs text-gray-400 block">{{ service.pricing_type.label }}</span>
+                <template v-if="service.pricing_type && service.price !== null">
+                  <span class="font-medium text-gray-900">{{ formatPrice(service.price) }}</span>
+                  <span class="text-xs text-gray-400 block">{{ service.pricing_type.label }}</span>
+                </template>
+                <span v-else class="text-xs text-gray-400 italic">Harga dari pilihan editing</span>
               </td>
               <td class="px-4 py-3">
                 <Badge

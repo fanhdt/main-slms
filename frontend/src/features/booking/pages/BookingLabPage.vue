@@ -228,6 +228,7 @@ function formatPrice(price: string | number) {
           </button>
         </div>
 
+        <!-- Paket -->
         <div v-if="serviceTab === 'packages'" class="grid gap-4">
           <button
             v-for="pkg in packages"
@@ -235,10 +236,21 @@ function formatPrice(price: string | number) {
             @click="selectPackage(pkg)"
             class="text-left"
           >
-            <Card class="p-0 hover:border-blue-400 hover:shadow-md transition-all">
+            <Card class="p-0 overflow-hidden hover:border-blue-400 hover:shadow-md transition-all">
+              <div
+                class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden"
+              >
+                <img
+                  v-if="pkg.image"
+                  :src="pkg.image"
+                  :alt="pkg.name"
+                  class="w-full h-full object-cover"
+                />
+                <Package v-else class="size-8 text-gray-300" />
+              </div>
               <CardContent class="p-5">
                 <h3 class="font-semibold text-gray-900">{{ pkg.name }}</h3>
-                <p class="text-sm text-gray-500 mt-1">{{ pkg.description }}</p>
+                <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ pkg.description }}</p>
                 <p class="font-bold text-gray-900 mt-2">
                   {{ formatPrice(pkg.price - pkg.discount) }}
                 </p>
@@ -250,6 +262,7 @@ function formatPrice(price: string | number) {
           </p>
         </div>
 
+        <!-- Layanan satuan -->
         <div v-else class="grid gap-4">
           <button
             v-for="service in services"
@@ -257,15 +270,30 @@ function formatPrice(price: string | number) {
             @click="selectService(service)"
             class="text-left"
           >
-            <Card class="p-0 hover:border-blue-400 hover:shadow-md transition-all">
+            <Card class="p-0 overflow-hidden hover:border-blue-400 hover:shadow-md transition-all">
+              <div
+                class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden"
+              >
+                <img
+                  v-if="service.image"
+                  :src="service.image"
+                  :alt="service.name"
+                  class="w-full h-full object-cover"
+                />
+                <Wrench v-else class="size-8 text-gray-300" />
+              </div>
               <CardContent class="p-5">
                 <h3 class="font-semibold text-gray-900">{{ service.name }}</h3>
-                <p class="text-sm text-gray-500 mt-1">{{ service.description }}</p>
-                <p class="font-bold text-gray-900 mt-2">
+                <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ service.description }}</p>
+
+                <p v-if="service.price !== null" class="font-bold text-gray-900 mt-2">
                   {{ formatPrice(service.price) }}
                   <span class="text-sm font-normal text-gray-400"
                     >/ {{ service.pricing_type?.label }}</span
                   >
+                </p>
+                <p v-else class="text-sm font-medium text-blue-600 mt-2">
+                  Harga sesuai pilihan editing yang dipilih
                 </p>
               </CardContent>
             </Card>

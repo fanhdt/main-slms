@@ -92,9 +92,6 @@ class BookingController extends ApiController
         return $this->success(new BookingResource($booking), 'Aset berhasil ditambahkan ke booking.');
     }
 
-    /**
-     * Check-in booking lewat scan QR code (dipanggil dari frontend scanner).
-     */
     public function checkin(Request $request): JsonResponse
     {
         $request->validate([
@@ -106,12 +103,27 @@ class BookingController extends ApiController
         return $this->success(new BookingResource($booking), 'Check-in berhasil.');
     }
 
+    public function cancel(Request $request, string $uuid): JsonResponse
+    {
+        $booking = $this->bookingService->cancelByOwner($uuid, $request->user()->id);
 
+        return $this->success(new BookingResource($booking), 'Booking berhasil dibatalkan.');
+    }
 
-  public function cancel(Request $request, string $uuid): JsonResponse
-   {
-     $booking = $this->bookingService->cancelByOwner($uuid, $request->user()->id);
+    public function verifyAssetReturn(Request $request, string $uuid, int $bookingAssetId): JsonResponse
+{
+    $request->validate([
+        'status'       => ['required', 'string', 'in:returned,damaged'],
+        'return_notes' => ['nullable', 'string', 'max:1000'],
+    ]);
 
-     return $this->success(new BookingResource($booking), 'Booking berhasil dibatalkan.');
-   }
+    $booking = $this->bookingService->verifyAssetReturn(
+        $uuid,
+        $bookingAssetId,
+        $request->input('status'),
+        $request->input('return_notes'),
+    );
+
+    return $this->success(new BookingResource($booking), 'Verifikasi pengembalian alat berhasil disimpan.');
+}
 }

@@ -25,31 +25,33 @@ class Service extends Model
     public const IMAGE_DISK = 's3'; // NEW
 
     protected $fillable = [
-        'uuid',
-        'lab_id',
-        'name',
-        'type',
-        'description',
-        'pricing_type',
-        'price',
-        'duration',
-        'min_quantity',
-        'max_quantity',
-        'includes',
-        'image',
-        'is_active',
-    ];
+    'uuid',
+    'lab_id',
+    'name',
+    'type',
+    'description',
+    'pricing_type',
+    'price',
+    'duration',
+    'min_quantity',
+    'max_quantity',
+    'includes',
+    'image',
+    'is_active',
+    'is_custom_pricing', 
+];
 
-    protected function casts(): array
-    {
-        return [
-            'type'         => ServiceType::class,
-            'pricing_type' => PricingType::class,
-            'includes'     => 'array',
-            'price'        => 'decimal:2',
-            'is_active'    => 'boolean',
-        ];
-    }
+protected function casts(): array
+{
+    return [
+        'type'              => ServiceType::class,
+        'pricing_type'      => PricingType::class,
+        'includes'          => 'array',
+        'price'             => 'decimal:2',
+        'is_active'         => 'boolean',
+        'is_custom_pricing' => 'boolean', 
+    ];
+}
 
     public function packageItems(): HasMany
     {
@@ -66,4 +68,9 @@ class Service extends Model
     {
         return $this->getImageUrlFrom($this->image);
     }
+
+    public function options(): HasMany
+{
+    return $this->hasMany(ServiceOption::class);
+}
 }

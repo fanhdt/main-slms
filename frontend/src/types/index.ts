@@ -145,6 +145,7 @@ export interface Asset {
   purchase_price: string | null
   purchase_date: string | null
   quantity: number
+  available_now: number
   created_at: string
 }
 
@@ -165,6 +166,7 @@ export interface SelectOption {
 export interface Booking {
   uuid: string
   booking_code: string
+  booking_type: EnumField
   lab_id: string
   user: {
     uuid: string

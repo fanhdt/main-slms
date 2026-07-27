@@ -89,4 +89,22 @@ class AssetController extends ApiController
 
     return $this->success(new AssetResource($asset), 'Gambar aset berhasil diupdate.');
 }
+
+public function checkAvailability(Request $request): JsonResponse
+{
+    $request->validate([
+        'asset_uuids'   => ['required', 'array', 'min:1'],
+        'asset_uuids.*' => ['required', 'string', 'exists:assets,uuid'],
+        'start_date'    => ['required', 'date'],
+        'end_date'      => ['required', 'date', 'after_or_equal:start_date'],
+    ]);
+
+    $result = $this->assetService->checkAvailability(
+        $request->input('asset_uuids'),
+        $request->input('start_date'),
+        $request->input('end_date'),
+    );
+
+    return $this->success($result);
+}
 }

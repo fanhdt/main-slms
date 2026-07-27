@@ -51,22 +51,34 @@ class BookingResource extends JsonResource
                     'quantity'   => $item->quantity,
                     'price'      => $item->price,
                     'subtotal'   => $item->subtotal,
+                    'options'    => $item->relationLoaded('options')
+                        ? $item->options->map(fn ($opt) => [
+                            'id'             => $opt->id,
+                            'name'           => $opt->name_snapshot,
+                            'price_type'     => $opt->price_type_snapshot,
+                            'price'          => $opt->price_snapshot,
+                            'extra_minutes'  => $opt->extra_minutes_snapshot,
+                            'subtotal'       => $opt->subtotal,
+                        ])
+                        : [],
                 ]);
             }),
 
             'assets' => $this->whenLoaded('assets', function () {
-                return $this->assets->map(fn ($bookingAsset) => [
-                    'id'           => $bookingAsset->id,
-                    'asset_id'     => $bookingAsset->asset_id,
-                    'asset_name'   => $bookingAsset->relationLoaded('asset') ? $bookingAsset->asset?->name : null,
-                    'rental_price' => $bookingAsset->relationLoaded('asset') ? $bookingAsset->asset?->rental_price : null,
-                    'status'       => $bookingAsset->status,
-                    'return_notes' => $bookingAsset->return_notes,
-                ]);
-            }),
+    return $this->assets->map(fn ($bookingAsset) => [
+        'id'           => $bookingAsset->id,
+        'asset_id'     => $bookingAsset->asset_id,
+        'asset_name'   => $bookingAsset->relationLoaded('asset') ? $bookingAsset->asset?->name : null,
+        'rental_price' => $bookingAsset->relationLoaded('asset') ? $bookingAsset->asset?->rental_price : null,
+        'quantity'     => $bookingAsset->quantity,
+        'status'       => [
+            'value' => $bookingAsset->status->value,
+            'label' => $bookingAsset->status->label(),
+        ],
+        'return_notes' => $bookingAsset->return_notes,
+    ]);
+}),
 
-            // Ringkasan status photo project (kalau ada), dipakai frontend
-            // untuk menentukan tombol "Pilih Foto" / "Lihat Hasil Foto" di MyBookingsPage.
             'photo_project' => $this->whenLoaded('photoProject', function () {
                 if (!$this->photoProject) {
                     return null;

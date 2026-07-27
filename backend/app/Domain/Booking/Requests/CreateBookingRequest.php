@@ -51,6 +51,18 @@ class CreateBookingRequest extends FormRequest
             'items.*.service_uuid' => ['nullable', 'string', 'exists:services,uuid'],
             'items.*.package_uuid' => ['nullable', 'string', 'exists:packages,uuid'],
             'items.*.quantity'     => ['required_with:items', 'integer', 'min:1'],
+
+            // --- Opsi tambahan untuk Service (misal: Edit Foto -> Retouch, Remove BG) ---
+            'items.*.option_uuids'   => ['nullable', 'array'],
+            'items.*.option_uuids.*' => ['nullable', 'string', 'exists:service_options,uuid'],
+
+            // Dipakai kalau ada opsi dengan price_type = per_photo
+            'items.*.photo_count' => ['nullable', 'integer', 'min:1'],
+
+            // Harga custom
+            'items.*.custom_prices'   => ['nullable', 'array'],
+            'items.*.custom_prices.*' => ['nullable', 'numeric', 'min:0'],
+            'items.*.custom_note' => ['nullable', 'string', 'max:1000'],
         ];
     }
 
@@ -64,11 +76,25 @@ class CreateBookingRequest extends FormRequest
             $items = $this->input('items', []);
             $requiresSchedule = false;
 
-            foreach ($items as $item) {
+            foreach ($items as $index => $item) {
                 if (!empty($item['service_uuid'])) {
                     $service = Service::where('uuid', $item['service_uuid'])->first();
                     if ($service?->type->requiresSchedule()) {
                         $requiresSchedule = true;
+                    }
+
+                    // Pastikan tiap option_uuid yang dipilih benar-benar milik service ini,
+                    // bukan option_uuid milik service lain yang nyasar/dipalsukan dari frontend.
+                    if (!empty($item['option_uuids']) && $service) {
+                        $validOptionUuids = $service->options()->pluck('uuid')->all();
+                        foreach ($item['option_uuids'] as $optionUuid) {
+                            if (!in_array($optionUuid, $validOptionUuids, true)) {
+                                $validator->errors()->add(
+                                    "items.{$index}.option_uuids",
+                                    'Ada opsi tambahan yang tidak sesuai dengan layanan yang dipilih.'
+                                );
+                            }
+                        }
                     }
                 }
 

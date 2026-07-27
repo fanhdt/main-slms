@@ -15,8 +15,6 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'confirm-slot': [payload: { date: string; start: string; end: string; durationHours: number }]
-  // NEW — dipancarkan tiap kali tanggal/data hari berubah, dipakai LabLandingPage
-  // untuk menampilkan aside daftar jadwal di luar komponen ini.
   'day-changed': [
     payload: {
       date: string | null
@@ -69,7 +67,6 @@ const { data: dayData, isLoading: dayLoading } = useQuery({
   enabled: computed(() => !!selectedDate.value),
 })
 
-// NEW — pancarkan perubahan ke parent tiap kali tanggal/loading/data berubah
 watch(
   [selectedDate, dayLoading, dayData],
   () => {
@@ -219,24 +216,26 @@ onMounted(() => {
 
 <template>
   <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+    <div class="flex items-center justify-between px-3 sm:px-4 py-3 border-b border-gray-100">
       <button
         @click="prevMonth"
-        class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center"
+        class="w-9 h-9 sm:w-8 sm:h-8 rounded-lg hover:bg-gray-100 active:bg-gray-200 flex items-center justify-center text-lg shrink-0"
       >
         ‹
       </button>
       <p class="text-sm font-semibold text-gray-900 capitalize">{{ monthLabel }}</p>
       <button
         @click="nextMonth"
-        class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center"
+        class="w-9 h-9 sm:w-8 sm:h-8 rounded-lg hover:bg-gray-100 active:bg-gray-200 flex items-center justify-center text-lg shrink-0"
       >
         ›
       </button>
     </div>
 
-    <div class="p-4">
-      <div class="grid grid-cols-7 gap-1 text-center text-xs text-gray-400 mb-2">
+    <div class="p-2.5 sm:p-4">
+      <div
+        class="grid grid-cols-7 gap-1 sm:gap-1 text-center text-[11px] sm:text-xs text-gray-400 mb-2"
+      >
         <span v-for="d in ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']" :key="d">{{ d }}</span>
       </div>
 
@@ -244,13 +243,13 @@ onMounted(() => {
         Memuat kalender...
       </div>
 
-      <div v-else class="grid grid-cols-7 gap-1">
+      <div v-else class="grid grid-cols-7 gap-1 sm:gap-1.5">
         <button
           v-for="(cell, idx) in calendarDays"
           :key="idx"
           :disabled="!cell.date || isPast(cell.date)"
           @click="selectDate(cell.date)"
-          class="aspect-square rounded-lg text-sm font-medium transition-colors flex items-center justify-center"
+          class="aspect-square min-h-9 sm:min-h-0 rounded-lg text-[13px] sm:text-sm font-medium transition-colors flex items-center justify-center"
           :class="[
             !cell.date && 'invisible',
             cell.date && isPast(cell.date) && 'text-gray-300 cursor-not-allowed',
@@ -262,22 +261,26 @@ onMounted(() => {
         </button>
       </div>
 
-      <div class="flex items-center gap-4 mt-3 text-xs text-gray-500">
+      <div
+        class="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-[11px] sm:text-xs text-gray-500"
+      >
         <span class="flex items-center gap-1"
-          ><span class="w-2.5 h-2.5 rounded-sm bg-green-50 border border-green-200" /> Kosong</span
+          ><span class="w-2.5 h-2.5 rounded-sm bg-green-50 border border-green-200 shrink-0" />
+          Kosong</span
         >
         <span class="flex items-center gap-1"
-          ><span class="w-2.5 h-2.5 rounded-sm bg-yellow-50 border border-yellow-200" />
+          ><span class="w-2.5 h-2.5 rounded-sm bg-yellow-50 border border-yellow-200 shrink-0" />
           Sebagian</span
         >
         <span class="flex items-center gap-1"
-          ><span class="w-2.5 h-2.5 rounded-sm bg-red-50 border border-red-200" /> Penuh</span
+          ><span class="w-2.5 h-2.5 rounded-sm bg-red-50 border border-red-200 shrink-0" />
+          Penuh</span
         >
       </div>
     </div>
 
-    <div v-if="selectedDate" class="border-t border-gray-100 p-4">
-      <p class="text-sm font-semibold text-gray-900 mb-3">
+    <div v-if="selectedDate" class="border-t border-gray-100 p-3 sm:p-4">
+      <p class="text-sm font-semibold text-gray-900 mb-3 leading-snug">
         Jadwal
         {{
           new Date(selectedDate).toLocaleDateString('id-ID', {
@@ -286,7 +289,10 @@ onMounted(() => {
             month: 'long',
           })
         }}
-        <span v-if="dayData" class="font-normal text-gray-400">
+        <span
+          v-if="dayData"
+          class="block sm:inline font-normal text-gray-400 text-xs sm:text-sm mt-0.5 sm:mt-0"
+        >
           ({{ dayData.operational_hours.open }}–{{ dayData.operational_hours.close }})
         </span>
       </p>
@@ -294,13 +300,16 @@ onMounted(() => {
       <div v-if="dayLoading" class="py-4 text-center text-sm text-gray-400">Memuat jadwal...</div>
 
       <template v-else-if="dayData">
-        <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+        <!-- Grid slot jam: 2 kolom di layar sangat kecil, 3 di mobile besar, 4 di sm+
+             — sebelumnya langsung 3-4 kolom sehingga tombol jadi terlalu kecil
+             untuk disentuh di layar sempit. -->
+        <div class="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-2">
           <button
             v-for="(slot, index) in dayData.slots"
             :key="slot.start"
             :disabled="!slot.available || !interactive"
             @click="pickSlot(slot)"
-            class="py-2 px-2 rounded-lg text-xs font-medium border transition-colors"
+            class="py-2.5 sm:py-2 px-2 rounded-lg text-sm sm:text-xs font-medium border transition-colors min-h-11 sm:min-h-0"
             :class="slotClass(slot, index)"
           >
             {{ slot.start }}
@@ -309,7 +318,7 @@ onMounted(() => {
 
         <div
           v-if="interactive && pendingSlot"
-          class="mt-4 p-4 rounded-xl bg-blue-50 border border-blue-200"
+          class="mt-4 p-3.5 sm:p-4 rounded-xl bg-blue-50 border border-blue-200"
         >
           <p class="text-sm text-blue-900 font-medium mb-3">
             Kamu memilih jam <strong>{{ pendingSlot.start }}</strong>
@@ -317,13 +326,13 @@ onMounted(() => {
 
           <div class="mb-3">
             <label class="text-xs font-medium text-blue-800 mb-1.5 block">Durasi (jam)</label>
-            <div class="flex gap-2 flex-wrap">
+            <div class="grid grid-cols-4 gap-2">
               <button
                 v-for="d in [1, 2, 3, 4]"
                 :key="d"
                 :disabled="!canExtendTo(d)"
                 @click="setDuration(d)"
-                class="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors"
+                class="py-2.5 sm:py-1.5 px-2 rounded-lg text-sm sm:text-xs font-medium border transition-colors min-h-11 sm:min-h-0"
                 :class="
                   pendingDuration === d
                     ? 'bg-blue-600 border-blue-600 text-white'
@@ -337,7 +346,7 @@ onMounted(() => {
             </div>
           </div>
 
-          <p class="text-sm text-blue-900 mb-3">
+          <p class="text-sm text-blue-900 mb-3 leading-relaxed">
             Total waktu: <strong>{{ pendingSlot.start }}</strong> –
             <strong>{{
               dayData.slots[
@@ -347,16 +356,16 @@ onMounted(() => {
             ({{ pendingDuration }} jam)
           </p>
 
-          <div class="flex gap-2">
+          <div class="flex flex-col sm:flex-row gap-2">
             <button
               @click="cancelSelection"
-              class="flex-1 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+              class="flex-1 py-2.5 sm:py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors min-h-11 sm:min-h-0"
             >
               Ubah Pilihan
             </button>
             <button
               @click="confirmSelection"
-              class="flex-1 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              class="flex-1 py-2.5 sm:py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 transition-colors min-h-11 sm:min-h-0"
             >
               Konfirmasi Jadwal
             </button>
@@ -365,7 +374,7 @@ onMounted(() => {
 
         <div
           v-else-if="interactive && confirmedSlot"
-          class="mt-4 p-4 rounded-xl bg-green-50 border border-green-200 flex items-center justify-between"
+          class="mt-4 p-3.5 sm:p-4 rounded-xl bg-green-50 border border-green-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
         >
           <div>
             <p class="text-xs text-green-700 font-medium">Jadwal terkonfirmasi</p>
@@ -376,7 +385,7 @@ onMounted(() => {
           </div>
           <button
             @click="changeSchedule"
-            class="text-xs text-green-700 underline hover:text-green-900"
+            class="text-xs text-green-700 underline hover:text-green-900 self-start sm:self-auto"
           >
             Ganti jadwal
           </button>

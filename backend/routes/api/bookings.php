@@ -36,3 +36,6 @@ Route::post('/{uuid}/assets', [\App\Domain\Booking\Controllers\BookingController
     ->middleware('can:bookings.update');
 // Payment Gateaway
 Route::post('/{uuid}/pay', [\App\Domain\Payment\Controllers\PaymentController::class, 'createSnapToken']);
+
+Route::post('/{uuid}/assets/{bookingAssetId}/return', [\App\Domain\Booking\Controllers\BookingController::class, 'verifyAssetReturn'])
+    ->middleware('can:bookings.update');

@@ -35,4 +35,9 @@ enum ServiceType: string
         self::PhotoEditing, self::Printing, self::Other => false,
     };
 }
+
+public function isOptionOnly(): bool
+{
+    return $this === self::PhotoEditing;
+}
 }

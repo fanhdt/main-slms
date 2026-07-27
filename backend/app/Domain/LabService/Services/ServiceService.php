@@ -7,6 +7,8 @@ namespace App\Domain\LabService\Services;
 use App\Core\Exceptions\ApiException;
 use App\Core\Services\BaseService;
 use App\Domain\LabService\Models\Service;
+use App\Domain\LabService\Models\ServiceOption;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -37,9 +39,15 @@ class ServiceService extends BaseService
         return $query->latest()->paginate($filters['per_page'] ?? 15);
     }
 
-    public function findByUuid(string $uuid): Service
+    public function findByUuid(string $uuid, bool $withOptions = false): Service
     {
-        $service = Service::with('lab')->where('uuid', $uuid)->first();
+        $query = Service::with('lab')->where('uuid', $uuid);
+
+        if ($withOptions) {
+            $query->with(['options' => fn ($q) => $q->orderBy('order')]);
+        }
+
+        $service = $query->first();
 
         if (! $service) {
             throw ApiException::notFound('Service');
@@ -90,4 +98,51 @@ class ServiceService extends BaseService
         $service->delete();
     }
 
+    // ============================================================
+    // Service Options
+    // ============================================================
+
+    public function listOptions(string $serviceUuid): Collection
+    {
+        $service = $this->findByUuid($serviceUuid);
+
+        return $service->options()->orderBy('order')->get();
+    }
+
+    public function createOption(string $serviceUuid, array $data): ServiceOption
+    {
+        $service = $this->findByUuid($serviceUuid);
+
+        return $service->options()->create($data);
+    }
+
+    public function updateOption(string $serviceUuid, string $optionUuid, array $data): ServiceOption
+    {
+        $service = $this->findByUuid($serviceUuid);
+
+        $option = $service->options()->where('uuid', $optionUuid)->first();
+
+        if (! $option) {
+            throw ApiException::notFound('Opsi layanan');
+        }
+
+        if (! empty($data)) {
+            $option->update($data);
+        }
+
+        return $option->fresh();
+    }
+
+    public function deleteOption(string $serviceUuid, string $optionUuid): void
+    {
+        $service = $this->findByUuid($serviceUuid);
+
+        $option = $service->options()->where('uuid', $optionUuid)->first();
+
+        if (! $option) {
+            throw ApiException::notFound('Opsi layanan');
+        }
+
+        $option->delete();
+    }
 }

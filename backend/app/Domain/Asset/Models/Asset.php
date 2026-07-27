@@ -40,6 +40,12 @@ class Asset extends Model
         'image',
         'is_rentable',
         'rental_price',
+        // FIX: kolom ini sudah ada di migration & sudah dikirim dari
+        // CreateAssetDTO/UpdateAssetDTO, tapi tidak pernah masuk ke $fillable
+        // sehingga Eloquent mass-assignment protection selalu diam-diam
+        // menolaknya — akibatnya quantity selalu tersimpan sebagai default (1)
+        // berapa pun angka yang diinput di form edit.
+        'quantity',
     ];
 
     protected function casts(): array
@@ -52,6 +58,7 @@ class Asset extends Model
             'purchase_price' => 'decimal:2',
             'rental_price'   => 'decimal:2',
             'purchase_date'  => 'date',
+            'quantity'       => 'integer',
         ];
     }
 

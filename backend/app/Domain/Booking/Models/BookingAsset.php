@@ -28,4 +28,11 @@ class BookingAsset extends Model
     {
         return $this->belongsTo(Asset::class);
     }
+
+    protected function casts(): array
+{
+    return [
+        'status' => \App\Domain\Booking\Enums\BookingAssetStatus::class,
+    ];
+}
 }

@@ -74,27 +74,28 @@ class AssetService extends BaseService
      * Buat aset baru.
      */
     public function create(CreateAssetDTO $dto): Asset
-    {
-        $asset = Asset::create([
-            'lab_id'         => $dto->labId,
-            'name'           => $dto->name,
-            'code'           => $dto->code,
-            'category'       => $dto->category,
-            'brand'          => $dto->brand,
-            'model'          => $dto->model,
-            'description'    => $dto->description,
-            'serial_number'  => $dto->serialNumber,
-            'status'         => $dto->status,
-            'purchase_price' => $dto->purchasePrice,
-            'purchase_date'  => $dto->purchaseDate,
-            'specifications' => $dto->specifications,
-            'image'          => $dto->image,
-            'is_rentable'    => $dto->isRentable,
-            'rental_price'   => $dto->rentalPrice,
-        ]);
+{
+    $asset = Asset::create([
+        'lab_id'         => $dto->labId,
+        'name'           => $dto->name,
+        'code'           => $dto->code,
+        'category'       => $dto->category,
+        'brand'          => $dto->brand,
+        'model'          => $dto->model,
+        'description'    => $dto->description,
+        'serial_number'  => $dto->serialNumber,
+        'status'         => $dto->status,
+        'purchase_price' => $dto->purchasePrice,
+        'purchase_date'  => $dto->purchaseDate,
+        'specifications' => $dto->specifications,
+        'image'          => $dto->image,
+        'is_rentable'    => $dto->isRentable,
+        'rental_price'   => $dto->rentalPrice,
+        'quantity'       => $dto->quantity, 
+    ]);
 
-        return $asset->load('lab');
-    }
+    return $asset->load('lab');
+}
 
     /**
      * Update aset berdasarkan UUID.
@@ -154,5 +155,56 @@ class AssetService extends BaseService
     $asset->update(['image' => $path]);
 
     return $asset->fresh('lab');
+}
+public function checkAvailability(array $assetUuids, string $startDate, string $endDate): array
+{
+    $assets = Asset::whereIn('uuid', $assetUuids)->get();
+
+    $occupyingStatuses = [
+        \App\Domain\Booking\Enums\BookingStatus::Pending->value,
+        \App\Domain\Booking\Enums\BookingStatus::Approved->value,
+        \App\Domain\Booking\Enums\BookingStatus::Ongoing->value,
+    ];
+
+    $start = \Carbon\Carbon::parse($startDate)->startOfDay();
+    $end = \Carbon\Carbon::parse($endDate)->startOfDay();
+
+    return $assets->map(function ($asset) use ($occupyingStatuses, $start, $end) {
+        $reservedQty = (int) \App\Domain\Booking\Models\BookingAsset::query()
+            ->where('asset_id', $asset->id)
+            ->whereHas('booking', function ($q) use ($occupyingStatuses, $start, $end) {
+                $q->whereIn('status', $occupyingStatuses)
+                  ->where('start_time', '<=', $end)
+                  ->where('end_time', '>=', $start);
+            })
+            ->sum('quantity');
+
+        return [
+            'asset_uuid'     => $asset->uuid,
+            'total_quantity' => $asset->quantity,
+            'reserved_qty'   => $reservedQty,
+            'available_qty'  => max(0, $asset->quantity - $reservedQty),
+        ];
+    })->values()->toArray();
+}
+
+public function calculateAvailableNow(Asset $asset): int
+{
+    $now = now();
+
+    $reservedQty = (int) \App\Domain\Booking\Models\BookingAsset::query()
+        ->where('asset_id', $asset->id)
+        ->whereNotIn('status', ['returned']) // sudah dikembalikan = tidak lagi menahan stok
+        ->whereHas('booking', function ($q) use ($now) {
+            $q->whereIn('status', [
+                \App\Domain\Booking\Enums\BookingStatus::Pending->value,
+                \App\Domain\Booking\Enums\BookingStatus::Approved->value,
+                \App\Domain\Booking\Enums\BookingStatus::Ongoing->value,
+            ])
+            ->where('end_time', '>=', $now);
+        })
+        ->sum('quantity');
+
+    return max(0, $asset->quantity - $reservedQty);
 }
 }
