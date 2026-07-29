@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { toast } from 'vue-sonner'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import { useLabStore } from '@/features/lab/stores/useLabStore'
@@ -10,6 +10,7 @@ const notifications = ref<AppNotification[]>([])
 const unreadCount = ref(0)
 const loading = ref(false)
 let subscribed = false
+let currentLabChannelId: number | null = null
 
 const EVENT_LABELS: Record<string, string> = {
   'booking.created': 'Booking baru masuk',
@@ -83,21 +84,38 @@ export function useNotifications() {
       )
     })
 
-    // Channel per-lab — hanya relevan untuk staff yang punya activeLab
-    if (labStore.activeLab?.id && !authStore.hasRole('customer')) {
-      const labChannel = echo.private(`Lab.${labStore.activeLab.id}`)
-      Object.keys(EVENT_LABELS).forEach((event) => {
-        labChannel.listen(`.${event}`, (payload: Record<string, unknown>) =>
-          handleIncoming(event, payload),
-        )
-      })
+    // Channel per-lab — Pantau perubahan activeLab secara reaktif untuk staff
+    if (!authStore.hasRole('customer')) {
+      watch(
+        () => labStore.activeLab?.id,
+        (newLabId) => {
+          // Kalau pindah lab, tinggalkan channel lab sebelumnya
+          if (currentLabChannelId && currentLabChannelId !== newLabId) {
+            echo.leave(`Lab.${currentLabChannelId}`)
+          }
+
+          // Subscribe ke channel lab yang baru
+          if (newLabId && currentLabChannelId !== newLabId) {
+            currentLabChannelId = newLabId
+            const labChannel = echo.private(`Lab.${newLabId}`)
+            Object.keys(EVENT_LABELS).forEach((event) => {
+              labChannel.listen(`.${event}`, (payload: Record<string, unknown>) =>
+                handleIncoming(event, payload),
+              )
+            })
+          }
+        },
+        { immediate: true }, // Langsung jalankan saat pertama kali dipanggil
+      )
     }
   }
 
   function unsubscribeRealtime() {
     disconnectEcho()
     subscribed = false
+    currentLabChannelId = null // <-- Reset variabel ini saat logout
   }
+
 
   return {
     notifications,

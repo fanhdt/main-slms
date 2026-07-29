@@ -73,7 +73,7 @@ async function handleNotifClick(notif: AppNotification) {
   }
 }
 
-// Format waktu relatif (cth: "5 menit lalu")
+
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
   const minutes = Math.floor(diff / 60000)
