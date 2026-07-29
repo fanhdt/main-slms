@@ -287,14 +287,17 @@ function formatPrice(price: string | number) {
                 <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ service.description }}</p>
 
                 <p v-if="service.price !== null" class="font-bold text-gray-900 mt-2">
-                  {{ formatPrice(service.price) }}
-                  <span class="text-sm font-normal text-gray-400"
-                    >/ {{ service.pricing_type?.label }}</span
-                  >
-                </p>
-                <p v-else class="text-sm font-medium text-blue-600 mt-2">
-                  Harga sesuai pilihan editing yang dipilih
-                </p>
+  {{ formatPrice(service.price) }}
+  <span class="text-sm font-normal text-gray-400"
+    >/ {{ service.pricing_type?.label }}</span
+  >
+</p>
+<p v-else-if="service.is_custom_pricing" class="text-sm font-medium text-purple-600 mt-2">
+  Harga Custom — nego saat booking
+</p>
+<p v-else class="text-sm font-medium text-blue-600 mt-2">
+  Harga sesuai pilihan editing yang dipilih
+</p>
               </CardContent>
             </Card>
           </button>

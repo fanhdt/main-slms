@@ -1,12 +1,37 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
+import { onMounted, onUnmounted, watch } from 'vue'
+import { useAuthStore } from '@/features/auth/stores/useAuthStore'
+import { useNotifications } from '@/composables/useNotifications'
 import { Toaster } from '@/components/ui/sonner'
-import { useKioskIdleWatcher } from '@/composables/useKioskSession'
 
-useKioskIdleWatcher()
+const authStore = useAuthStore()
+const { subscribeRealtime, unsubscribeRealtime } = useNotifications()
+
+
+onMounted(() => {
+  if (authStore.isAuthenticated) {
+    subscribeRealtime()
+  }
+})
+
+
+watch(
+  () => authStore.isAuthenticated,
+  (isAuth) => {
+    if (isAuth) {
+      subscribeRealtime()
+    } else {
+      unsubscribeRealtime()
+    }
+  },
+)
+
+onUnmounted(() => {
+  unsubscribeRealtime()
+})
 </script>
 
 <template>
   <RouterView />
-  <Toaster position="top-right" rich-colors />
+  <Toaster position="top-right" richColors />
 </template>

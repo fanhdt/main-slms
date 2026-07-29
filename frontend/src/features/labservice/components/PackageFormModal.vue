@@ -248,8 +248,8 @@ function onImageRemove() {
     @close="$emit('close')"
   >
     <form @submit.prevent="() => savePackage()" class="space-y-5">
-      <div class="grid grid-cols-2 gap-4">
-        <div class="col-span-2 space-y-1.5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="col-span-1 sm:col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Nama Package</label>
           <input
             v-model="form.name"
@@ -264,6 +264,7 @@ function onImageRemove() {
           <input
             v-model="form.price"
             type="number"
+            inputmode="numeric"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -275,11 +276,12 @@ function onImageRemove() {
             type="number"
             min="0"
             max="100"
+            inputmode="numeric"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
-        <div class="col-span-2 space-y-1.5">
+        <div class="col-span-1 sm:col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Deskripsi</label>
           <textarea
             v-model="form.description"
@@ -307,21 +309,32 @@ function onImageRemove() {
           class="border rounded-lg p-3 space-y-2 bg-gray-50"
           :class="!item.service_id && !item.asset_id ? 'border-red-300' : 'border-gray-200'"
         >
-          <div class="flex items-center gap-2">
-            <select
-              v-model="item.type"
-              @change="onTypeChange(item)"
-              class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="service">Jasa</option>
-              <option value="asset">Alat</option>
-            </select>
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+            <div class="flex items-center gap-2">
+              <select
+                v-model="item.type"
+                @change="onTypeChange(item)"
+                class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 shrink-0"
+              >
+                <option value="service">Jasa</option>
+                <option value="asset">Alat</option>
+              </select>
+
+              <button
+                type="button"
+                title="Hapus item"
+                @click="removeItem(index)"
+                class="sm:hidden p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0 ml-auto"
+              >
+                <Trash2 class="size-3.5" />
+              </button>
+            </div>
 
             <select
               v-if="item.type === 'service'"
               :key="'service-' + index"
               v-model="item.service_id"
-              class="flex-1 px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="flex-1 min-w-0 px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option :value="null">-- Pilih Jasa --</option>
               <option v-for="s in services" :key="s.id" :value="s.id">{{ s.name }}</option>
@@ -331,7 +344,7 @@ function onImageRemove() {
               v-else
               :key="'asset-' + index"
               v-model="item.asset_id"
-              class="flex-1 px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="flex-1 min-w-0 px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option :value="null">-- Pilih Alat --</option>
               <option v-for="a in assets" :key="a.id" :value="a.id">{{ a.name }}</option>
@@ -341,7 +354,7 @@ function onImageRemove() {
               type="button"
               title="Hapus item"
               @click="removeItem(index)"
-              class="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
+              class="hidden sm:inline-flex p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
             >
               <Trash2 class="size-3.5" />
             </button>
@@ -361,15 +374,17 @@ function onImageRemove() {
               v-model="item.quantity"
               type="number"
               min="1"
+              inputmode="numeric"
               placeholder="Qty"
-              class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="min-w-0 px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <input
               v-model="item.duration_minutes"
               type="number"
               min="1"
-              placeholder="Durasi (menit, opsional)"
-              class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              inputmode="numeric"
+              placeholder="Durasi (menit)"
+              class="min-w-0 px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
@@ -400,7 +415,7 @@ function onImageRemove() {
           v-model="form.is_active"
           type="checkbox"
           id="pkg_active"
-          class="w-4 h-4 rounded border-gray-300"
+          class="w-4 h-4 rounded border-gray-300 shrink-0"
         />
         <label for="pkg_active" class="text-sm font-medium text-gray-700">
           Tampilkan ke customer (aktif)
@@ -409,8 +424,8 @@ function onImageRemove() {
     </form>
 
     <template #footer>
-      <Button variant="ghost" @click="$emit('close')">Batal</Button>
-      <Button :disabled="isPending" @click="savePackage()">
+      <Button variant="ghost" class="w-full sm:w-auto" @click="$emit('close')">Batal</Button>
+      <Button class="w-full sm:w-auto" :disabled="isPending" @click="savePackage()">
         {{ isPending ? 'Menyimpan...' : isEdit ? 'Update' : 'Simpan' }}
       </Button>
     </template>

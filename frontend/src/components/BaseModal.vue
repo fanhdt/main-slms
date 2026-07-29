@@ -20,39 +20,46 @@ defineEmits<{
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
-      <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        v-if="show"
+        class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4"
+      >
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/50" @click="$emit('close')" />
 
         <!-- Modal -->
         <div
-          class="relative bg-white rounded-2xl shadow-xl w-full overflow-hidden"
+          class="relative bg-white shadow-xl w-full flex flex-col rounded-t-2xl sm:rounded-2xl max-h-[92vh] sm:max-h-[85vh]"
           :class="{
-            'max-w-sm': size === 'sm',
-            'max-w-lg': size === 'md' || !size,
-            'max-w-2xl': size === 'lg',
+            'sm:max-w-sm': size === 'sm',
+            'sm:max-w-lg': size === 'md' || !size,
+            'sm:max-w-2xl': size === 'lg',
           }"
         >
           <!-- Header -->
-          <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-            <h3 class="text-lg font-semibold text-gray-900">{{ title }}</h3>
+          <div
+            class="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 sm:px-6 sm:py-4"
+          >
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900 truncate">
+              {{ title }}
+            </h3>
             <button
               @click="$emit('close')"
-              class="text-gray-400 hover:text-gray-600 transition-colors"
+              class="shrink-0 text-gray-400 hover:text-gray-600 transition-colors p-1 -mr-1"
             >
               ✕
             </button>
           </div>
 
           <!-- Content -->
-          <div class="px-6 py-5 max-h-[70vh] overflow-y-auto">
+          <div class="px-4 py-4 sm:px-6 sm:py-5 overflow-y-auto flex-1">
             <slot />
           </div>
 
           <!-- Footer -->
           <div
             v-if="$slots.footer"
-            class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3"
+            class="px-4 py-3 sm:px-6 sm:py-4 border-t border-gray-200 bg-gray-50 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3"
           >
             <slot name="footer" />
           </div>

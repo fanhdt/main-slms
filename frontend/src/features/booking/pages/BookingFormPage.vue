@@ -24,6 +24,8 @@ const { isStaffMode, goBack } = useBookingFlowMode()
 const selectedOptionUuids = ref<string[]>([])
 const photoCount = ref<number>(1)
 const customPrices = ref<Record<string, number>>({})
+// NEW — catatan permintaan customer untuk layanan mode custom/nego
+const customNote = ref('')
 type AssetAvailability = { total_quantity: number; reserved_qty: number; available_qty: number }
 const availability = ref<Record<string, AssetAvailability>>({})
 const isCheckingAvailability = ref(false)
@@ -35,9 +37,6 @@ const itemType = computed(() => route.query.type as string)
 const itemId = computed(() => route.query.id as string)
 const queryClient = useQueryClient()
 
-// Kunci draft: untuk service/package disertakan itemId supaya draft paket A
-// tidak tertukar dengan draft paket B. Untuk lab_rental & asset_rental cukup
-// per lab + tipe booking.
 const draftItemKey = computed(() => (bookingType.value === 'service' ? itemId.value : undefined))
 
 const notes = ref('')
@@ -52,8 +51,6 @@ const cartItems = computed(() => cartStore.getItems(slug.value))
 const rentalStartDate = ref('')
 const rentalEndDate = ref('')
 
-// Menandai draft sudah selesai dimuat, supaya watcher penyimpanan draft
-// tidak langsung menimpa draft lama dengan nilai kosong saat halaman baru dibuka.
 const draftLoaded = ref(false)
 
 onMounted(() => {
@@ -69,10 +66,6 @@ onMounted(() => {
   draftLoaded.value = true
 })
 
-// Simpan otomatis setiap kali salah satu field berubah, supaya kalau user
-// menekan "Kembali" di tengah jalan (misal untuk ganti alat di keranjang
-// atau ganti jadwal), begitu dia kembali lagi ke halaman ini semua isian
-// sebelumnya sudah terisi lagi — tidak perlu input ulang dari nol.
 async function checkAssetAvailability() {
   if (bookingType.value !== 'asset_rental') return
   if (!rentalStartDate.value || !rentalEndDate.value || !cartItems.value.length) {
@@ -93,7 +86,6 @@ async function checkAssetAvailability() {
     })
     availability.value = Object.fromEntries(res.data.data.map((a: any) => [a.asset_uuid, a]))
   } catch {
-    // gagal cek availability bukan blocker fatal, backend tetap validasi ulang saat submit
     availability.value = {}
   } finally {
     isCheckingAvailability.value = false
@@ -175,11 +167,21 @@ const needsScheduleForService = computed(() => {
   return bookingType.value === 'service' && item.value?.requires_schedule === true
 })
 
+// NEW — item ini pakai mode custom/nego (harga ditentukan petugas saat booking)
+const isCustomPricingItem = computed(
+  () =>
+    bookingType.value === 'service' &&
+    itemType.value === 'service' &&
+    item.value?.is_custom_pricing === true,
+)
+
 const itemPrice = computed(() => {
   if (!item.value) return 0
-  return Number(item.value.final_price ?? item.value.price)
+  return Number(item.value.final_price ?? item.value.price ?? 0)
 })
-const isOptionOnlyItem = computed(() => bookingType.value === 'service' && itemPrice.value === 0)
+const isOptionOnlyItem = computed(
+  () => bookingType.value === 'service' && !isCustomPricingItem.value && itemPrice.value === 0,
+)
 const labRentalRatePerHour = computed(() => {
   if (!lab.value?.lab_rental_rates) return 0
   if (purpose.value === 'academic') return 0
@@ -208,6 +210,10 @@ const totalPrice = computed(() => {
   }
   if (bookingType.value === 'asset_rental') {
     return assetRentalTotal.value
+  }
+  // NEW — item custom pricing: total selalu 0, harga ditentukan petugas
+  if (isCustomPricingItem.value) {
+    return 0
   }
   const base =
     needsScheduleForService.value && item.value?.pricing_type?.value === 'per_hour'
@@ -284,6 +290,8 @@ const { mutate: submitBooking, isPending } = useMutation({
               option_uuids: selectedOptionUuids.value,
               photo_count: hasPerPhotoOption.value ? photoCount.value : undefined,
               custom_prices: customPrices.value,
+              // NEW
+              custom_note: isCustomPricingItem.value ? customNote.value : undefined,
             },
       ],
     })
@@ -357,9 +365,17 @@ function handleSubmit() {
     toast.error('Konfirmasi jadwal terlebih dahulu lewat kalender di bawah.')
     return
   }
+
+  // NEW — validasi wajib isi catatan permintaan custom
+  if (isCustomPricingItem.value && !customNote.value.trim()) {
+    toast.error('Jelaskan permintaan custom kamu terlebih dahulu.')
+    return
+  }
+
   if (
     bookingType.value === 'service' &&
     itemType.value === 'service' &&
+    !isCustomPricingItem.value &&
     itemPrice.value === 0 &&
     (item.value?.options?.length ?? 0) > 0 &&
     selectedOptionUuids.value.length === 0
@@ -435,7 +451,6 @@ function isStockInsufficient(assetUuid: string, requestedQty: number): boolean {
     </header>
 
     <div class="max-w-5xl mx-auto px-6 py-8">
-      <!-- Notifikasi kalau ada draft yang otomatis dimuat dari sesi sebelumnya -->
       <div
         v-if="hasDraftBeforeSubmit"
         class="mb-5 flex items-center justify-between gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3"
@@ -455,14 +470,11 @@ function isStockInsufficient(assetUuid: string, requestedQty: number): boolean {
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 items-start">
-        <!-- ============================================================
-             KOLOM KIRI — Jadwal & detail spesifik tipe booking
-        ============================================================= -->
         <div class="space-y-6 min-w-0">
           <!-- Detail layanan/paket terpilih — gambar & deskripsi -->
           <Card v-if="bookingType === 'service' && item" class="p-0 overflow-hidden">
-            <div v-if="item.image" class="aspect-video bg-gray-100">
-              <img :src="item.image" :alt="item.name" class="w-full h-full object-cover" />
+            <div class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden">
+              <img v-if="item.image" :src="item.image" :alt="item.name" class="w-full h-full object-cover" />
             </div>
             <CardContent class="p-5">
               <h2 class="font-semibold text-gray-900 text-lg">{{ item.name }}</h2>
@@ -470,7 +482,28 @@ function isStockInsufficient(assetUuid: string, requestedQty: number): boolean {
             </CardContent>
           </Card>
 
-          <!-- Mode Pinjam Lab: pilih keperluan — HANYA lab_rental -->
+          <!-- NEW — Card khusus permintaan custom, taruh setelah detail layanan -->
+          <Card v-if="isCustomPricingItem" class="p-0 border-purple-200">
+            <CardHeader class="px-5 pt-5 pb-0">
+              <CardTitle class="text-sm font-semibold text-purple-900">
+                Detail Permintaan Custom
+              </CardTitle>
+              <p class="text-xs text-purple-600">
+                Layanan ini harganya nego — jelaskan kebutuhanmu selengkap mungkin, petugas lab
+                akan menghubungimu untuk konfirmasi harga sebelum diproses.
+              </p>
+            </CardHeader>
+            <CardContent class="p-5 space-y-1.5">
+              <textarea
+                v-model="customNote"
+                rows="4"
+                placeholder="Contoh: Edit foto rapor kelas 6, ukuran 4x6, background merah, total 30 lembar..."
+                class="w-full px-3 py-2 border border-purple-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              />
+            </CardContent>
+          </Card>
+
+          <!-- Mode Pinjam Lab: pilih keperluan -->
           <Card v-if="bookingType === 'lab_rental'" class="p-0">
             <CardHeader class="px-5 pt-5 pb-0">
               <CardTitle class="text-sm font-semibold">Keperluan Peminjaman</CardTitle>
@@ -618,7 +651,7 @@ function isStockInsufficient(assetUuid: string, requestedQty: number): boolean {
             </CardContent>
           </Card>
 
-          <!-- Kalender jadwal — Pinjam Lab & Jasa yang butuh jadwal (Photography, StudioRental, dll) -->
+          <!-- Kalender jadwal -->
           <Card v-if="bookingType === 'lab_rental' || needsScheduleForService" class="p-0">
             <CardHeader class="px-5 pt-5 pb-0">
               <CardTitle class="text-sm font-semibold">Pilih Jadwal</CardTitle>
@@ -634,7 +667,10 @@ function isStockInsufficient(assetUuid: string, requestedQty: number): boolean {
           </Card>
 
           <!-- Mode Jasa yang TIDAK butuh jadwal: info proses full online -->
-          <Card v-if="bookingType === 'service' && item && !needsScheduleForService" class="p-0">
+          <Card
+            v-if="bookingType === 'service' && item && !needsScheduleForService && !isCustomPricingItem"
+            class="p-0"
+          >
             <CardContent class="p-5">
               <p class="text-sm text-gray-600">
                 Booking ini akan diproses langsung oleh petugas lab setelah dikonfirmasi. Kamu akan
@@ -645,7 +681,12 @@ function isStockInsufficient(assetUuid: string, requestedQty: number): boolean {
           </Card>
 
           <Card
-            v-if="bookingType === 'service' && itemType === 'service' && item?.options?.length"
+            v-if="
+              bookingType === 'service' &&
+              itemType === 'service' &&
+              !isCustomPricingItem &&
+              item?.options?.length
+            "
             class="p-0"
           >
             <CardHeader class="px-5 pt-5 pb-0">
@@ -705,7 +746,6 @@ function isStockInsufficient(assetUuid: string, requestedQty: number): boolean {
                   <span v-else class="text-xs font-medium text-blue-600 shrink-0">Custom</span>
                 </div>
 
-                <!-- Input harga custom — muncul kalau opsi ini dicentang dan tipenya custom -->
                 <div
                   v-if="
                     option.price_type.value === 'custom' &&
@@ -753,19 +793,16 @@ function isStockInsufficient(assetUuid: string, requestedQty: number): boolean {
           </Card>
         </div>
 
-        <!-- ============================================================
-             KOLOM KANAN — Ringkasan (sticky)
-        ============================================================= -->
+        <!-- KOLOM KANAN — Ringkasan -->
         <div class="lg:sticky lg:top-24 space-y-4">
           <Card class="p-0">
             <CardHeader class="px-5 pt-5 pb-0">
               <CardTitle class="text-sm font-semibold">Ringkasan Booking</CardTitle>
             </CardHeader>
             <CardContent class="p-5 space-y-4">
-              <!-- Item terpilih (mode Jasa & Paket) -->
               <div v-if="bookingType === 'service' && item" class="space-y-2">
-                <div v-if="item.image" class="aspect-video rounded-lg overflow-hidden bg-gray-100">
-                  <img :src="item.image" :alt="item.name" class="w-full h-full object-cover" />
+                <div class="aspect-video rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                  <img v-if="item.image" :src="item.image" :alt="item.name" class="w-full h-full object-cover" />
                 </div>
                 <div class="space-y-1">
                   <p class="text-xs text-gray-400 uppercase tracking-wide">
@@ -823,7 +860,10 @@ function isStockInsufficient(assetUuid: string, requestedQty: number): boolean {
 
               <div class="flex items-center justify-between">
                 <span class="text-gray-600 text-sm">Total Pembayaran</span>
-                <span class="text-xl font-bold text-gray-900">{{ formatPrice(totalPrice) }}</span>
+                <span v-if="isCustomPricingItem" class="text-sm font-semibold text-purple-600">
+                  Menunggu Konfirmasi Petugas
+                </span>
+                <span v-else class="text-xl font-bold text-gray-900">{{ formatPrice(totalPrice) }}</span>
               </div>
               <p
                 v-if="isOptionOnlyItem && selectedOptionUuids.length === 0"

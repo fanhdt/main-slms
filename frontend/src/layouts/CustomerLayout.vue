@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import NotificationBell from '@/components/NotificationBell.vue'
+import { useNotifications } from '@/composables/useNotifications'
 import { toast } from 'vue-sonner'
 import {
   Home,
@@ -19,6 +20,7 @@ const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 const mobileNavOpen = ref(false)
+const { subscribeRealtime, unsubscribeRealtime } = useNotifications()
 
 watch(
   () => route.fullPath,
@@ -53,6 +55,13 @@ const PAGE_TITLES: Record<string, string> = {
   'photo-delivery': 'Hasil Foto',
   profile: 'Profil Saya',
 }
+onMounted(() => {
+  subscribeRealtime()
+})
+
+onUnmounted(() => {
+  unsubscribeRealtime()
+})
 </script>
 
 <template>

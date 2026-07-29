@@ -157,9 +157,9 @@ async function handleImageRemove(type: 'logo' | 'hero_image') {
     @close="$emit('close')"
   >
     <form @submit.prevent="() => saveLab()" class="space-y-5">
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <!-- Nama -->
-        <div class="col-span-2 space-y-1.5">
+        <div class="col-span-1 sm:col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Nama Lab</label>
           <input
             v-model="form.name"
@@ -172,7 +172,7 @@ async function handleImageRemove(type: 'logo' | 'hero_image') {
         </div>
 
         <!-- Slug -->
-        <div class="col-span-2 space-y-1.5">
+        <div class="col-span-1 sm:col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">
             Slug <span class="text-gray-400 font-normal">(auto-generate dari nama)</span>
           </label>
@@ -193,13 +193,13 @@ async function handleImageRemove(type: 'logo' | 'hero_image') {
             <input
               v-model="form.primary_color"
               type="color"
-              class="w-10 h-10 rounded border border-gray-300 cursor-pointer"
+              class="w-10 h-10 shrink-0 rounded border border-gray-300 cursor-pointer"
             />
             <input
               v-model="form.primary_color"
               type="text"
               placeholder="#1a1a2e"
-              class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              class="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
             />
           </div>
         </div>
@@ -211,19 +211,19 @@ async function handleImageRemove(type: 'logo' | 'hero_image') {
             <input
               v-model="form.secondary_color"
               type="color"
-              class="w-10 h-10 rounded border border-gray-300 cursor-pointer"
+              class="w-10 h-10 shrink-0 rounded border border-gray-300 cursor-pointer"
             />
             <input
               v-model="form.secondary_color"
               type="text"
               placeholder="#e94560"
-              class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              class="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
             />
           </div>
         </div>
 
         <!-- Deskripsi -->
-        <div class="col-span-2 space-y-1.5">
+        <div class="col-span-1 sm:col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Deskripsi</label>
           <textarea
             v-model="form.description"
@@ -245,7 +245,7 @@ async function handleImageRemove(type: 'logo' | 'hero_image') {
             keperluan "Akademik" (jam kuliah) selalu gratis otomatis.
           </p>
         </div>
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-gray-700">Mahasiswa / Organisasi (Rp/jam)</label>
             <input
@@ -253,6 +253,7 @@ async function handleImageRemove(type: 'logo' | 'hero_image') {
               type="number"
               min="0"
               step="1000"
+              inputmode="numeric"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -263,6 +264,7 @@ async function handleImageRemove(type: 'logo' | 'hero_image') {
               type="number"
               min="0"
               step="1000"
+              inputmode="numeric"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -274,7 +276,7 @@ async function handleImageRemove(type: 'logo' | 'hero_image') {
       <!-- Kontak -->
       <div class="space-y-3">
         <p class="text-sm font-medium text-gray-700">Kontak</p>
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-gray-700">Email Kontak</label>
             <input
@@ -293,7 +295,7 @@ async function handleImageRemove(type: 'logo' | 'hero_image') {
               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <div class="col-span-2 space-y-1.5">
+          <div class="col-span-1 sm:col-span-2 space-y-1.5">
             <label class="text-sm font-medium text-gray-700">Alamat</label>
             <input
               v-model="form.contact.address"
@@ -343,15 +345,15 @@ async function handleImageRemove(type: 'logo' | 'hero_image') {
           v-model="form.is_active"
           type="checkbox"
           id="lab_is_active"
-          class="w-4 h-4 rounded border-gray-300"
+          class="w-4 h-4 rounded border-gray-300 shrink-0"
         />
         <label for="lab_is_active" class="text-sm font-medium text-gray-700">Lab Aktif</label>
       </div>
     </form>
 
     <template #footer>
-      <Button variant="ghost" @click="$emit('close')">Batal</Button>
-      <Button :disabled="isPending" @click="saveLab()">
+      <Button variant="ghost" class="w-full sm:w-auto" @click="$emit('close')">Batal</Button>
+      <Button class="w-full sm:w-auto" :disabled="isPending" @click="saveLab()">
         {{ isPending ? 'Menyimpan...' : isEdit ? 'Update' : 'Simpan' }}
       </Button>
     </template>

@@ -178,8 +178,8 @@ async function handleImageRemove() {
     @close="$emit('close')"
   >
     <form @submit.prevent="() => saveService()" class="space-y-5">
-      <div class="grid grid-cols-2 gap-4">
-        <div class="col-span-2 space-y-1.5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="col-span-1 sm:col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Nama Layanan</label>
           <input
             v-model="form.name"
@@ -213,22 +213,22 @@ async function handleImageRemove() {
         <!-- Toggle Editing Custom (harga tetap) vs Editing Dasar (daftar pilihan) -->
         <div
           v-if="form.type === 'photo_editing'"
-          class="col-span-2 flex items-start gap-3 p-3 rounded-lg border border-purple-200 bg-purple-50"
+          class="col-span-1 sm:col-span-2 flex items-start gap-3 p-3 rounded-lg border border-purple-200 bg-purple-50"
         >
           <input
             v-model="isCustomPricing"
             type="checkbox"
             id="is_custom_pricing"
-            class="w-4 h-4 mt-0.5 rounded border-gray-300"
+            class="w-4 h-4 mt-0.5 rounded border-gray-300 shrink-0"
           />
           <label for="is_custom_pricing" class="text-sm">
             <span class="font-medium text-purple-900">Editing Custom</span>
             <p class="text-xs text-purple-700 mt-0.5 leading-relaxed">
-              Aktifkan untuk layanan editing dengan harga tetap yang kamu tentukan sendiri (isi
-              Tipe Harga & Harga seperti layanan lain, misal per jam). Cocok untuk pekerjaan unik
-              seperti Edit Foto Rapor atau Color Grading Prewedding. Kalau tidak diaktifkan,
-              layanan ini otomatis jadi <strong>Editing Dasar</strong> — customer memilih dari
-              daftar pilihan (Retouch, Remove Background, dst) di bagian bawah.
+              Aktifkan untuk layanan editing dengan harga tetap yang kamu tentukan sendiri (isi Tipe
+              Harga & Harga seperti layanan lain, misal per jam). Cocok untuk pekerjaan unik seperti
+              Edit Foto Rapor atau Color Grading Prewedding. Kalau tidak diaktifkan, layanan ini
+              otomatis jadi <strong>Editing Dasar</strong> — customer memilih dari daftar pilihan
+              (Retouch, Remove Background, dst) di bagian bawah.
             </p>
           </label>
         </div>
@@ -255,6 +255,7 @@ async function handleImageRemove() {
           <input
             v-model="form.price"
             type="number"
+            inputmode="numeric"
             placeholder="100000"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             :class="{ 'border-red-400': errors.price }"
@@ -264,7 +265,7 @@ async function handleImageRemove() {
 
         <div
           v-if="isOptionOnly"
-          class="col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800"
+          class="col-span-1 sm:col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800"
         >
           Editing Dasar tidak punya harga dasar tunggal. Customer memilih satu atau lebih pilihan
           editing (Retouch, Remove Background, dsb) di bagian
@@ -274,10 +275,10 @@ async function handleImageRemove() {
 
         <div
           v-if="isCustomPricing"
-          class="col-span-2 bg-purple-50 border border-purple-200 rounded-lg p-3 text-sm text-purple-800"
+          class="col-span-1 sm:col-span-2 bg-purple-50 border border-purple-200 rounded-lg p-3 text-sm text-purple-800"
         >
-          Editing Custom berlaku seperti layanan biasa — punya harga tetap sesuai Tipe Harga &
-          Harga yang kamu isi di atas, dan langsung terlihat customer sebelum booking.
+          Editing Custom berlaku seperti layanan biasa — punya harga tetap sesuai Tipe Harga & Harga
+          yang kamu isi di atas, dan langsung terlihat customer sebelum booking.
         </div>
 
         <div class="space-y-1.5">
@@ -285,6 +286,7 @@ async function handleImageRemove() {
           <input
             v-model="form.duration"
             type="number"
+            inputmode="numeric"
             placeholder="60"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -296,6 +298,7 @@ async function handleImageRemove() {
             v-model="form.min_quantity"
             type="number"
             min="1"
+            inputmode="numeric"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -306,11 +309,12 @@ async function handleImageRemove() {
             v-model="form.max_quantity"
             type="number"
             min="1"
+            inputmode="numeric"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
-        <div class="col-span-2 space-y-1.5">
+        <div class="col-span-1 sm:col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Deskripsi</label>
           <textarea
             v-model="form.description"
@@ -320,7 +324,7 @@ async function handleImageRemove() {
           />
         </div>
 
-        <div class="col-span-2 space-y-1.5">
+        <div class="col-span-1 sm:col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">
             Termasuk (satu baris per item, opsional)
           </label>
@@ -344,9 +348,7 @@ async function handleImageRemove() {
       </template>
 
       <!-- Opsi Tambahan untuk layanan non-editing (tetap tersedia seperti sebelumnya) -->
-      <template
-        v-else-if="isEditingNow && effectiveService && form.type !== 'photo_editing'"
-      >
+      <template v-else-if="isEditingNow && effectiveService && form.type !== 'photo_editing'">
         <Separator />
         <ServiceOptionManager
           :service-uuid="effectiveService.uuid"
@@ -374,7 +376,7 @@ async function handleImageRemove() {
           v-model="form.is_active"
           type="checkbox"
           id="is_active"
-          class="w-4 h-4 rounded border-gray-300"
+          class="w-4 h-4 rounded border-gray-300 shrink-0"
         />
         <label for="is_active" class="text-sm font-medium text-gray-700">
           Tampilkan ke customer (aktif)
@@ -383,10 +385,15 @@ async function handleImageRemove() {
     </form>
 
     <template #footer>
-      <Button variant="ghost" @click="$emit('close')">
+      <Button variant="ghost" class="w-full sm:w-auto" @click="$emit('close')">
         {{ createdService ? 'Selesai' : 'Batal' }}
       </Button>
-      <Button v-if="!createdService" :disabled="isPending" @click="saveService()">
+      <Button
+        v-if="!createdService"
+        class="w-full sm:w-auto"
+        :disabled="isPending"
+        @click="saveService()"
+      >
         {{ isPending ? 'Menyimpan...' : isEdit ? 'Update' : 'Simpan' }}
       </Button>
     </template>

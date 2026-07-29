@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed, ref, watch } from 'vue'
+import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import {
   Menu,
@@ -38,6 +38,7 @@ const labSlug = computed(() => route.params.labSlug as string)
 const mobileNavOpen = ref(false)
 
 const hasPhotographyService = ref(false)
+const { subscribeRealtime, unsubscribeRealtime } = useNotifications()
 
 async function checkPhotographyFeature() {
   if (!labStore.activeLab?.id) {
@@ -116,6 +117,14 @@ const checkinNavItems = computed(() => [
   { to: navLink('scan'), label: 'Scan QR', icon: QrCode },
   { to: navLink('rfid-checkin'), label: 'Cek Riwayat RFID', icon: CreditCard },
 ])
+
+onMounted(() => {
+  subscribeRealtime()
+})
+
+onUnmounted(() => {
+  unsubscribeRealtime()
+})
 </script>
 
 <template>

@@ -197,8 +197,8 @@ async function handleImageRemove() {
     @close="$emit('close')"
   >
     <form @submit.prevent="() => saveAsset()" class="space-y-5">
-      <div class="grid grid-cols-2 gap-4">
-        <div class="col-span-2 space-y-1.5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="col-span-1 sm:col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Nama Aset</label>
           <input
             v-model="form.name"
@@ -225,23 +225,23 @@ async function handleImageRemove() {
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Kategori</label>
           <select
-  v-model="form.category"
-  class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
->
-  <option value="camera">Kamera</option>
-  <option value="lens">Lensa</option>
-  <option value="lighting">Lighting</option>
-  <option value="drone">Drone</option>
-  <option value="tripod">Tripod</option>
-  <option value="computer">Komputer</option>
-  <option value="projector">Proyektor</option>
-  <option value="audio">Audio</option>
-  <option value="microphone">Mikrofon</option>
-  <option value="printer">Printer</option>
-  <option value="backdrop">Backdrop / Properti</option>
-  <option value="costume">Kostum / Aksesoris</option>
-  <option value="other">Lainnya</option>
-</select>
+            v-model="form.category"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="camera">Kamera</option>
+            <option value="lens">Lensa</option>
+            <option value="lighting">Lighting</option>
+            <option value="drone">Drone</option>
+            <option value="tripod">Tripod</option>
+            <option value="computer">Komputer</option>
+            <option value="projector">Proyektor</option>
+            <option value="audio">Audio</option>
+            <option value="microphone">Mikrofon</option>
+            <option value="printer">Printer</option>
+            <option value="backdrop">Backdrop / Properti</option>
+            <option value="costume">Kostum / Aksesoris</option>
+            <option value="other">Lainnya</option>
+          </select>
         </div>
 
         <div class="space-y-1.5">
@@ -292,6 +292,7 @@ async function handleImageRemove() {
           <input
             v-model="form.purchase_price"
             type="number"
+            inputmode="numeric"
             placeholder="45000000"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -311,6 +312,7 @@ async function handleImageRemove() {
           <input
             v-model="form.rental_price"
             type="number"
+            inputmode="numeric"
             placeholder="500000"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -322,13 +324,14 @@ async function handleImageRemove() {
             v-model.number="form.quantity"
             type="number"
             min="1"
+            inputmode="numeric"
             placeholder="1"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <p class="text-xs text-gray-400">Berapa unit fisik alat ini yang dimiliki lab.</p>
         </div>
 
-        <div class="col-span-2 space-y-1.5">
+        <div class="col-span-1 sm:col-span-2 space-y-1.5">
           <label class="text-sm font-medium text-gray-700">Deskripsi</label>
           <textarea
             v-model="form.description"
@@ -361,7 +364,7 @@ async function handleImageRemove() {
           v-model="form.is_rentable"
           type="checkbox"
           id="is_rentable"
-          class="w-4 h-4 rounded border-gray-300"
+          class="w-4 h-4 rounded border-gray-300 shrink-0"
         />
         <label for="is_rentable" class="text-sm font-medium text-gray-700">
           Bisa Disewa Customer
@@ -370,8 +373,8 @@ async function handleImageRemove() {
     </form>
 
     <template #footer>
-      <Button variant="ghost" @click="$emit('close')">Batal</Button>
-      <Button :disabled="isPending" @click="saveAsset()">
+      <Button variant="ghost" class="w-full sm:w-auto" @click="$emit('close')">Batal</Button>
+      <Button class="w-full sm:w-auto" :disabled="isPending" @click="saveAsset()">
         {{ isPending ? 'Menyimpan...' : isEdit ? 'Update' : 'Simpan' }}
       </Button>
     </template>
