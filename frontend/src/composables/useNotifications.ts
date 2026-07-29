@@ -76,22 +76,21 @@ export function useNotifications() {
   }
 
   function handleIncoming(eventName: string, payload: Record<string, unknown>) {
-    unreadCount.value += 1
+    // HAPUS baris unreadCount.value += 1 dari sini
+
     toast.info(EVENT_LABELS[eventName] ?? 'Notifikasi baru', {
       description:
         (payload.booking_code as string) ?? (payload.project_uuid as string) ?? undefined,
     })
-
-    // Perbarui daftar dropdown bel notifikasi
     fetchNotifications()
+    fetchUnreadCount()
 
-    // FIX 2: Paksa tabel di layar untuk Refresh agar "status booking" langsung berganti
-    queryClient.invalidateQueries({ queryKey: ['my-bookings'] }) // Refresh halaman customer
-    queryClient.invalidateQueries({ queryKey: ['bookings'] }) // Refresh tabel admin
-    queryClient.invalidateQueries({ queryKey: ['dashboard-bookings'] }) // Refresh Dashboard
-    queryClient.invalidateQueries({ queryKey: ['lab-bookings-stats'] })
-    queryClient.invalidateQueries({ queryKey: ['photo-project'] })
-    queryClient.invalidateQueries({ queryKey: ['photo-projects'] })
+    queryClient.refetchQueries({ queryKey: ['my-bookings'] })
+    queryClient.refetchQueries({ queryKey: ['bookings'] })
+    queryClient.refetchQueries({ queryKey: ['dashboard-bookings'] })
+    queryClient.refetchQueries({ queryKey: ['lab-bookings-stats'] })
+    queryClient.refetchQueries({ queryKey: ['photo-project'] })
+    queryClient.refetchQueries({ queryKey: ['photo-projects'] })
   }
 
   function subscribeRealtime() {

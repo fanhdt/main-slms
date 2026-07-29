@@ -8,6 +8,7 @@ use App\Core\Services\BaseService;
 use App\Domain\Lab\Models\Lab;
 use App\Domain\Notification\Models\Notification;
 use Illuminate\Pagination\LengthAwarePaginator;
+use App\Domain\User\Models\User;
 
 class NotificationService extends BaseService
 {
@@ -44,12 +45,14 @@ class NotificationService extends BaseService
         array $data = [],
         ?int $excludeUserId = null
     ): void {
-        $staffIds = Lab::findOrFail($labId)
-            ->users()
-            ->pluck('users.id')
-            ->when($excludeUserId, fn ($ids) => $ids->reject(fn ($id) => (int) $id === (int) $excludeUserId));
+        $staffIds = Lab::findOrFail($labId)->users()->pluck('users.id');
+        $superAdminIds = User::role('super_admin')->pluck('id');
+        $targetIds = $staffIds->concat($superAdminIds)->unique();
+        if ($excludeUserId) {
+            $targetIds = $targetIds->reject(fn ($id) => (int) $id === (int) $excludeUserId);
+        }
 
-        foreach ($staffIds as $userId) {
+        foreach ($targetIds as $userId) {
             $this->notifyUser((int) $userId, $type, $title, $body, $data, $labId);
         }
     }

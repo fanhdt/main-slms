@@ -299,6 +299,13 @@ const { mutate: submitBooking, isPending } = useMutation({
   onSuccess: (response) => {
     const code = response.data.data.booking_code
 
+    // ---> BAGIAN YANG DITAMBAHKAN <---
+    // Bersihkan cache riwayat booking user agar halaman "My Bookings" & "Dashboard" otomatis update
+    queryClient.invalidateQueries({ queryKey: ['my-bookings'] })
+    queryClient.invalidateQueries({ queryKey: ['booking-summary'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-bookings'] })
+    // ---------------------------------
+
     queryClient.invalidateQueries({ queryKey: ['rentable-assets'] })
     queryClient.invalidateQueries({ queryKey: ['assets'] })
 
@@ -474,7 +481,12 @@ function isStockInsufficient(assetUuid: string, requestedQty: number): boolean {
           <!-- Detail layanan/paket terpilih — gambar & deskripsi -->
           <Card v-if="bookingType === 'service' && item" class="p-0 overflow-hidden">
             <div class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden">
-              <img v-if="item.image" :src="item.image" :alt="item.name" class="w-full h-full object-cover" />
+              <img
+                v-if="item.image"
+                :src="item.image"
+                :alt="item.name"
+                class="w-full h-full object-cover"
+              />
             </div>
             <CardContent class="p-5">
               <h2 class="font-semibold text-gray-900 text-lg">{{ item.name }}</h2>
@@ -489,8 +501,8 @@ function isStockInsufficient(assetUuid: string, requestedQty: number): boolean {
                 Detail Permintaan Custom
               </CardTitle>
               <p class="text-xs text-purple-600">
-                Layanan ini harganya nego — jelaskan kebutuhanmu selengkap mungkin, petugas lab
-                akan menghubungimu untuk konfirmasi harga sebelum diproses.
+                Layanan ini harganya nego — jelaskan kebutuhanmu selengkap mungkin, petugas lab akan
+                menghubungimu untuk konfirmasi harga sebelum diproses.
               </p>
             </CardHeader>
             <CardContent class="p-5 space-y-1.5">
@@ -668,7 +680,9 @@ function isStockInsufficient(assetUuid: string, requestedQty: number): boolean {
 
           <!-- Mode Jasa yang TIDAK butuh jadwal: info proses full online -->
           <Card
-            v-if="bookingType === 'service' && item && !needsScheduleForService && !isCustomPricingItem"
+            v-if="
+              bookingType === 'service' && item && !needsScheduleForService && !isCustomPricingItem
+            "
             class="p-0"
           >
             <CardContent class="p-5">
@@ -801,8 +815,15 @@ function isStockInsufficient(assetUuid: string, requestedQty: number): boolean {
             </CardHeader>
             <CardContent class="p-5 space-y-4">
               <div v-if="bookingType === 'service' && item" class="space-y-2">
-                <div class="aspect-video rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
-                  <img v-if="item.image" :src="item.image" :alt="item.name" class="w-full h-full object-cover" />
+                <div
+                  class="aspect-video rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center"
+                >
+                  <img
+                    v-if="item.image"
+                    :src="item.image"
+                    :alt="item.name"
+                    class="w-full h-full object-cover"
+                  />
                 </div>
                 <div class="space-y-1">
                   <p class="text-xs text-gray-400 uppercase tracking-wide">
@@ -863,7 +884,9 @@ function isStockInsufficient(assetUuid: string, requestedQty: number): boolean {
                 <span v-if="isCustomPricingItem" class="text-sm font-semibold text-purple-600">
                   Menunggu Konfirmasi Petugas
                 </span>
-                <span v-else class="text-xl font-bold text-gray-900">{{ formatPrice(totalPrice) }}</span>
+                <span v-else class="text-xl font-bold text-gray-900">{{
+                  formatPrice(totalPrice)
+                }}</span>
               </div>
               <p
                 v-if="isOptionOnlyItem && selectedOptionUuids.length === 0"
