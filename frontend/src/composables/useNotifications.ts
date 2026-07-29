@@ -1,9 +1,10 @@
-import { ref, watch, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import { useLabStore } from '@/features/lab/stores/useLabStore'
 import { notificationApi } from '@/features/notification/api/notificationApi'
 import { initEcho, disconnectEcho } from '@/lib/echo'
+import { useQueryClient } from '@tanstack/vue-query' // <-- Tambahan untuk refresh data
 import type { AppNotification } from '@/types'
 
 const notifications = ref<AppNotification[]>([])
@@ -25,6 +26,7 @@ const EVENT_LABELS: Record<string, string> = {
 export function useNotifications() {
   const authStore = useAuthStore()
   const labStore = useLabStore()
+  const queryClient = useQueryClient() // Panggil query client untuk memanipulasi cache
 
   const hasUnread = computed(() => unreadCount.value > 0)
 
@@ -32,28 +34,45 @@ export function useNotifications() {
     loading.value = true
     try {
       const res = await notificationApi.getAll({ per_page: 20 })
-      notifications.value = res.data.data.data
+
+      // FIX 1: Pengecekan defensif untuk mencegah list notifikasi kosong
+      const responseData = res.data?.data
+      notifications.value = Array.isArray(responseData) ? responseData : responseData?.data || []
+    } catch (error) {
+      console.error('Gagal mengambil notifikasi:', error)
     } finally {
       loading.value = false
     }
   }
 
   async function fetchUnreadCount() {
-    const res = await notificationApi.unreadCount()
-    unreadCount.value = res.data.data.unread_count
+    try {
+      const res = await notificationApi.unreadCount()
+      unreadCount.value = res.data.data.unread_count
+    } catch (error) {
+      console.error('Gagal memuat jumlah notifikasi', error)
+    }
   }
 
   async function markAsRead(uuid: string) {
-    await notificationApi.markAsRead(uuid)
-    const notif = notifications.value.find((n) => n.uuid === uuid)
-    if (notif) notif.read_at = new Date().toISOString()
-    unreadCount.value = Math.max(0, unreadCount.value - 1)
+    try {
+      await notificationApi.markAsRead(uuid)
+      const notif = notifications.value.find((n) => n.uuid === uuid)
+      if (notif) notif.read_at = new Date().toISOString()
+      unreadCount.value = Math.max(0, unreadCount.value - 1)
+    } catch (error) {
+      console.error('Gagal menandai telah dibaca', error)
+    }
   }
 
   async function markAllAsRead() {
-    await notificationApi.markAllAsRead()
-    notifications.value.forEach((n) => (n.read_at = n.read_at ?? new Date().toISOString()))
-    unreadCount.value = 0
+    try {
+      await notificationApi.markAllAsRead()
+      notifications.value.forEach((n) => (n.read_at = n.read_at ?? new Date().toISOString()))
+      unreadCount.value = 0
+    } catch (error) {
+      console.error('Gagal menandai semua dibaca', error)
+    }
   }
 
   function handleIncoming(eventName: string, payload: Record<string, unknown>) {
@@ -62,14 +81,19 @@ export function useNotifications() {
       description:
         (payload.booking_code as string) ?? (payload.project_uuid as string) ?? undefined,
     })
-    // Refresh list biar konsisten dengan DB (uuid notif dibuat di backend, bukan di payload broadcast)
+
+    // Perbarui daftar dropdown bel notifikasi
     fetchNotifications()
+
+    // FIX 2: Paksa tabel di layar untuk Refresh agar "status booking" langsung berganti
+    queryClient.invalidateQueries({ queryKey: ['my-bookings'] }) // Refresh halaman customer
+    queryClient.invalidateQueries({ queryKey: ['bookings'] }) // Refresh tabel admin
+    queryClient.invalidateQueries({ queryKey: ['dashboard-bookings'] }) // Refresh Dashboard
+    queryClient.invalidateQueries({ queryKey: ['lab-bookings-stats'] })
+    queryClient.invalidateQueries({ queryKey: ['photo-project'] })
+    queryClient.invalidateQueries({ queryKey: ['photo-projects'] })
   }
 
-  /**
-   * Subscribe ke channel personal user + channel lab aktif (kalau staff).
-   * Aman dipanggil berkali-kali — hanya subscribe sekali per session.
-   */
   function subscribeRealtime() {
     if (subscribed || !authStore.token || !authStore.user) return
     subscribed = true
@@ -84,17 +108,14 @@ export function useNotifications() {
       )
     })
 
-    // Channel per-lab — Pantau perubahan activeLab secara reaktif untuk staff
+    // Channel per-lab — Pantau perubahan lab aktif untuk staff
     if (!authStore.hasRole('customer')) {
       watch(
         () => labStore.activeLab?.id,
         (newLabId) => {
-          // Kalau pindah lab, tinggalkan channel lab sebelumnya
           if (currentLabChannelId && currentLabChannelId !== newLabId) {
             echo.leave(`Lab.${currentLabChannelId}`)
           }
-
-          // Subscribe ke channel lab yang baru
           if (newLabId && currentLabChannelId !== newLabId) {
             currentLabChannelId = newLabId
             const labChannel = echo.private(`Lab.${newLabId}`)
@@ -105,7 +126,7 @@ export function useNotifications() {
             })
           }
         },
-        { immediate: true }, // Langsung jalankan saat pertama kali dipanggil
+        { immediate: true },
       )
     }
   }
@@ -113,9 +134,8 @@ export function useNotifications() {
   function unsubscribeRealtime() {
     disconnectEcho()
     subscribed = false
-    currentLabChannelId = null // <-- Reset variabel ini saat logout
+    currentLabChannelId = null
   }
-
 
   return {
     notifications,
