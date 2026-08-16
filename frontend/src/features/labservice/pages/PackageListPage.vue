@@ -15,6 +15,7 @@ import {
   Trash2,
   PackageOpen,
   Wrench,
+  ImageOff,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-vue-next'
@@ -80,8 +81,8 @@ function formatPrice(price: string) {
     </div>
 
     <!-- Loading -->
-    <div v-if="isLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <Skeleton v-for="i in 3" :key="i" class="h-56 w-full rounded-xl" />
+    <div v-if="isLoading" class="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-4">
+      <Skeleton v-for="i in 3" :key="i" class="h-72 w-full rounded-xl" />
     </div>
 
     <!-- Empty -->
@@ -93,8 +94,20 @@ function formatPrice(price: string) {
     </Card>
 
     <!-- Grid -->
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <Card v-for="pkg in data.data" :key="pkg.uuid" class="p-0">
+    <div v-else class="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-4">
+      <Card v-for="pkg in data.data" :key="pkg.uuid" class="p-0 overflow-hidden">
+        <!-- Thumbnail gambar paket -->
+        <div class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden">
+          <img
+            v-if="pkg.image"
+            :src="pkg.image"
+            :alt="pkg.name"
+            class="w-full h-full object-cover"
+            loading="lazy"
+          />
+          <ImageOff v-else class="size-7 text-gray-300" />
+        </div>
+
         <CardContent class="p-5 space-y-3">
           <div class="flex items-start justify-between gap-2">
             <h3 class="font-semibold text-gray-900 truncate">{{ pkg.name }}</h3>

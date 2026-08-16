@@ -129,7 +129,7 @@ export interface LabContact {
 
 export interface Asset {
   uuid: string
-  lab_id: string
+  lab_id: number
   name: string
   code: string
   category: EnumField

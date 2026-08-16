@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import { toast } from 'vue-sonner'
 import { useLabStore } from '@/features/lab/stores/useLabStore'
+import { consumePendingBookingRedirect } from '@/composables/usePendingBookingRedirect'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import AuthFooter from '@/features/auth/components/AuthFooter.vue'
 import { Input } from '@/components/ui/input'
@@ -33,6 +34,15 @@ async function handleLogin() {
 
   if (result.success) {
     toast.success('Login berhasil!')
+
+    // Kalau user datang dari landing page dengan jadwal booking yang sudah
+    // dipilih (misal lewat kalender ketersediaan), lanjutkan ke sana dulu
+    // sebelum alur redirect berbasis role yang biasa.
+    const pendingBooking = consumePendingBookingRedirect()
+    if (pendingBooking) {
+      router.push(pendingBooking)
+      return
+    }
 
     if (authStore.hasRole('super_admin')) {
       router.push({ name: 'admin-dashboard' })

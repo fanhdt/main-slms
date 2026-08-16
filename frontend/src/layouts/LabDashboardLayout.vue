@@ -19,6 +19,7 @@ import {
   Images,
   Ticket,
   Settings2,
+  FileBarChart,
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import { useLabStore } from '@/features/lab/stores/useLabStore'
@@ -106,6 +107,7 @@ const mainNavItems = computed(() => [
   { to: navLink('services'), label: 'Layanan', icon: ClipboardList },
   { to: navLink('settings'), label: 'Pengaturan Lab', icon: Settings },
   { to: navLink('packages'), label: 'Paket', icon: ClipboardList },
+  { to: navLink('reports'), label: 'Laporan', icon: FileBarChart },
 ])
 
 const photographyNavItems = computed(() => [

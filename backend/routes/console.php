@@ -11,3 +11,5 @@ Artisan::command('inspire', function () {
 Schedule::command('photo:expire')->daily();
 Schedule::command('photo:cleanup-expired-files')->daily();
 Schedule::command('bookings:send-reminders')->hourly();
+Schedule::command('reports:daily-recap')->dailyAt('23:55');
+Schedule::command('reports:weekly-recap')->weeklyOn(0, '23:55'); 

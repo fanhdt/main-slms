@@ -7,6 +7,9 @@ import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import api from '@/lib/axios'
 import AvailabilityCalendar from '@/components/AvailabilityCalendar.vue'
 import PhotographerPortfolioSection from '@/features/portfolio/components/PhotographerPortfolioSection.vue'
+import { useBookingDraftStore } from '@/features/booking/stores/useBookingDraftStore'
+import type { BookingDraft } from '@/features/booking/stores/useBookingDraftStore'
+import { setPendingBookingRedirect } from '@/composables/usePendingBookingRedirect'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Mail,
@@ -25,11 +28,14 @@ import {
   ClipboardList,
   CreditCard,
   CheckCircle,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const draftStore = useBookingDraftStore()
 
 const slug = computed(() => route.params.slug as string)
 
@@ -51,6 +57,27 @@ const { data: services } = useQuery({
   },
   enabled: computed(() => !!lab.value),
 })
+
+// --- Pagination untuk grid Layanan (6 per halaman, 3 kolom x 2 baris) ---
+const servicesPage = ref(1)
+const servicesPerPage = 6
+
+const servicesTotalPages = computed(() => {
+  if (!services.value?.length) return 1
+  return Math.max(1, Math.ceil(services.value.length / servicesPerPage))
+})
+
+const paginatedServices = computed(() => {
+  if (!services.value?.length) return []
+  const start = (servicesPage.value - 1) * servicesPerPage
+  return services.value.slice(start, start + servicesPerPage)
+})
+
+function goToServicesPage(page: number) {
+  if (page < 1 || page > servicesTotalPages.value) return
+  servicesPage.value = page
+  document.getElementById('services')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
 const { data: packages } = useQuery({
   queryKey: ['lab-packages', slug],
@@ -82,6 +109,40 @@ function handleBooking() {
   if (authStore.isAuthenticated) {
     router.push(`/booking/${slug.value}`)
   } else {
+    router.push({ name: 'login' })
+  }
+}
+
+// --- Kalender interaktif di landing page: pilih jadwal lalu langsung booking ---
+// Tipe schedule di-reuse langsung dari BookingDraft (useBookingDraftStore),
+// supaya tidak duplikat definisi shape { date, start, end, durationHours }.
+const confirmedSchedule = ref<BookingDraft['schedule']>(null)
+
+function handleScheduleConfirm(payload: NonNullable<BookingDraft['schedule']>) {
+  confirmedSchedule.value = payload
+}
+
+function handleBookWithSelectedSchedule() {
+  if (!confirmedSchedule.value) return
+
+  // Simpan jadwal terpilih sebagai draft booking "Pinjam Lab" untuk lab ini,
+  // supaya BookingFormPage otomatis memuatnya begitu user sampai di sana.
+  draftStore.saveDraft(slug.value, 'lab_rental', undefined, {
+    schedule: confirmedSchedule.value,
+  })
+
+  const target = {
+    name: 'booking-form',
+    params: { slug: slug.value },
+    query: { bookingType: 'lab_rental' },
+  } as const
+
+  if (authStore.isAuthenticated) {
+    router.push(target)
+  } else {
+    // Simpan tujuan booking, arahkan ke login dulu — setelah login berhasil
+    // user otomatis dilempar kembali ke sini dengan jadwal yang sama.
+    setPendingBookingRedirect(target)
     router.push({ name: 'login' })
   }
 }
@@ -317,7 +378,6 @@ function formatSelectedDate(dateStr: string) {
             </div>
 
             <!-- Right column: hero illustration -->
-            <!-- Right column: hero illustration -->
             <div class="relative hidden lg:flex items-center justify-center">
               <!-- Foto lab (kalau ada branding hero_image/logo) -->
               <div
@@ -369,16 +429,56 @@ function formatSelectedDate(dateStr: string) {
           <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
             Jadwal Ketersediaan Lab
           </h2>
-          <p class="text-gray-500 mt-2">Cek slot yang tersedia sebelum melakukan booking</p>
+          <p class="text-gray-500 mt-2">
+            Pilih jam yang kosong di kalender untuk langsung membuat booking
+          </p>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
           <div class="rounded-3xl border border-gray-100 shadow-sm p-4 sm:p-6 bg-white">
             <AvailabilityCalendar
               :slug="slug"
-              :interactive="false"
+              :interactive="true"
               @day-changed="handleDayChanged"
+              @confirm-slot="handleScheduleConfirm"
             />
+
+            <!-- CTA muncul setelah jadwal dikonfirmasi di kalender -->
+            <Transition
+              enter-active-class="transition duration-200 ease-out"
+              enter-from-class="opacity-0 translate-y-2"
+              enter-to-class="opacity-100 translate-y-0"
+            >
+              <div
+                v-if="confirmedSchedule"
+                class="mt-5 rounded-2xl border p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                :style="{
+                  borderColor: (lab.branding.secondary_color ?? '#e94560') + '40',
+                  backgroundColor: (lab.branding.secondary_color ?? '#e94560') + '0d',
+                }"
+              >
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">
+                    Jadwal Dipilih
+                  </p>
+                  <p class="text-base font-semibold text-gray-900">
+                    {{ formatSelectedDate(confirmedSchedule.date) }} ·
+                    {{ confirmedSchedule.start }}–{{ confirmedSchedule.end }}
+                    <span class="text-gray-400 font-normal">
+                      ({{ confirmedSchedule.durationHours }} jam)
+                    </span>
+                  </p>
+                </div>
+                <button
+                  @click="handleBookWithSelectedSchedule"
+                  class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                  :style="{ backgroundColor: lab.branding.secondary_color ?? '#e94560' }"
+                >
+                  Lanjutkan Booking
+                  <ArrowRight class="size-4" />
+                </button>
+              </div>
+            </Transition>
           </div>
 
           <aside class="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 sm:p-6 lg:top-24">
@@ -433,7 +533,7 @@ function formatSelectedDate(dateStr: string) {
       </section>
 
       <!-- ================================================================
-           SERVICES SECTION
+           SERVICES SECTION — grid 3x2 (6 item), sisanya pagination
       ================================================================ -->
       <section id="services" class="py-16 sm:py-20 bg-gray-50">
         <div class="max-w-6xl mx-auto px-6">
@@ -444,27 +544,26 @@ function formatSelectedDate(dateStr: string) {
             <p class="text-gray-500 mt-2">Pilih layanan yang sesuai kebutuhanmu</p>
           </div>
 
-          <div v-if="services?.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <
+          <div v-if="services?.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <div
-              v-for="service in services"
+              v-for="service in paginatedServices"
               :key="service.uuid"
-              class="group relative bg-white rounded-xl border border-gray-100 shadow-sm p-3 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+              class="group relative bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
             >
               <span
                 v-if="service.type?.value === 'photography'"
-                class="absolute top-2 right-2 z-10 text-[9px] font-medium px-1.5 py-0.5 rounded-full flex items-center gap-1 backdrop-blur-sm"
+                class="absolute top-3 right-3 z-10 text-[10px] font-medium px-2 py-1 rounded-full flex items-center gap-1 backdrop-blur-sm"
                 :style="{
                   backgroundColor: lab.branding.secondary_color + '15',
                   color: lab.branding.secondary_color ?? '#e94560',
                 }"
               >
-                <Images class="size-2.5" />
+                <Images class="size-3" />
                 Galeri
               </span>
 
               <div
-                class="w-full h-20 sm:h-24 rounded-lg overflow-hidden mb-2 flex items-center justify-center"
+                class="w-full h-36 sm:h-44 rounded-xl overflow-hidden mb-3 flex items-center justify-center"
                 :style="
                   !service.image ? { backgroundColor: lab.branding.primary_color + '10' } : {}
                 "
@@ -477,38 +576,38 @@ function formatSelectedDate(dateStr: string) {
                 />
                 <Camera
                   v-else
-                  class="size-5"
+                  class="size-8"
                   :style="{ color: lab.branding.primary_color ?? '#1a1a2e' }"
                 />
               </div>
 
-              <h3 class="font-semibold text-gray-900 text-xs sm:text-sm tracking-tight truncate">
+              <h3 class="font-semibold text-gray-900 text-base sm:text-lg tracking-tight truncate">
                 {{ service.name }}
               </h3>
-              <p class="text-gray-500 text-[11px] mt-0.5 leading-snug line-clamp-2">
+              <p class="text-gray-500 text-sm mt-1 leading-snug line-clamp-2">
                 {{ service.description }}
               </p>
 
-              <div class="mt-2 flex items-end justify-between gap-1.5">
+              <div class="mt-4 flex items-end justify-between gap-2">
                 <div class="min-w-0">
                   <template v-if="service.price !== null">
                     <p
-                      class="font-bold text-xs sm:text-sm truncate"
+                      class="font-bold text-base sm:text-lg truncate"
                       :style="{ color: lab.branding.primary_color ?? '#1a1a2e' }"
                     >
                       {{ formatPrice(service.price) }}
                     </p>
-                    <p class="text-[10px] text-gray-400 truncate">
+                    <p class="text-xs text-gray-400 truncate">
                       {{ service.pricing_type?.label }}
                     </p>
                   </template>
-                  <p v-else class="text-[10px] font-medium text-blue-600 leading-snug">
+                  <p v-else class="text-xs font-medium text-blue-600 leading-snug">
                     Sesuai pilihan editing
                   </p>
                 </div>
                 <button
                   @click="handleBooking"
-                  class="text-[11px] font-medium px-2.5 py-1.5 rounded-lg text-white shadow-sm hover:shadow-md active:scale-[0.97] transition-all duration-200 shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                  class="text-sm font-medium px-4 py-2 rounded-xl text-white shadow-sm hover:shadow-md active:scale-[0.97] transition-all duration-200 shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                   :style="{ backgroundColor: lab.branding.secondary_color ?? '#e94560' }"
                 >
                   Pesan
@@ -517,8 +616,52 @@ function formatSelectedDate(dateStr: string) {
             </div>
           </div>
 
+          <!-- Pagination -->
+          <div
+            v-if="services?.length && servicesTotalPages > 1"
+            class="flex items-center justify-center gap-2 mt-10"
+          >
+            <button
+              :disabled="servicesPage <= 1"
+              @click="goToServicesPage(servicesPage - 1)"
+              class="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+            >
+              <ChevronLeft class="size-4" />
+            </button>
+
+            <button
+              v-for="page in servicesTotalPages"
+              :key="page"
+              @click="goToServicesPage(page)"
+              class="w-9 h-9 rounded-full text-sm font-medium transition-colors"
+              :class="
+                page === servicesPage
+                  ? 'text-white'
+                  : 'text-gray-500 hover:bg-gray-100 border border-gray-200'
+              "
+              :style="
+                page === servicesPage
+                  ? { backgroundColor: lab.branding.secondary_color ?? '#e94560' }
+                  : {}
+              "
+            >
+              {{ page }}
+            </button>
+
+            <button
+              :disabled="servicesPage >= servicesTotalPages"
+              @click="goToServicesPage(servicesPage + 1)"
+              class="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+            >
+              <ChevronRight class="size-4" />
+            </button>
+          </div>
+
           <!-- Empty state -->
-          <div v-else class="flex flex-col items-center text-center gap-3 py-16">
+          <div
+            v-else-if="!services?.length"
+            class="flex flex-col items-center text-center gap-3 py-16"
+          >
             <div class="size-12 rounded-2xl bg-gray-100 flex items-center justify-center">
               <Camera class="size-6 text-gray-400" />
             </div>
@@ -555,6 +698,23 @@ function formatSelectedDate(dateStr: string) {
               >
                 Paling Populer
               </span>
+
+              <!-- Gambar paket -->
+              <div
+                class="w-full h-40 sm:h-48 overflow-hidden bg-gray-100 flex items-center justify-center"
+              >
+                <img
+                  v-if="pkg.image"
+                  :src="pkg.image"
+                  :alt="pkg.name"
+                  class="w-full h-full object-cover"
+                />
+                <Images
+                  v-else
+                  class="size-9"
+                  :style="{ color: lab.branding.primary_color ?? '#1a1a2e' }"
+                />
+              </div>
 
               <div
                 class="p-6 text-white"

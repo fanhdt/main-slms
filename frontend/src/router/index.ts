@@ -242,6 +242,11 @@ const router = createRouter({
           name: 'lab-settings',
           component: () => import('@/features/lab/pages/LabSettingsPage.vue'),
         },
+        {
+          path: 'reports',
+          name: 'lab-reports',
+          component: () => import('@/features/report/pages/ReportListPage.vue'),
+        },
       ],
     },
 

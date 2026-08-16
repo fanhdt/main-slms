@@ -669,12 +669,13 @@ function isStockInsufficient(assetUuid: string, requestedQty: number): boolean {
               <CardTitle class="text-sm font-semibold">Pilih Jadwal</CardTitle>
             </CardHeader>
             <CardContent class="p-5">
-              <AvailabilityCalendar
-                :slug="slug"
-                interactive
-                :min-date="minDate"
-                @confirm-slot="handleScheduleConfirm"
-              />
+<AvailabilityCalendar
+  :slug="slug"
+  interactive
+  :min-date="minDate"
+  :initial-confirmed-slot="schedule"
+  @confirm-slot="handleScheduleConfirm"
+/>
             </CardContent>
           </Card>
 

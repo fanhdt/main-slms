@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import { useBookingFlowMode } from '@/composables/useBookingFlowMode'
@@ -49,15 +49,19 @@ const { data: booking, refetch: refetchBooking } = useQuery({
 
 const isPaid = computed(() => booking.value?.payment_status?.value === 'paid')
 
-onMounted(async () => {
-  if (isPaid.value) {
-    qrDataUrl.value = await QRCode.toDataURL(code.value, {
-      width: 200,
-      margin: 2,
-      color: { dark: '#1a1a2e', light: '#ffffff' },
-    })
-  }
-})
+watch(
+  isPaid,
+  async (paid) => {
+    if (paid && !qrDataUrl.value) {
+      qrDataUrl.value = await QRCode.toDataURL(code.value, {
+        width: 200,
+        margin: 2,
+        color: { dark: '#1a1a2e', light: '#ffffff' },
+      })
+    }
+  },
+  { immediate: true },
+)
 
 async function payNow() {
   if (!booking.value) return

@@ -67,6 +67,9 @@ Route::prefix('v1')->group(function () {
         //Notifications
         Route::prefix('notifications')->group(base_path('routes/api/notifications.php'));
 
+        // Reporting
+        Route::prefix('reports')->group(base_path('routes/api/reports.php'));
+
         
 
     });

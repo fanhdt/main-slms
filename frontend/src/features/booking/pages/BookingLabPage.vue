@@ -54,6 +54,40 @@ const { data: packages } = useQuery({
   enabled: computed(() => activeFlow.value === 'service' && !!lab.value),
 })
 
+// --- Pengkategorian layanan satuan berdasarkan service.type (dari API) ---
+// Dikelompokkan supaya tidak semua layanan ditumpuk jadi satu list panjang;
+// tiap kategori (Fotografi, Editing Foto, Recording, dst) tampil sebagai
+// section terpisah dengan grid 3 kolom di masing-masing.
+interface ServiceGroup {
+  key: string
+  label: string
+  items: any[]
+}
+
+const groupedServices = computed<ServiceGroup[]>(() => {
+  if (!services.value?.length) return []
+
+  const groups: Record<string, ServiceGroup> = {}
+  for (const service of services.value) {
+    const key = service.type?.value ?? 'other'
+    if (!groups[key]) {
+      groups[key] = {
+        key,
+        label: service.type?.label ?? 'Lainnya',
+        items: [],
+      }
+    }
+    groups[key].items.push(service)
+  }
+
+  // "Lainnya" selalu ditaruh paling akhir biar kategori spesifik didahulukan
+  return Object.values(groups).sort((a, b) => {
+    if (a.key === 'other') return 1
+    if (b.key === 'other') return -1
+    return a.label.localeCompare(b.label)
+  })
+})
+
 const flowOptions = [
   {
     key: 'lab_rental' as const,
@@ -152,7 +186,7 @@ function formatPrice(price: string | number) {
       </div>
     </header>
 
-    <div class="max-w-4xl mx-auto px-6 py-10">
+    <div class="max-w-6xl mx-auto px-6 py-10">
       <!-- Layar pilih flow -->
       <div v-if="!activeFlow">
         <div class="text-center mb-8">
@@ -160,7 +194,7 @@ function formatPrice(price: string | number) {
           <p class="text-gray-500 mt-1 text-sm">Pilih salah satu jenis layanan di bawah ini.</p>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto">
           <button
             v-for="option in flowOptions"
             :key="option.key"
@@ -228,82 +262,101 @@ function formatPrice(price: string | number) {
           </button>
         </div>
 
-        <!-- Paket -->
-        <div v-if="serviceTab === 'packages'" class="grid gap-4">
-          <button
-            v-for="pkg in packages"
-            :key="pkg.uuid"
-            @click="selectPackage(pkg)"
-            class="text-left"
-          >
-            <Card class="p-0 overflow-hidden hover:border-blue-400 hover:shadow-md transition-all">
-              <div
-                class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden"
+        <!-- Paket — grid 3 kolom -->
+        <div v-if="serviceTab === 'packages'">
+          <div v-if="packages?.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button
+              v-for="pkg in packages"
+              :key="pkg.uuid"
+              @click="selectPackage(pkg)"
+              class="text-left"
+            >
+              <Card
+                class="p-0 h-full overflow-hidden hover:border-blue-400 hover:shadow-md transition-all"
               >
-                <img
-                  v-if="pkg.image"
-                  :src="pkg.image"
-                  :alt="pkg.name"
-                  class="w-full h-full object-cover"
-                />
-                <Package v-else class="size-8 text-gray-300" />
-              </div>
-              <CardContent class="p-5">
-                <h3 class="font-semibold text-gray-900">{{ pkg.name }}</h3>
-                <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ pkg.description }}</p>
-                <p class="font-bold text-gray-900 mt-2">
-                  {{ formatPrice(pkg.price - pkg.discount) }}
-                </p>
-              </CardContent>
-            </Card>
-          </button>
-          <p v-if="!packages?.length" class="text-sm text-gray-400 text-center py-8">
-            Belum ada paket tersedia.
-          </p>
+                <div
+                  class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden"
+                >
+                  <img
+                    v-if="pkg.image"
+                    :src="pkg.image"
+                    :alt="pkg.name"
+                    class="w-full h-full object-cover"
+                  />
+                  <Package v-else class="size-8 text-gray-300" />
+                </div>
+                <CardContent class="p-5">
+                  <h3 class="font-semibold text-gray-900">{{ pkg.name }}</h3>
+                  <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ pkg.description }}</p>
+                  <p class="font-bold text-gray-900 mt-2">
+                    {{ formatPrice(pkg.price - pkg.discount) }}
+                  </p>
+                </CardContent>
+              </Card>
+            </button>
+          </div>
+          <p v-else class="text-sm text-gray-400 text-center py-8">Belum ada paket tersedia.</p>
         </div>
 
-        <!-- Layanan satuan -->
-        <div v-else class="grid gap-4">
-          <button
-            v-for="service in services"
-            :key="service.uuid"
-            @click="selectService(service)"
-            class="text-left"
-          >
-            <Card class="p-0 overflow-hidden hover:border-blue-400 hover:shadow-md transition-all">
-              <div
-                class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden"
-              >
-                <img
-                  v-if="service.image"
-                  :src="service.image"
-                  :alt="service.name"
-                  class="w-full h-full object-cover"
-                />
-                <Wrench v-else class="size-8 text-gray-300" />
-              </div>
-              <CardContent class="p-5">
-                <h3 class="font-semibold text-gray-900">{{ service.name }}</h3>
-                <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ service.description }}</p>
+        <!-- Layanan satuan — dikelompokkan per kategori, tiap kategori grid 3 kolom -->
+        <div v-else class="space-y-8">
+          <template v-if="groupedServices.length">
+            <section v-for="group in groupedServices" :key="group.key">
+              <h2 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                {{ group.label }}
+                <span class="text-xs font-normal text-gray-400">({{ group.items.length }})</span>
+              </h2>
 
-                <p v-if="service.price !== null" class="font-bold text-gray-900 mt-2">
-  {{ formatPrice(service.price) }}
-  <span class="text-sm font-normal text-gray-400"
-    >/ {{ service.pricing_type?.label }}</span
-  >
-</p>
-<p v-else-if="service.is_custom_pricing" class="text-sm font-medium text-purple-600 mt-2">
-  Harga Custom — nego saat booking
-</p>
-<p v-else class="text-sm font-medium text-blue-600 mt-2">
-  Harga sesuai pilihan editing yang dipilih
-</p>
-              </CardContent>
-            </Card>
-          </button>
-          <p v-if="!services?.length" class="text-sm text-gray-400 text-center py-8">
-            Belum ada layanan tersedia.
-          </p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <button
+                  v-for="service in group.items"
+                  :key="service.uuid"
+                  @click="selectService(service)"
+                  class="text-left"
+                >
+                  <Card
+                    class="p-0 h-full overflow-hidden hover:border-blue-400 hover:shadow-md transition-all"
+                  >
+                    <div
+                      class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden"
+                    >
+                      <img
+                        v-if="service.image"
+                        :src="service.image"
+                        :alt="service.name"
+                        class="w-full h-full object-cover"
+                      />
+                      <Wrench v-else class="size-8 text-gray-300" />
+                    </div>
+                    <CardContent class="p-5">
+                      <h3 class="font-semibold text-gray-900">{{ service.name }}</h3>
+                      <p class="text-sm text-gray-500 mt-1 line-clamp-2">
+                        {{ service.description }}
+                      </p>
+
+                      <p v-if="service.price !== null" class="font-bold text-gray-900 mt-2">
+                        {{ formatPrice(service.price) }}
+                        <span class="text-sm font-normal text-gray-400">
+                          / {{ service.pricing_type?.label }}
+                        </span>
+                      </p>
+                      <p
+                        v-else-if="service.is_custom_pricing"
+                        class="text-sm font-medium text-purple-600 mt-2"
+                      >
+                        Harga Custom — nego saat booking
+                      </p>
+                      <p v-else class="text-sm font-medium text-blue-600 mt-2">
+                        Harga sesuai pilihan editing yang dipilih
+                      </p>
+                    </CardContent>
+                  </Card>
+                </button>
+              </div>
+            </section>
+          </template>
+
+          <p v-else class="text-sm text-gray-400 text-center py-8">Belum ada layanan tersedia.</p>
         </div>
       </div>
     </div>

@@ -48,36 +48,38 @@ class AssetController extends ApiController
     }
 
     public function update(UpdateAssetRequest $request, string $uuid): JsonResponse
-    {
-        $asset = $this->assetService->update(
-            $uuid,
-            UpdateAssetDTO::fromRequest($request->validated())
-        );
+{
+    // pastikan aset ini milik lab yang boleh diakses user
+    $this->assetService->findByUuidForUser($uuid, $request->user());
 
-        return $this->success(new AssetResource($asset), 'Aset berhasil diupdate.');
-    }
+    $asset = $this->assetService->update(
+        $uuid,
+        UpdateAssetDTO::fromRequest($request->validated())
+    );
 
-    public function destroy(string $uuid): JsonResponse
-    {
-        $this->assetService->delete($uuid);
+    return $this->success(new AssetResource($asset), 'Aset berhasil diupdate.');
+}
 
-        return $this->successMessage('Aset berhasil dihapus.');
-    }
+public function destroy(Request $request, string $uuid): JsonResponse
+{
+    $this->assetService->findByUuidForUser($uuid, $request->user());
+    $this->assetService->delete($uuid);
 
-    /**
-     * Update status aset saja — endpoint khusus untuk operator
-     * yang perlu cepat ubah status tanpa edit full form.
-     */
-    public function updateStatus(Request $request, string $uuid): JsonResponse
-    {
-        $request->validate([
-            'status' => ['required', Rule::in(array_column(AssetStatus::cases(), 'value'))],
-        ]);
+    return $this->successMessage('Aset berhasil dihapus.');
+}
 
-        $asset = $this->assetService->updateStatus($uuid, $request->status);
+public function updateStatus(Request $request, string $uuid): JsonResponse
+{
+    $this->assetService->findByUuidForUser($uuid, $request->user());
 
-        return $this->success(new AssetResource($asset), 'Status aset berhasil diupdate.');
-    }
+    $request->validate([
+        'status' => ['required', Rule::in(array_column(AssetStatus::cases(), 'value'))],
+    ]);
+
+    $asset = $this->assetService->updateStatus($uuid, $request->status);
+
+    return $this->success(new AssetResource($asset), 'Status aset berhasil diupdate.');
+}
 
     public function updateImage(Request $request, string $uuid): JsonResponse
 {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
+import { useLabStore } from '@/features/lab/stores/useLabStore'
 import { assetApi } from '@/features/asset/api/assetApi'
 import BaseModal from '@/components/BaseModal.vue'
 import { toast } from 'vue-sonner'
@@ -19,6 +20,7 @@ const emit = defineEmits<{
 }>()
 
 const queryClient = useQueryClient()
+const labStore = useLabStore()
 
 const form = ref({
   name: '',
@@ -34,7 +36,7 @@ const form = ref({
   is_rentable: true,
   rental_price: '',
   quantity: 1,
-  lab_id: 1,
+  lab_id: labStore.activeLab?.id ?? 1,
 })
 
 const errors = ref<Record<string, string>>({})
@@ -78,7 +80,7 @@ watch(
         is_rentable: asset.is_rentable,
         rental_price: asset.rental_price ?? '',
         quantity: asset.quantity ?? 1,
-        lab_id: 1,
+        lab_id: asset.lab_id,
       }
     } else {
       form.value = {
@@ -95,7 +97,7 @@ watch(
         is_rentable: true,
         rental_price: '',
         quantity: 1,
-        lab_id: 1,
+        lab_id: labStore.activeLab?.id ?? 1,
       }
     }
   },

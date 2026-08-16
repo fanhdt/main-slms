@@ -10,7 +10,16 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Plus, Search, Pencil, Trash2, Package, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import {
+  Plus,
+  Search,
+  Pencil,
+  Trash2,
+  Package,
+  ChevronLeft,
+  ChevronRight,
+  ImageOff,
+} from 'lucide-vue-next'
 
 const queryClient = useQueryClient()
 const labStore = useLabStore()
@@ -61,7 +70,7 @@ function statusColor(status: string) {
   return STATUS_STYLES[status] ?? 'bg-gray-100 text-gray-600'
 }
 
-// Warna badge per kategori — biar tabel lebih gampang dipindai matanya,
+// Warna badge per kategori — biar tabel/kartu lebih gampang dipindai matanya,
 // tidak monoton satu warna untuk semua kategori.
 const CATEGORY_STYLES: Record<string, string> = {
   camera: 'bg-purple-50 text-purple-700',
@@ -166,98 +175,212 @@ function openEdit(asset: Asset) {
       </CardContent>
     </Card>
 
-    <!-- Table -->
-    <Card class="p-0 overflow-hidden">
-      <div v-if="isLoading" class="p-5 space-y-3">
-        <Skeleton v-for="i in 5" :key="i" class="h-12 w-full" />
+    <!-- Loading -->
+    <div v-if="isLoading" class="space-y-3">
+      <!-- Skeleton kartu di layar kecil -->
+      <div class="grid grid-cols-1 xs:grid-cols-2 lg:hidden gap-4">
+        <Skeleton v-for="i in 4" :key="i" class="h-64 w-full rounded-xl" />
       </div>
+      <!-- Skeleton tabel di layar besar -->
+      <Card class="p-0 hidden lg:block">
+        <CardContent class="p-5 space-y-3">
+          <Skeleton v-for="i in 5" :key="i" class="h-14 w-full" />
+        </CardContent>
+      </Card>
+    </div>
 
-      <div v-else-if="!data?.data?.length" class="p-10 text-center">
+    <!-- Empty -->
+    <Card v-else-if="!data?.data?.length" class="p-0">
+      <CardContent class="p-10 text-center">
         <Package class="size-8 mx-auto text-gray-300 mb-2" />
         <p class="text-sm text-gray-500">Tidak ada aset ditemukan.</p>
-      </div>
+      </CardContent>
+    </Card>
 
-      <div v-else class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th class="text-left px-4 py-3 font-medium text-gray-600">Nama</th>
-              <th class="text-left px-4 py-3 font-medium text-gray-600">Kode</th>
-              <th class="text-left px-4 py-3 font-medium text-gray-600">Kategori</th>
-              <th class="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-              <th class="text-left px-4 py-3 font-medium text-gray-600">Harga Sewa</th>
-              <th class="text-left px-4 py-3 font-medium text-gray-600">Stok</th>
-              <th class="text-right px-4 py-3 font-medium text-gray-600">Aksi</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            <tr
-              v-for="asset in data.data"
-              :key="asset.uuid"
-              class="hover:bg-gray-50 transition-colors"
-            >
-              <td class="px-4 py-3">
-                <div class="font-medium text-gray-900 truncate">{{ asset.name }}</div>
-                <div class="text-xs text-gray-500 truncate">
-                  {{ asset.brand }} {{ asset.model }}
-                </div>
-              </td>
-              <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ asset.code }}</td>
-              <td class="px-4 py-3">
-                <Badge
-                  variant="outline"
-                  class="border-0"
-                  :class="categoryColor(asset.category.value)"
-                >
-                  {{ asset.category.label }}
-                </Badge>
-              </td>
-              <td class="px-4 py-3">
-                <Badge variant="outline" class="border-0" :class="statusColor(asset.status.value)">
-                  {{ asset.status.label }}
-                </Badge>
-              </td>
-              <td class="px-4 py-3 text-gray-600">{{ formatPrice(asset.rental_price) }}</td>
-              <td class="px-4 py-3">
-                <div class="flex items-center justify-end gap-1">
-                  <button
-                    title="Edit"
-                    @click="openEdit(asset)"
-                    class="p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                  >
-                    <Pencil class="size-4" />
-                  </button>
-                  <button
-                    title="Hapus"
-                    @click="confirmDelete(asset)"
-                    class="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                  >
-                    <Trash2 class="size-4" />
-                  </button>
-                </div>
-              </td>
-              <td class="px-4 py-3">
-                <span
-                  class="text-sm font-medium"
+    <template v-else>
+      <!-- ============================================================
+           MOBILE / TABLET — grid kartu bergambar (di bawah breakpoint lg)
+      ============================================================= -->
+      <div class="grid grid-cols-1 xs:grid-cols-2 lg:hidden gap-4">
+        <Card v-for="asset in data.data" :key="asset.uuid" class="p-0 overflow-hidden">
+          <div class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden">
+            <img
+              v-if="asset.image"
+              :src="asset.image"
+              :alt="asset.name"
+              class="w-full h-full object-cover"
+              loading="lazy"
+            />
+            <ImageOff v-else class="size-7 text-gray-300" />
+          </div>
+          <CardContent class="p-4 space-y-2.5">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <p class="font-medium text-gray-900 truncate">{{ asset.name }}</p>
+                <p class="text-xs text-gray-500 truncate">{{ asset.brand }} {{ asset.model }}</p>
+              </div>
+              <span class="text-xs font-mono text-gray-400 shrink-0">{{ asset.code }}</span>
+            </div>
+
+            <div class="flex flex-wrap gap-1.5">
+              <Badge
+                variant="outline"
+                class="border-0 text-[11px]"
+                :class="categoryColor(asset.category.value)"
+              >
+                {{ asset.category.label }}
+              </Badge>
+              <Badge
+                variant="outline"
+                class="border-0 text-[11px]"
+                :class="statusColor(asset.status.value)"
+              >
+                {{ asset.status.label }}
+              </Badge>
+            </div>
+
+            <div class="flex items-center justify-between pt-2 border-t border-gray-100">
+              <div>
+                <p class="text-xs text-gray-400">Harga sewa</p>
+                <p class="text-sm font-semibold text-gray-900">
+                  {{ formatPrice(asset.rental_price) }}
+                </p>
+              </div>
+              <div class="text-right">
+                <p class="text-xs text-gray-400">Stok</p>
+                <p
+                  class="text-sm font-semibold"
                   :class="asset.available_now > 0 ? 'text-gray-700' : 'text-red-600'"
                 >
                   {{ asset.available_now }} / {{ asset.quantity }}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                </p>
+              </div>
+            </div>
+
+            <div class="flex gap-2 pt-1">
+              <Button variant="outline" size="sm" class="flex-1" @click="openEdit(asset)">
+                <Pencil class="size-3.5" />
+                Edit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                class="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                @click="confirmDelete(asset)"
+              >
+                <Trash2 class="size-3.5" />
+                Hapus
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <!-- Pagination -->
+      <!-- ============================================================
+           DESKTOP — tabel dengan thumbnail gambar (lg ke atas)
+      ============================================================= -->
+      <Card class="p-0 overflow-hidden hidden lg:block">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th class="text-left px-4 py-3 font-medium text-gray-600 w-16"></th>
+                <th class="text-left px-4 py-3 font-medium text-gray-600">Nama</th>
+                <th class="text-left px-4 py-3 font-medium text-gray-600">Kode</th>
+                <th class="text-left px-4 py-3 font-medium text-gray-600">Kategori</th>
+                <th class="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                <th class="text-left px-4 py-3 font-medium text-gray-600">Harga Sewa</th>
+                <th class="text-left px-4 py-3 font-medium text-gray-600">Stok</th>
+                <th class="text-right px-4 py-3 font-medium text-gray-600">Aksi</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr
+                v-for="asset in data.data"
+                :key="asset.uuid"
+                class="hover:bg-gray-50 transition-colors"
+              >
+                <td class="px-4 py-3">
+                  <div
+                    class="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center shrink-0"
+                  >
+                    <img
+                      v-if="asset.image"
+                      :src="asset.image"
+                      :alt="asset.name"
+                      class="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                    <ImageOff v-else class="size-4 text-gray-300" />
+                  </div>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="font-medium text-gray-900 truncate">{{ asset.name }}</div>
+                  <div class="text-xs text-gray-500 truncate">
+                    {{ asset.brand }} {{ asset.model }}
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ asset.code }}</td>
+                <td class="px-4 py-3">
+                  <Badge
+                    variant="outline"
+                    class="border-0"
+                    :class="categoryColor(asset.category.value)"
+                  >
+                    {{ asset.category.label }}
+                  </Badge>
+                </td>
+                <td class="px-4 py-3">
+                  <Badge
+                    variant="outline"
+                    class="border-0"
+                    :class="statusColor(asset.status.value)"
+                  >
+                    {{ asset.status.label }}
+                  </Badge>
+                </td>
+                <td class="px-4 py-3 text-gray-600">{{ formatPrice(asset.rental_price) }}</td>
+                <td class="px-4 py-3">
+                  <span
+                    class="text-sm font-medium"
+                    :class="asset.available_now > 0 ? 'text-gray-700' : 'text-red-600'"
+                  >
+                    {{ asset.available_now }} / {{ asset.quantity }}
+                  </span>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center justify-end gap-1">
+                    <button
+                      title="Edit"
+                      @click="openEdit(asset)"
+                      class="p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                    >
+                      <Pencil class="size-4" />
+                    </button>
+                    <button
+                      title="Hapus"
+                      @click="confirmDelete(asset)"
+                      class="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 class="size-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <!-- Pagination — dipakai bersama untuk kedua layout -->
       <div
         v-if="data?.meta"
-        class="px-4 py-3 border-t border-gray-200 flex items-center justify-between text-sm text-gray-600"
+        class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-gray-600"
       >
         <span>
           Menampilkan {{ data.meta.from }}–{{ data.meta.to }} dari {{ data.meta.total }} data
         </span>
-        <div class="flex gap-2">
+        <div class="flex gap-2 justify-end">
           <Button variant="outline" size="icon-sm" :disabled="page <= 1" @click="page--">
             <ChevronLeft class="size-4" />
           </Button>
@@ -271,7 +394,7 @@ function openEdit(asset: Asset) {
           </Button>
         </div>
       </div>
-    </Card>
+    </template>
   </div>
   <AssetFormModal :show="showModal" :asset="selectedAsset" @close="showModal = false" />
 </template>

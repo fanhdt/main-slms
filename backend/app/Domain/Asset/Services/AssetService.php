@@ -13,6 +13,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Domain\User\Models\User as ModelsUser;
 
 class AssetService extends BaseService
 {
@@ -60,15 +61,31 @@ class AssetService extends BaseService
      * @throws ApiException
      */
     public function findByUuid(string $uuid): Asset
-    {
-        $asset = Asset::with('lab')->where('uuid', $uuid)->first();
+{
+    $asset = Asset::with('lab')->where('uuid', $uuid)->first();
 
-        if (! $asset) {
-            throw ApiException::notFound('Asset');
-        }
-
-        return $asset;
+    if (! $asset) {
+        throw ApiException::notFound('Asset');
     }
+
+    return $asset;
+}
+/**
+ * Sama seperti findByUuid, tapi memastikan user yang login punya akses
+ * ke lab pemilik aset ini. Dipakai untuk operasi tulis (update/delete/status).
+ *
+ * @throws ApiException
+ */
+public function findByUuidForUser(string $uuid, ModelsUser $user): Asset
+{
+    $asset = $this->findByUuid($uuid);
+
+    if (! $user->hasRole('super_admin') && ! $user->hasLabAccess($asset->lab_id)) {
+        throw ApiException::forbidden('Kamu tidak punya akses ke aset di lab ini.');
+    }
+
+    return $asset;
+}
 
     /**
      * Buat aset baru.

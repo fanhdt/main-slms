@@ -9,8 +9,20 @@ const props = withDefaults(
     slug: string
     interactive?: boolean
     minDate?: string
+    /**
+     * Jadwal yang sudah terkonfirmasi sebelumnya (misalnya dari draft booking
+     * yang dipilih user di landing page). Kalau diisi, kalender langsung
+     * membuka tanggal tersebut dan menandai slotnya sebagai terkonfirmasi,
+     * tanpa user perlu memilih ulang.
+     */
+    initialConfirmedSlot?: {
+      date: string
+      start: string
+      end: string
+      durationHours: number
+    } | null
   }>(),
-  { interactive: false },
+  { interactive: false, initialConfirmedSlot: null },
 )
 
 const emit = defineEmits<{
@@ -38,6 +50,10 @@ const confirmedSlot = ref<{
   end: string
   durationHours: number
 } | null>(null)
+
+// Guard supaya initialConfirmedSlot hanya diterapkan sekali (begitu tersedia),
+// dan tidak menimpa ulang pilihan interaktif user setelahnya.
+const hasAppliedInitialSlot = ref(false)
 
 const monthKey = computed(
   () => `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}`,
@@ -76,6 +92,22 @@ watch(
       operationalHours: dayData.value?.operational_hours ?? null,
       activities: dayData.value?.activities ?? [],
     })
+  },
+  { immediate: true },
+)
+
+// Terapkan jadwal awal (kalau ada) begitu tersedia — juga menangani kasus
+// prop-nya baru terisi SETELAH komponen ini mount (mis. parent masih
+// memuat draft secara async), bukan cuma saat mount pertama.
+watch(
+  () => props.initialConfirmedSlot,
+  (slot) => {
+    if (!slot || hasAppliedInitialSlot.value) return
+    hasAppliedInitialSlot.value = true
+    selectedDate.value = slot.date
+    confirmedSlot.value = { ...slot }
+    currentYear.value = new Date(slot.date).getFullYear()
+    currentMonth.value = new Date(slot.date).getMonth() + 1
   },
   { immediate: true },
 )
@@ -210,7 +242,11 @@ function slotClass(slot: DaySlot, index: number) {
 }
 
 onMounted(() => {
-  selectedDate.value = minDateValue.value ?? null
+  // Kalau initialConfirmedSlot sudah diterapkan lewat watcher di atas,
+  // jangan timpa lagi dengan tanggal fallback (besok).
+  if (!selectedDate.value) {
+    selectedDate.value = minDateValue.value ?? null
+  }
 })
 </script>
 
