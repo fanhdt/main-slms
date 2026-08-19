@@ -85,7 +85,7 @@ watch(
 const { mutate: saveService, isPending } = useMutation({
   mutationFn: async () => {
     const payload = {
-      lab_id: form.value.lab_id,
+      lab_id: labStore.activeLab?.id,   // ← diambil fresh saat submit, bukan dari form.value.lab_id
       name: form.value.name,
       type: form.value.type,
       description: form.value.description || null,

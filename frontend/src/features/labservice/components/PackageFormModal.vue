@@ -145,7 +145,7 @@ const { mutate: savePackage, isPending } = useMutation({
     }
 
     const payload = {
-      lab_id: form.value.lab_id,
+      lab_id: labStore.activeLab?.id, // ← diambil fresh saat submit
       name: form.value.name,
       description: form.value.description || null,
       price: form.value.price,

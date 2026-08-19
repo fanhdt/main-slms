@@ -106,10 +106,12 @@ watch(
 
 const { mutate: saveAsset, isPending } = useMutation({
   mutationFn: async () => {
+    const payload = { ...form.value, lab_id: labStore.activeLab?.id ?? form.value.lab_id }
+
     if (isEdit.value && props.asset) {
-      return assetApi.update(props.asset.uuid, form.value)
+      return assetApi.update(props.asset.uuid, payload)
     } else {
-      return assetApi.create(form.value)
+      return assetApi.create(payload)
     }
   },
   onSuccess: async (res) => {
