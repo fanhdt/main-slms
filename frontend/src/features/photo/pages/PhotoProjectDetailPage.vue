@@ -11,10 +11,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Camera, Pencil, CheckCircle2, CheckCheck, AlertTriangle } from 'lucide-vue-next'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 const route = useRoute()
 const uuid = computed(() => route.params.uuid as string)
 const queryClient = useQueryClient()
+const { confirmDelete } = useConfirmDialog()
 
 const activeTab = ref<'preview' | 'edit' | 'final'>('preview')
 
@@ -76,10 +78,12 @@ const { mutate: deleteFile } = useMutation({
   onError: (err: any) => toast.error(err.response?.data?.message ?? 'Gagal menghapus foto.'),
 })
 
-function confirmDeleteFile(fileUuid: string) {
-  if (confirm('Hapus foto ini? Tindakan ini tidak bisa dibatalkan.')) {
-    deleteFile(fileUuid)
-  }
+async function handleDeleteFile(fileUuid: string) {
+  const ok = await confirmDelete({
+    title: 'Hapus foto ini?',
+    text: 'Tindakan ini tidak bisa dibatalkan.',
+  })
+  if (ok) deleteFile(fileUuid)
 }
 
 const { mutate: submitApproval, isPending: isSubmitting } = useMutation({
@@ -193,7 +197,7 @@ const { mutate: submitApproval, isPending: isSubmitting } = useMutation({
       <section v-if="unselectedPreviews.length" class="space-y-3">
         <h3 class="font-semibold text-gray-500">Tidak Dipilih ({{ unselectedPreviews.length }})</h3>
         <div class="opacity-60">
-          <PhotoGrid :files="unselectedPreviews" deletable @delete="confirmDeleteFile" />
+          <PhotoGrid :files="unselectedPreviews" deletable @delete="handleDeleteFile" />
         </div>
       </section>
 
@@ -233,7 +237,7 @@ const { mutate: submitApproval, isPending: isSubmitting } = useMutation({
         <section class="space-y-3">
           <h3 class="font-semibold text-gray-900">Upload Hasil Edit ({{ editedFiles.length }})</h3>
           <PhotoUploader :disabled="isUploadingEdited" @upload="uploadEdited" />
-          <PhotoGrid :files="editedFiles" deletable @delete="confirmDeleteFile" />
+          <PhotoGrid :files="editedFiles" deletable @delete="handleDeleteFile" />
 
           <Button
             v-if="project.status.value === 'editing'"

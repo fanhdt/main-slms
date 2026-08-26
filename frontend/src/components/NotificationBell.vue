@@ -73,7 +73,6 @@ async function handleNotifClick(notif: AppNotification) {
   }
 }
 
-
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
   const minutes = Math.floor(diff / 60000)
@@ -112,7 +111,7 @@ function timeAgo(dateStr: string) {
     >
       <div
         v-if="isOpen"
-        class="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50 flex flex-col"
+        class="fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-96 max-w-full bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50 flex flex-col"
       >
         <!-- Header -->
         <div

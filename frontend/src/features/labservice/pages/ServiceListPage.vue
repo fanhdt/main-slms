@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-vue-next'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 const queryClient = useQueryClient()
 const labStore = useLabStore()
@@ -53,11 +54,11 @@ const { mutate: deleteService } = useMutation({
     toast.error('Gagal menghapus layanan.')
   },
 })
+const { confirmDelete } = useConfirmDialog()
 
-function confirmDelete(service: Service) {
-  if (confirm(`Hapus layanan "${service.name}"?`)) {
-    deleteService(service.uuid)
-  }
+async function handleDelete(service: Service) {
+  const ok = await confirmDelete({ title: `Hapus layanan "${service.name}"?` })
+  if (ok) deleteService(service.uuid)
 }
 
 function formatPrice(price: string | number | null) {
@@ -233,7 +234,7 @@ function openEdit(service: Service) {
                 variant="outline"
                 size="sm"
                 class="flex-1 border-red-200 text-red-600 hover:bg-red-50"
-                @click="confirmDelete(service)"
+                @click="handleDelete(service)"
               >
                 <Trash2 class="size-3.5" />
                 Hapus
@@ -301,9 +302,13 @@ function openEdit(service: Service) {
                 <td class="px-4 py-3">
                   <template v-if="service.pricing_type && service.price !== null">
                     <span class="font-medium text-gray-900">{{ formatPrice(service.price) }}</span>
-                    <span class="text-xs text-gray-400 block">{{ service.pricing_type.label }}</span>
+                    <span class="text-xs text-gray-400 block">{{
+                      service.pricing_type.label
+                    }}</span>
                   </template>
-                  <span v-else class="text-xs text-gray-400 italic">Harga dari pilihan editing</span>
+                  <span v-else class="text-xs text-gray-400 italic"
+                    >Harga dari pilihan editing</span
+                  >
                 </td>
                 <td class="px-4 py-3">
                   <Badge
@@ -327,7 +332,7 @@ function openEdit(service: Service) {
                     </button>
                     <button
                       title="Hapus"
-                      @click="confirmDelete(service)"
+                      @click="handleDelete(service)"
                       class="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                     >
                       <Trash2 class="size-4" />

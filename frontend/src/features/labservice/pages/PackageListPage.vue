@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-vue-next'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 const labStore = useLabStore()
 const showModal = ref(false)
@@ -41,6 +42,8 @@ const { mutate: deletePackage } = useMutation({
   },
 })
 
+const { confirmDelete } = useConfirmDialog()
+
 function openCreate() {
   editingPackage.value = null
   showModal.value = true
@@ -50,11 +53,9 @@ function openEdit(pkg: any) {
   editingPackage.value = pkg
   showModal.value = true
 }
-
-function confirmDelete(pkg: any) {
-  if (confirm(`Hapus package "${pkg.name}"?`)) {
-    deletePackage(pkg.uuid)
-  }
+async function handleDelete(pkg: any) {
+  const ok = await confirmDelete({ title: `Hapus package "${pkg.name}"?` })
+  if (ok) deletePackage(pkg.uuid)
 }
 
 function formatPrice(price: string) {
@@ -150,7 +151,7 @@ function formatPrice(price: string) {
             </button>
             <button
               title="Hapus"
-              @click="confirmDelete(pkg)"
+              @click="handleDelete(pkg)"
               class="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
             >
               <Trash2 class="size-4" />

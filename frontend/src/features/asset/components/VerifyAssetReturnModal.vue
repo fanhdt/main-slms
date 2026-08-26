@@ -7,6 +7,7 @@ import BaseModal from '@/components/BaseModal.vue'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle2, TriangleAlert } from 'lucide-vue-next'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 const props = defineProps<{
   show: boolean
@@ -15,6 +16,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ close: [] }>()
 const queryClient = useQueryClient()
+const { confirmDelete } = useConfirmDialog()
 
 // State catatan per item — di-reset tiap modal dibuka dengan booking baru
 const notesByItem = ref<Record<number, string>>({})
@@ -69,14 +71,13 @@ function markReturned(bookingAssetId: number) {
   verify({ bookingAssetId, status: 'returned' })
 }
 
-function markDamaged(bookingAssetId: number) {
-  if (
-    !confirm(
-      'Tandai alat ini rusak/hilang? Stoknya akan tetap ditahan sampai admin memperbarui status aset secara manual.',
-    )
-  ) {
-    return
-  }
+async function markDamaged(bookingAssetId: number) {
+  const ok = await confirmDelete({
+    title: 'Tandai alat ini rusak/hilang?',
+    text: 'Stoknya akan tetap ditahan sampai admin memperbarui status aset secara manual.',
+    confirmText: 'Ya, Tandai Rusak',
+  })
+  if (!ok) return
   verify({ bookingAssetId, status: 'damaged' })
 }
 

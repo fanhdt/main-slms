@@ -3,12 +3,14 @@ import { ref, computed, watch } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import { portfolioApi } from '@/features/portfolio/api/portfolioApi'
 import { photographerApi } from '@/features/portfolio/api/photographerApi'
-import type { Photographer } from '@/features/portfolio/types'
+import type { Photographer, PhotographerPortfolio } from '@/features/portfolio/types'
+import { X } from 'lucide-vue-next'
 
 const props = defineProps<{ labId: number; primaryColor?: string; secondaryColor?: string }>()
 
 const activePhotographer = ref<Photographer | null>(null)
 const page = ref(1)
+const lightboxItem = ref<PhotographerPortfolio | null>(null)
 
 const { data: photographers } = useQuery({
   queryKey: ['portfolio-photographers-public', props.labId],
@@ -46,6 +48,13 @@ const { data: gallery, isLoading } = useQuery({
   },
   enabled: computed(() => !!activePhotographer.value),
 })
+
+function openLightbox(item: PhotographerPortfolio) {
+  lightboxItem.value = item
+}
+function closeLightbox() {
+  lightboxItem.value = null
+}
 </script>
 
 <template>
@@ -114,16 +123,18 @@ const { data: gallery, isLoading } = useQuery({
           <div
             v-for="photo in gallery.data"
             :key="photo.uuid"
-            class="aspect-square rounded-xl overflow-hidden bg-gray-200 group relative"
+            class="aspect-[4/5] rounded-xl overflow-hidden bg-gray-200 group relative cursor-pointer"
+            @click="openLightbox(photo)"
           >
             <img
               :src="photo.image"
               :alt="photo.caption ?? activePhotographer?.name ?? ''"
-              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
+              loading="lazy"
             />
             <div
               v-if="photo.caption"
-              class="absolute inset-x-0 bottom-0 bg-black/50 text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+              class="absolute inset-x-0 bottom-0 bg-black/60 text-white text-xs p-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
             >
               {{ photo.caption }}
             </div>
@@ -157,5 +168,31 @@ const { data: gallery, isLoading } = useQuery({
         </div>
       </template>
     </div>
+    <Teleport to="body">
+      <div
+        v-if="lightboxItem"
+        class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+        @click.self="closeLightbox"
+      >
+        <button
+          type="button"
+          title="Tutup"
+          class="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+          @click="closeLightbox"
+        >
+          <X class="size-5" />
+        </button>
+        <div class="max-w-4xl max-h-[85vh] flex flex-col items-center gap-3">
+          <img
+            :src="lightboxItem.image"
+            :alt="lightboxItem.caption ?? ''"
+            class="max-w-full max-h-[75vh] object-contain rounded-lg"
+          />
+          <p v-if="lightboxItem.caption" class="text-white/80 text-sm text-center">
+            {{ lightboxItem.caption }}
+          </p>
+        </div>
+      </div>
+    </Teleport>
   </section>
 </template>

@@ -21,18 +21,15 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-vue-next'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 const queryClient = useQueryClient()
 const route = useRoute()
 const authStore = useAuthStore()
 const labStore = useLabStore()
-
+const { confirmDelete } = useConfirmDialog()
 const search = ref('')
 const page = ref(1)
-
-// Halaman ini dipakai di 2 tempat:
-// - /admin/users        -> global, super_admin, semua user, full CRUD
-// - /dashboard/lab/:slug/users -> lab_admin, HANYA customer di lab ini, hapus saja
 const isLabContext = computed(() => !!route.params.labSlug)
 const isSuperAdmin = computed(() => authStore.hasRole('super_admin'))
 const canManageFully = computed(() => isSuperAdmin.value && !isLabContext.value)
@@ -69,13 +66,12 @@ const { mutate: deleteUser } = useMutation({
   },
 })
 
-function confirmDelete(user: User) {
+async function handleDelete(user: User) {
   const msg = isLabContext.value
     ? `Hapus akun customer "${user.name}"? Tindakan ini biasanya untuk pelanggar aturan lab.`
     : `Hapus user "${user.name}"?`
-  if (confirm(msg)) {
-    deleteUser(user.uuid)
-  }
+  const ok = await confirmDelete({ title: msg })
+  if (ok) deleteUser(user.uuid)
 }
 
 const ROLE_STYLES: Record<string, string> = {
@@ -233,7 +229,7 @@ function openEdit(user: User) {
                   </button>
                   <button
                     title="Hapus"
-                    @click="confirmDelete(user)"
+                    @click="handleDelete(user)"
                     class="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <Trash2 class="size-4" />

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+import { useRouter } from 'vue-router'
+
 import { photographerApi } from '@/features/portfolio/api/photographerApi'
 import { useLabStore } from '@/features/lab/stores/useLabStore'
 import PhotographerFormModal from '@/features/portfolio/components/PhotographerFormModal.vue'
@@ -10,10 +12,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Plus, Pencil, Trash2, UserSquare2 } from 'lucide-vue-next'
+import { Plus, Pencil, Trash2, UserSquare2, Images } from 'lucide-vue-next'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 const labStore = useLabStore()
 const queryClient = useQueryClient()
+const { confirmDelete } = useConfirmDialog()
+const router = useRouter()
 
 const { data: photographers, isLoading } = useQuery({
   queryKey: ['photographers-admin', labStore.activeLab?.id],
@@ -35,15 +40,20 @@ const { mutate: deletePhotographer } = useMutation({
   },
 })
 
-function confirmDelete(item: Photographer) {
-  if (confirm(`Hapus profil ${item.name}? Portofolionya juga akan kehilangan pemilik.`)) {
-    deletePhotographer(item.uuid)
-  }
+async function handleDelete(item: Photographer) {
+  const ok = await confirmDelete({
+    title: `Hapus profil ${item.name}?`,
+    text: 'Portofolionya juga akan kehilangan pemilik.',
+  })
+  if (ok) deletePhotographer(item.uuid)
 }
 
 const showModal = ref(false)
 const editingPhotographer = ref<Photographer | null>(null)
 
+function goToPortfolio(item: Photographer) {
+  router.push({ name: 'lab-portfolio', query: { photographer: item.id } })
+}
 function openCreate() {
   editingPhotographer.value = null
   showModal.value = true
@@ -101,8 +111,15 @@ function openEdit(item: Photographer) {
           </Badge>
         </CardContent>
         <div
-          class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+          class="absolute top-2 right-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
         >
+          <button
+            title="Kelola Portofolio"
+            @click="goToPortfolio(p)"
+            class="p-1.5 rounded-md bg-white/90 text-gray-500 hover:text-purple-600 shadow transition-colors"
+          >
+            <Images class="size-3.5" />
+          </button>
           <button
             title="Edit"
             @click="openEdit(p)"
@@ -112,7 +129,7 @@ function openEdit(item: Photographer) {
           </button>
           <button
             title="Hapus"
-            @click="confirmDelete(p)"
+            @click="handleDelete(p)"
             class="p-1.5 rounded-md bg-white/90 text-gray-500 hover:text-red-600 shadow transition-colors"
           >
             <Trash2 class="size-3.5" />

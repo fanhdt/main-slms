@@ -5,16 +5,16 @@ import api from '@/lib/axios'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Plus, Trash2 } from 'lucide-vue-next'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 const props = defineProps<{
   serviceUuid: string
   serviceType?: string
-  // true = layanan yang harganya SEPENUHNYA dari daftar pilihan ini
-  // (misal Edit Foto) — mengubah teks supaya tidak kesan "tambahan".
   optionOnly?: boolean
 }>()
 
 const queryClient = useQueryClient()
+const { confirmDelete } = useConfirmDialog()
 
 const { data: options, isLoading } = useQuery({
   queryKey: ['service-options', props.serviceUuid],
@@ -48,8 +48,6 @@ const { mutate: addOption, isPending: isSavingOption } = useMutation({
   mutationFn: () =>
     api.post(`/services/${props.serviceUuid}/options`, {
       ...newOption.value,
-      // Opsi custom: harga real ditentukan staff/customer saat booking,
-      // jadi kolom price di sini tidak relevan — kirim 0 sebagai placeholder.
       price: isCustomOption.value ? 0 : newOption.value.price,
       description: newOption.value.description || null,
     }),
@@ -76,10 +74,9 @@ const { mutate: deleteOption } = useMutation({
   },
 })
 
-function confirmDelete(option: any) {
-  if (confirm(`Hapus pilihan "${option.name}"?`)) {
-    deleteOption(option.uuid)
-  }
+async function handleDelete(option: any) {
+  const ok = await confirmDelete({ title: `Hapus pilihan "${option.name}"?` })
+  if (ok) deleteOption(option.uuid)
 }
 
 function formatPrice(price: string | number) {
@@ -151,7 +148,7 @@ const canSaveOption = computed(() => {
           type="button"
           title="Hapus pilihan"
           class="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
-          @click="confirmDelete(option)"
+          @click="handleDelete(option)"
         >
           <Trash2 class="size-3.5" />
         </button>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+import { useRoute } from 'vue-router'
 import { portfolioApi } from '@/features/portfolio/api/portfolioApi'
 import { useLabStore } from '@/features/lab/stores/useLabStore'
 import PortfolioUploadForm from '@/features/portfolio/components/PortfolioUploadForm.vue'
@@ -12,12 +13,15 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Pencil, Trash2, Images, ChevronLeft, ChevronRight, X } from 'lucide-vue-next'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 const queryClient = useQueryClient()
 const labStore = useLabStore()
 const page = ref(1)
 const filterPhotographerId = ref<number | null>(null)
 const lightboxItem = ref<PhotographerPortfolio | null>(null)
+const { confirmDelete } = useConfirmDialog()
+const route = useRoute()
 
 const { data, isLoading } = useQuery({
   queryKey: ['portfolios', labStore.activeLab?.id, page, filterPhotographerId],
@@ -52,10 +56,16 @@ const { mutate: deletePortfolio } = useMutation({
   },
 })
 
-function confirmDelete(item: PhotographerPortfolio) {
-  if (confirm(`Hapus foto dari ${item.photographer?.name ?? 'fotografer ini'}?`)) {
-    deletePortfolio(item.uuid)
-  }
+const preselectedPhotographerId = computed(() => {
+  const q = route.query.photographer
+  return q ? Number(q) : null
+})
+
+async function handleDelete(item: PhotographerPortfolio) {
+  const ok = await confirmDelete({
+    title: `Hapus foto dari ${item.photographer?.name ?? 'fotografer ini'}?`,
+  })
+  if (ok) deletePortfolio(item.uuid)
 }
 
 const showEditModal = ref(false)
@@ -97,7 +107,11 @@ function closeLightbox() {
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Form upload -->
       <div class="lg:col-span-1">
-        <PortfolioUploadForm v-if="labStore.activeLab" :lab-id="labStore.activeLab.id" />
+        <PortfolioUploadForm
+          v-if="labStore.activeLab"
+          :lab-id="labStore.activeLab.id"
+          :preselected-photographer-id="preselectedPhotographerId"
+        />
       </div>
 
       <!-- List + filter -->
@@ -137,8 +151,16 @@ function closeLightbox() {
             :key="item.uuid"
             class="p-0 overflow-hidden group relative"
           >
-            <div class="aspect-square bg-gray-100 cursor-pointer" @click="openLightbox(item)">
-              <img :src="item.image" alt="" class="w-full h-full object-cover" />
+            <div
+              class="aspect-[4/5] bg-gray-100 cursor-pointer overflow-hidden"
+              @click="openLightbox(item)"
+            >
+              <img
+                :src="item.image"
+                alt=""
+                class="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
+                loading="lazy"
+              />
             </div>
             <CardContent class="p-2">
               <p class="text-xs font-medium text-gray-900 truncate">
@@ -147,7 +169,7 @@ function closeLightbox() {
               <p v-if="item.caption" class="text-xs text-gray-400 truncate">{{ item.caption }}</p>
             </CardContent>
             <div
-              class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+              class="absolute top-2 right-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
             >
               <button
                 title="Edit"
@@ -158,7 +180,7 @@ function closeLightbox() {
               </button>
               <button
                 title="Hapus"
-                @click="confirmDelete(item)"
+                @click="handleDelete(item)"
                 class="p-1.5 rounded-md bg-white/90 text-gray-500 hover:text-red-600 shadow transition-colors"
               >
                 <Trash2 class="size-3.5" />

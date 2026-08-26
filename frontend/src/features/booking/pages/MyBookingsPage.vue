@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Inbox, Images, Smartphone, Wallet, X, Download } from 'lucide-vue-next'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 declare const snap: any
 const router = useRouter()
@@ -23,6 +24,7 @@ const showQR = ref(false)
 const { subscribeRealtime } = useNotifications()
 const activeTab = ref<'all' | 'pending' | 'active' | 'completed' | 'canceled'>('all')
 const payingBookingUuid = ref<string | null>(null)
+const { confirmDelete } = useConfirmDialog()
 
 const TAB_STATUS_MAP: Record<string, string> = {
   pending: 'pending',
@@ -177,10 +179,13 @@ const { mutate: cancelBooking, isPending: isCanceling } = useMutation({
   },
 })
 
-function confirmCancel(booking: any) {
-  if (confirm(`Batalkan booking ${booking.booking_code}?`)) {
-    cancelBooking(booking.uuid)
-  }
+async function handleCancel(booking: any) {
+  const ok = await confirmDelete({
+    title: `Batalkan booking ${booking.booking_code}?`,
+    confirmText: 'Ya, Batalkan',
+    text: 'Booking yang dibatalkan tidak bisa dikembalikan lagi.',
+  })
+  if (ok) cancelBooking(booking.uuid)
 }
 
 function canCancel(booking: any) {
@@ -252,7 +257,7 @@ function downloadQR() {
             <StatusBadge :status="booking.payment_status" type="payment" />
             <button
               v-if="canCancel(booking)"
-              @click="confirmCancel(booking)"
+              @click="handleCancel(booking)"
               :disabled="isCanceling"
               class="text-xs text-red-600 hover:underline mt-1 disabled:opacity-50"
             >

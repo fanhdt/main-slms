@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-vue-next'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 const queryClient = useQueryClient()
 const search = ref('')
@@ -37,6 +38,11 @@ const { data, isLoading } = useQuery({
   },
 })
 
+async function handleDelete(lab: Lab) {
+  const ok = await confirmDelete({ title: `Hapus lab "${lab.name}"?` })
+  if (ok) deleteLab(lab.uuid)
+}
+
 const { mutate: deleteLab } = useMutation({
   mutationFn: (uuid: string) => labApi.delete(uuid),
   onSuccess: () => {
@@ -48,11 +54,7 @@ const { mutate: deleteLab } = useMutation({
   },
 })
 
-function confirmDelete(lab: Lab) {
-  if (confirm(`Hapus lab "${lab.name}"?`)) {
-    deleteLab(lab.uuid)
-  }
-}
+const { confirmDelete } = useConfirmDialog()
 
 function openCreate() {
   selectedLab.value = null
@@ -180,7 +182,7 @@ function openEdit(lab: Lab) {
                   </button>
                   <button
                     title="Hapus"
-                    @click="confirmDelete(lab)"
+                    @click="handleDelete(lab)"
                     class="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <Trash2 class="size-4" />

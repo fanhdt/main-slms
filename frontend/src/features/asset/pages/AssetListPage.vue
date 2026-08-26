@@ -20,6 +20,7 @@ import {
   ChevronRight,
   ImageOff,
 } from 'lucide-vue-next'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 const queryClient = useQueryClient()
 const labStore = useLabStore()
@@ -27,6 +28,7 @@ const search = ref('')
 const page = ref(1)
 const filterStatus = ref('')
 const filterCategory = ref('')
+const { confirmDelete } = useConfirmDialog()
 
 const { data, isLoading } = useQuery({
   queryKey: ['assets', labStore.activeLab?.id, search, page, filterStatus, filterCategory],
@@ -54,10 +56,9 @@ const { mutate: deleteAsset } = useMutation({
   },
 })
 
-function confirmDelete(asset: Asset) {
-  if (confirm(`Hapus aset "${asset.name}"?`)) {
-    deleteAsset(asset.uuid)
-  }
+async function handleDelete(asset: Asset) {
+  const ok = await confirmDelete({ title: `Hapus aset "${asset.name}"?` })
+  if (ok) deleteAsset(asset.uuid)
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -266,7 +267,7 @@ function openEdit(asset: Asset) {
                 variant="outline"
                 size="sm"
                 class="flex-1 border-red-200 text-red-600 hover:bg-red-50"
-                @click="confirmDelete(asset)"
+                @click="handleDelete(asset)"
               >
                 <Trash2 class="size-3.5" />
                 Hapus
@@ -359,7 +360,7 @@ function openEdit(asset: Asset) {
                     </button>
                     <button
                       title="Hapus"
-                      @click="confirmDelete(asset)"
+                      @click="handleDelete(asset)"
                       class="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                     >
                       <Trash2 class="size-4" />
