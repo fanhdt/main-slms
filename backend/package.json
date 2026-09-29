@@ -1,9 +1,7 @@
 {
-<<<<<<< HEAD
-  "dependencies": {
-    "@fontsource/inter": "^5.2.8"
-  }
-=======
+    "dependencies": {
+        "@fontsource/inter": "^5.2.8"
+    },
     "$schema": "https://www.schemastore.org/package.json",
     "private": true,
     "type": "module",
@@ -18,5 +16,4 @@
         "tailwindcss": "^4.0.0",
         "vite": "^8.0.0"
     }
->>>>>>> 5c9efaf (Fix fetching data bug)
 }
