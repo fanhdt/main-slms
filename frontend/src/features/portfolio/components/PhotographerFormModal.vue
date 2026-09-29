@@ -42,6 +42,7 @@ const { mutate: save, isPending } = useMutation({
   },
   onSuccess: () => {
     queryClient.invalidateQueries({ queryKey: ['photographers-admin'] })
+    queryClient.invalidateQueries({ queryKey: ['portfolio-photographers-public'] }) // <- baru
     toast.success(isEdit() ? 'Profil berhasil diupdate.' : 'Fotografer berhasil ditambahkan.')
     emit('close')
   },

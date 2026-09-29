@@ -102,6 +102,7 @@ function openEdit(item: Photographer) {
         <CardContent class="p-3">
           <p class="text-sm font-semibold text-gray-900 truncate">{{ p.name }}</p>
           <p v-if="p.instagram" class="text-xs text-gray-400 truncate">@{{ p.instagram }}</p>
+          <p v-if="p.bio" class="text-xs text-gray-500 mt-1 line-clamp-2">{{ p.bio }}</p>
           <Badge
             v-if="!p.is_active"
             variant="outline"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import { portfolioApi } from '@/features/portfolio/api/portfolioApi'
 import { photographerApi } from '@/features/portfolio/api/photographerApi'
@@ -8,7 +8,7 @@ import { X } from 'lucide-vue-next'
 
 const props = defineProps<{ labId: number; primaryColor?: string; secondaryColor?: string }>()
 
-const activePhotographer = ref<Photographer | null>(null)
+const activeUuid = ref<string | null>(null)
 const page = ref(1)
 const lightboxItem = ref<PhotographerPortfolio | null>(null)
 
@@ -18,16 +18,18 @@ const { data: photographers } = useQuery({
     const res = await photographerApi.getPublicForLab(props.labId)
     return res.data.data
   },
+  refetchOnMount: 'always',
 })
 
-watch(photographers, (list) => {
-  if (list?.length && !activePhotographer.value) {
-    activePhotographer.value = list[0] ?? null
-  }
-})
+const activePhotographer = computed<Photographer | null>(
+  () =>
+    photographers.value?.find((p) => p.uuid === activeUuid.value) ??
+    photographers.value?.[0] ??
+    null,
+)
 
 function selectPhotographer(p: Photographer) {
-  activePhotographer.value = p
+  activeUuid.value = p.uuid
   page.value = 1
 }
 
@@ -102,7 +104,7 @@ function closeLightbox() {
         v-if="activePhotographer?.bio"
         class="text-center max-w-md mx-auto mb-8 text-sm text-gray-500"
       >
-        {{ activePhotographer.bio }}
+        <p class="whitespace-pre-line">{{ activePhotographer.bio }}</p>
 
         <a
           v-if="activePhotographer.instagram"
