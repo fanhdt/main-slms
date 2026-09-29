@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 
+// ---- List (admin, server-side pagination) ----
+Route::get('/', [\App\Domain\LabService\Controllers\ServiceController::class, 'index'])
+    ->middleware('can:services.view');
+
 // ---- PROTECTED (create/update/delete) ----
 Route::post('/', [\App\Domain\LabService\Controllers\ServiceController::class, 'store'])
     ->middleware('can:services.create');

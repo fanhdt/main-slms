@@ -26,6 +26,17 @@ class PackageController extends ApiController
         );
     }
 
+    public function catalog(Request $request): JsonResponse
+{
+    $labId = $request->validate([
+        'lab_id' => ['required', 'integer', 'exists:labs,id'],
+    ])['lab_id'];
+
+    $packages = $this->packageService->listActiveForLab((int) $labId);
+
+    return $this->success(PackageResource::collection($packages)->resolve($request));
+}
+
     public function show(string $uuid): JsonResponse
     {
         $package = $this->packageService->findByUuid($uuid);

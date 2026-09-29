@@ -31,6 +31,18 @@ class ServiceController extends ApiController
         );
     }
 
+    public function catalog(Request $request): JsonResponse
+{
+    $labId = $request->validate([
+        'lab_id' => ['required', 'integer', 'exists:labs,id'],
+    ])['lab_id'];
+
+    $services = $this->serviceService->listActiveForLab((int) $labId);
+
+    // resolve() => array datar, tidak ada pembungkus paginator
+    return $this->success(ServiceResource::collection($services)->resolve($request));
+}
+
     public function show(string $uuid): JsonResponse
     {
         $service = $this->serviceService->findByUuid($uuid, withOptions: true);

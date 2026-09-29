@@ -50,10 +50,10 @@ const { data: lab, isLoading } = useQuery({
 const { data: services } = useQuery({
   queryKey: ['lab-services', slug],
   queryFn: async () => {
-    const res = await api.get('/services', {
-      params: { lab_id: lab.value?.id, is_active: true },
+    const res = await api.get('/catalog/services', {
+      params: { lab_id: lab.value?.id },
     })
-    return res.data.data.data
+    return res.data.data
   },
   enabled: computed(() => !!lab.value),
 })
@@ -82,10 +82,10 @@ function goToServicesPage(page: number) {
 const { data: packages } = useQuery({
   queryKey: ['lab-packages', slug],
   queryFn: async () => {
-    const res = await api.get('/packages', {
-      params: { lab_id: lab.value?.id, is_active: true },
+   const res = await api.get('/catalog/packages', {
+      params: { lab_id: lab.value?.id },
     })
-    return res.data.data.data
+    return res.data.data
   },
   enabled: computed(() => !!lab.value),
 })

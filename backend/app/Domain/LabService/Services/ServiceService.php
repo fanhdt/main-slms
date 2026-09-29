@@ -28,15 +28,32 @@ class ServiceService extends BaseService
             $query->where('type', $filters['type']);
         }
 
-        if (isset($filters['is_active'])) {
-            $query->where('is_active', $filters['is_active']);
+       if (isset($filters['is_active'])) {
+            $isActive = filter_var($filters['is_active'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($isActive !== null) {
+                $query->where('is_active', $isActive);
+            }
         }
 
         if (isset($filters['search'])) {
             $query->where('name', 'ilike', '%' . $filters['search'] . '%');
         }
 
-        return $query->latest()->paginate($filters['per_page'] ?? 15);
+        return $query->latest()->orderByDesc('id')->paginate($filters['per_page'] ?? 15);
+     }
+
+     /**
+     * Katalog publik: seluruh service aktif satu lab, tanpa pagination.
+     */
+    public function listActiveForLab(int $labId): Collection
+    {
+        return Service::query()
+            ->with('lab')
+            ->where('lab_id', $labId)
+            ->where('is_active', true)
+            ->latest()
+            ->orderByDesc('id')
+            ->get();
     }
 
     public function findByUuid(string $uuid, bool $withOptions = false): Service

@@ -1,0 +1,45 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Asset\Resources;
+
+use App\Domain\Asset\Services\AssetService;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+class AssetResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        return [
+            'id'             => $this->id,
+            'uuid'           => $this->uuid,
+            'lab_id'   => $this->lab_id,
+            'lab_uuid' => $this->lab?->uuid,
+            'name'           => $this->name,
+            'code'           => $this->code,
+            'category'       => [
+                'value' => $this->category->value,
+                'label' => $this->category->label(),
+            ],
+            'brand'          => $this->brand,
+            'model'          => $this->model,
+            'description'    => $this->description,
+            'serial_number'  => $this->serial_number,
+            'status'         => [
+                'value' => $this->status->value,
+                'label' => $this->status->label(),
+            ],
+            'specifications' => $this->specifications,
+            'image'          => $this->image_url,
+            'is_rentable'    => $this->is_rentable,
+            'rental_price'   => $this->rental_price,
+            'purchase_price' => $this->purchase_price,
+            'purchase_date'  => $this->purchase_date?->toDateString(),
+            'quantity'       => $this->quantity,
+            'available_now'  => app(AssetService::class)->calculateAvailableNow($this->resource),
+            'created_at'     => $this->created_at->toISOString(),
+        ];
+    }
+}

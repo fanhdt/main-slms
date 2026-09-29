@@ -10,6 +10,7 @@ use App\Domain\LabService\Models\Package;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -23,7 +24,10 @@ class PackageService extends BaseService
             $query->where('lab_id', $filters['lab_id']);
         }
         if (isset($filters['is_active'])) {
-            $query->where('is_active', $filters['is_active']);
+            $isActive = filter_var($filters['is_active'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($isActive !== null) {
+                $query->where('is_active', $isActive);
+            }
         }
         if (isset($filters['is_custom'])) {
             $query->where('is_custom', $filters['is_custom']);
@@ -32,7 +36,21 @@ class PackageService extends BaseService
             $query->where('name', 'ilike', '%' . $filters['search'] . '%');
         }
 
-        return $query->latest()->paginate($filters['per_page'] ?? 15);
+        return $query->latest()->orderByDesc('id')->paginate($filters['per_page'] ?? 15);
+     }
+
+     /**
+     * Katalog publik: seluruh package aktif satu lab, tanpa pagination.
+     */
+    public function listActiveForLab(int $labId): Collection
+    {
+        return Package::query()
+            ->with(['lab', 'items.service.lab', 'items.asset'])
+            ->where('lab_id', $labId)
+            ->where('is_active', true)
+            ->latest()
+           ->orderByDesc('id')
+            ->get();
     }
 
     public function findByUuid(string $uuid): Package

@@ -1,3 +1,32 @@
+
+# =============================================================================
+# SLMS — Root .gitignore
+# =============================================================================
+
+# Environment files — never commit secrets
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Docker overrides (local dev customizations)
+docker-compose.override.yml
+
+# Logs
+*.log
+=======
 *.log
 .DS_Store
 .env
@@ -25,3 +54,4 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+>>>>>>> 5c9efaf (Fix fetching data bug)

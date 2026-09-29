@@ -2,6 +2,10 @@
 declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 
+
+// ---- List (admin, server-side pagination) ----
+Route::get('/', [\App\Domain\LabService\Controllers\PackageController::class, 'index'])
+    ->middleware('can:packages.view');
 // ---- PROTECTED ----
 Route::post('/', [\App\Domain\LabService\Controllers\PackageController::class, 'store'])
     ->middleware('can:packages.create');

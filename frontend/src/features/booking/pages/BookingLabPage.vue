@@ -289,7 +289,7 @@ function formatPrice(price: string | number) {
                   <h3 class="font-semibold text-gray-900">{{ pkg.name }}</h3>
                   <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ pkg.description }}</p>
                   <p class="font-bold text-gray-900 mt-2">
-                    {{ formatPrice(pkg.price - pkg.discount) }}
+                    {{ formatPrice(pkg.final_price ?? pkg.price) }}
                   </p>
                 </CardContent>
               </Card>
