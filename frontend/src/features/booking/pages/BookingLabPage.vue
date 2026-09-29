@@ -35,10 +35,12 @@ const { data: lab } = useQuery({
 const { data: services } = useQuery({
   queryKey: ['booking-services', slug],
   queryFn: async () => {
-    const res = await api.get('/services', {
-      params: { lab_id: lab.value?.id, is_active: true },
-    })
-    return res.data.data.data
+    const res = await api.get('/catalog/services', {
+  params: {
+    lab_id: lab.value?.id,
+  },
+})
+return res.data.data
   },
   enabled: computed(() => activeFlow.value === 'service' && !!lab.value),
 })
@@ -46,10 +48,12 @@ const { data: services } = useQuery({
 const { data: packages } = useQuery({
   queryKey: ['booking-packages', slug],
   queryFn: async () => {
-    const res = await api.get('/packages', {
-      params: { lab_id: lab.value?.id, is_active: true },
-    })
-    return res.data.data.data
+    const res = await api.get('/catalog/packages', {
+  params: {
+    lab_id: lab.value?.id,
+  },
+})
+return res.data.data
   },
   enabled: computed(() => activeFlow.value === 'service' && !!lab.value),
 })
