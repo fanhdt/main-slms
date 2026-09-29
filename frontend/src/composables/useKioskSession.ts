@@ -42,7 +42,7 @@ export function useKioskIdleWatcher() {
       authStore.token = null
       localStorage.removeItem('token')
       clearKioskSession()
-      router.push({ name: 'lab-rfid-kiosk', params: { slug: labSlug } })
+      router.replace({ name: 'lab-rfid-kiosk', params: { slug: labSlug } })
     }, IDLE_TIMEOUT_MS)
   }
 
