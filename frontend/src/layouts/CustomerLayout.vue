@@ -2,9 +2,11 @@
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
+import { useLogout } from '@/composables/useLogout'
 import NotificationBell from '@/components/NotificationBell.vue'
 import { useNotifications } from '@/composables/useNotifications'
 import { toast } from 'vue-sonner'
+
 import {
   Home,
   CalendarPlus,
@@ -29,10 +31,11 @@ watch(
   },
 )
 
+const logout = useLogout()
+
 async function handleLogout() {
-  await authStore.logout()
+  await logout()
   toast.success('Logout berhasil')
-  router.push({ name: 'login' })
 }
 
 const navItems = [

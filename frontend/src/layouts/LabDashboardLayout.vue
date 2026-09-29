@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
+import { useLogout } from '@/composables/useLogout'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import {
   Menu,
@@ -75,10 +76,11 @@ watch(
   },
 )
 
+const logout = useLogout()
+
 async function handleLogout() {
-  await authStore.logout()
+  await logout()
   toast.success('Logout berhasil')
-  router.push({ name: 'login' })
 }
 
 function navLink(path: string) {

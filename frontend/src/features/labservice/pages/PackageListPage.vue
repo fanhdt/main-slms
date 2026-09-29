@@ -96,7 +96,7 @@ function formatPrice(price: string) {
 
     <!-- Grid -->
     <div v-else class="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-4">
-      <Card v-for="pkg in data.data" :key="pkg.uuid" class="p-0 overflow-hidden">
+      <Card v-for="pkg in data.data" :key="pkg.uuid" class="p-0 overflow-hidden min-w-0">
         <!-- Thumbnail gambar paket -->
         <div class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden">
           <img
@@ -111,7 +111,12 @@ function formatPrice(price: string) {
 
         <CardContent class="p-5 space-y-3">
           <div class="flex items-start justify-between gap-2">
-            <h3 class="font-semibold text-gray-900 truncate">{{ pkg.name }}</h3>
+            <h3
+              class="min-w-0 font-semibold text-gray-900 line-clamp-2 wrap-anywhere"
+              :title="pkg.name"
+            >
+              {{ pkg.name }}
+            </h3>
             <Badge
               v-if="!pkg.is_active"
               variant="outline"
@@ -120,13 +125,23 @@ function formatPrice(price: string) {
               Nonaktif
             </Badge>
           </div>
-          <p class="text-sm text-gray-500 line-clamp-2">{{ pkg.description }}</p>
-
-          <p class="text-xl font-bold text-gray-900">
-            {{ formatPrice(pkg.final_price ?? pkg.price) }}
+          <p class="text-sm text-gray-500 line-clamp-3 wrap-anywhere" :title="pkg.description">
+            {{ pkg.description }}
           </p>
 
-          <ul class="space-y-1.5">
+          <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <p class="text-xl font-bold text-gray-900 wrap-anywhere">
+              {{ formatPrice(pkg.final_price ?? pkg.price) }}
+            </p>
+            <p
+              v-if="pkg.final_price && Number(pkg.final_price) < Number(pkg.price)"
+              class="text-sm text-gray-400 line-through"
+            >
+              {{ formatPrice(pkg.price) }}
+            </p>
+          </div>
+
+          <ul class="space-y-1.5 max-h-40 overflow-y-auto">
             <li
               v-for="item in pkg.items"
               :key="item.id"
@@ -136,7 +151,9 @@ function formatPrice(price: string) {
                 :is="item.type === 'service' ? Wrench : PackageOpen"
                 class="size-3.5 text-gray-400 shrink-0"
               />
-              <span class="truncate">{{ item.service?.name ?? item.asset?.name }}</span>
+              <span class="min-w-0 flex-1 truncate">{{
+                item.service?.name ?? item.asset?.name
+              }}</span>
               <span class="text-gray-400 shrink-0">× {{ item.quantity }}</span>
             </li>
           </ul>

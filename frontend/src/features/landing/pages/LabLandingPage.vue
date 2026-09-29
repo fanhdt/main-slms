@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
@@ -59,18 +59,59 @@ const { data: services } = useQuery({
 })
 
 // --- Pagination untuk grid Layanan (6 per halaman, 3 kolom x 2 baris) ---
+type ServiceItem = {
+  uuid: string
+  name: string
+  description: string | null
+  image: string | null
+  price: string | null
+  pricing_type?: { label: string } | null
+  type?: { value: string; label: string } | null
+}
+
 const servicesPage = ref(1)
 const servicesPerPage = 6
 
-const servicesTotalPages = computed(() => {
-  if (!services.value?.length) return 1
-  return Math.max(1, Math.ceil(services.value.length / servicesPerPage))
+// Kategori diturunkan dari data layanan aktual (service.type), jadi
+// kategori tanpa layanan otomatis tidak muncul dan kategori baru langsung tampil.
+const activeServiceType = ref<string>('all')
+
+const serviceTypes = computed(() => {
+  const map = new Map<string, string>()
+  for (const s of (services.value ?? []) as ServiceItem[]) {
+    if (s.type?.value && !map.has(s.type.value)) map.set(s.type.value, s.type.label)
+  }
+  return Array.from(map, ([value, label]) => ({ value, label }))
 })
 
+const filteredServices = computed(() => {
+  const all = services.value ?? []
+  if (activeServiceType.value === 'all') return all
+  return all.filter((s: ServiceItem) => s.type?.value === activeServiceType.value)
+})
+
+// Jika kategori aktif hilang dari data (mis. setelah refetch), kembali ke "Semua".
+watch(serviceTypes, (types) => {
+  if (
+    activeServiceType.value !== 'all' &&
+    !types.some((t) => t.value === activeServiceType.value)
+  ) {
+    activeServiceType.value = 'all'
+  }
+})
+
+function selectServiceType(value: string) {
+  activeServiceType.value = value
+  servicesPage.value = 1
+}
+
+const servicesTotalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredServices.value.length / servicesPerPage)),
+)
+
 const paginatedServices = computed(() => {
-  if (!services.value?.length) return []
   const start = (servicesPage.value - 1) * servicesPerPage
-  return services.value.slice(start, start + servicesPerPage)
+  return filteredServices.value.slice(start, start + servicesPerPage)
 })
 
 function goToServicesPage(page: number) {
@@ -82,7 +123,7 @@ function goToServicesPage(page: number) {
 const { data: packages } = useQuery({
   queryKey: ['lab-packages', slug],
   queryFn: async () => {
-   const res = await api.get('/catalog/packages', {
+    const res = await api.get('/catalog/packages', {
       params: { lab_id: lab.value?.id },
     })
     return res.data.data

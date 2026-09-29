@@ -189,7 +189,12 @@ function openEdit(service: Service) {
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0">
                 <p class="font-medium text-gray-900 truncate">{{ service.name }}</p>
-                <p class="text-xs text-gray-500 truncate">{{ service.description }}</p>
+                <p
+                  class="text-xs text-gray-500 line-clamp-2 wrap-anywhere"
+                  :title="service.description ?? undefined"
+                >
+                  {{ service.description }}
+                </p>
               </div>
             </div>
 
@@ -281,10 +286,17 @@ function openEdit(service: Service) {
                     <ImageOff v-else class="size-4 text-gray-300" />
                   </div>
                 </td>
-                <td class="px-4 py-3">
-                  <p class="font-medium text-gray-900 truncate">{{ service.name }}</p>
-                  <p class="text-xs text-gray-400 truncate">{{ service.description }}</p>
-                </td>
+               <td class="px-4 py-3 w-full max-w-0 min-w-56">
+  <p class="font-medium text-gray-900 truncate" :title="service.name">
+    {{ service.name }}
+  </p>
+  <p
+    class="text-xs text-gray-400 line-clamp-2 wrap-anywhere"
+    :title="service.description ?? undefined"
+  >
+    {{ service.description }}
+  </p>
+</td>
                 <td class="px-4 py-3">
                   <Badge
                     variant="outline"

@@ -40,22 +40,22 @@ async function handleLogin() {
     // sebelum alur redirect berbasis role yang biasa.
     const pendingBooking = consumePendingBookingRedirect()
     if (pendingBooking) {
-      router.push(pendingBooking)
+      router.replace(pendingBooking)
       return
     }
 
     if (authStore.hasRole('super_admin')) {
-      router.push({ name: 'admin-dashboard' })
+      router.replace({ name: 'admin-dashboard' })
     } else if (authStore.hasRole('customer')) {
-      router.push({ name: 'booking' })
+      router.replace({ name: 'booking' })
     } else {
       const labStore = useLabStore()
       await labStore.fetchManagedLabs()
 
       if (labStore.managedLabs.length === 1) {
-        router.push(`/dashboard/lab/${labStore.managedLabs[0]?.slug ?? ''}`)
+        router.replace(`/dashboard/lab/${labStore.managedLabs[0]?.slug ?? ''}`)
       } else {
-        router.push({ name: 'dashboard' })
+        router.replace({ name: 'dashboard' })
       }
     }
   } else {
@@ -78,7 +78,10 @@ async function handleLogin() {
       <div class="space-y-1.5">
         <Label for="login-email">Email<span class="text-red-500">*</span></Label>
         <div class="relative">
-          <Mail :size="17" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Mail
+            :size="17"
+            class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          />
           <Input
             id="login-email"
             v-model="email"
@@ -94,7 +97,10 @@ async function handleLogin() {
       <div class="space-y-1.5">
         <Label for="login-password">Kata sandi<span class="text-red-500">*</span></Label>
         <div class="relative">
-          <Lock :size="17" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Lock
+            :size="17"
+            class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          />
           <Input
             id="login-password"
             v-model="password"

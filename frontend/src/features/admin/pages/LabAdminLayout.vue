@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
+import { useLogout } from '@/composables/useLogout'
 import { toast } from 'vue-sonner'
 
 const authStore = useAuthStore()
 const router = useRouter()
 
+const logout = useLogout()
+
 async function handleLogout() {
-  await authStore.logout()
+  await logout()
   toast.success('Logout berhasil')
-  router.push({ name: 'login' })
 }
 </script>
 

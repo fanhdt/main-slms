@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { ref, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
+import { useLogout } from '@/composables/useLogout'
 import NotificationBell from '@/components/NotificationBell.vue'
-import { ArrowLeft, LogOut } from 'lucide-vue-next'
+import { ArrowLeft, LogOut, Menu, X } from 'lucide-vue-next'
 
 defineProps<{
   backTo?: string
@@ -10,17 +12,25 @@ defineProps<{
 }>()
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
+const logout = useLogout()
+const isMenuOpen = ref(false)
+
+// Tutup menu mobile setiap pindah halaman
+watch(
+  () => route.fullPath,
+  () => (isMenuOpen.value = false),
+)
 
 async function handleLogout() {
-  await authStore.logout()
-  router.push({ name: 'login' })
+  await logout()
 }
 </script>
 
 <template>
-  <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
-    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
       <div class="flex items-center gap-3 min-w-0">
         <button
           v-if="backTo"
@@ -44,7 +54,8 @@ async function handleLogout() {
         </template>
       </div>
 
-      <nav class="flex items-center gap-1 shrink-0">
+      <!-- Desktop -->
+      <nav class="hidden md:flex items-center gap-1 shrink-0">
         <RouterLink to="/home" class="nav-link" active-class="nav-link-active">
           Beranda
         </RouterLink>
@@ -76,7 +87,7 @@ async function handleLogout() {
               {{ authStore.user?.name?.charAt(0).toUpperCase() }}
             </span>
           </div>
-          <span class="text-sm font-medium text-gray-700 hidden sm:inline">
+          <span class="text-sm font-medium text-gray-700 hidden lg:inline">
             {{ authStore.user?.name?.split(' ')[0] }}
           </span>
         </RouterLink>
@@ -89,6 +100,50 @@ async function handleLogout() {
           <LogOut class="size-4" />
         </button>
       </nav>
+
+      <!-- Mobile: bell + hamburger -->
+      <div class="flex items-center gap-1 md:hidden shrink-0">
+        <NotificationBell />
+        <button
+          type="button"
+          class="inline-flex size-10 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100"
+          :aria-expanded="isMenuOpen"
+          aria-label="Menu"
+          @click="isMenuOpen = !isMenuOpen"
+        >
+          <X v-if="isMenuOpen" class="size-5" />
+          <Menu v-else class="size-5" />
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile menu -->
+    <div
+      v-if="isMenuOpen"
+      class="md:hidden absolute inset-x-0 top-full max-h-[calc(100dvh-4rem)] overflow-y-auto border-b border-gray-200 bg-white px-4 py-3 shadow-sm"
+    >
+      <div class="flex flex-col gap-1">
+        <RouterLink to="/home" class="mobile-link" active-class="nav-link-active"
+          >Beranda</RouterLink
+        >
+        <RouterLink to="/booking" class="mobile-link" active-class="nav-link-active">
+          Booking Baru
+        </RouterLink>
+        <RouterLink to="/my-bookings" class="mobile-link" active-class="nav-link-active">
+          Booking Saya
+        </RouterLink>
+        <RouterLink to="/profile" class="mobile-link" active-class="nav-link-active">
+          Profil{{ authStore.user?.name ? ` (${authStore.user.name.split(' ')[0]})` : '' }}
+        </RouterLink>
+        <button
+          type="button"
+          class="mobile-link flex items-center gap-2 text-left text-red-600"
+          @click="handleLogout"
+        >
+          <LogOut class="size-4" />
+          Logout
+        </button>
+      </div>
     </div>
   </header>
 </template>
@@ -103,6 +158,16 @@ async function handleLogout() {
   transition:
     background-color 0.15s ease,
     color 0.15s ease;
+}
+
+.mobile-link {
+  display: block;
+  min-height: 2.75rem;
+  padding: 0.7rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #374151; /* gray-700 */
 }
 
 .nav-link:hover {

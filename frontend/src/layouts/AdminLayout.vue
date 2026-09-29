@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch, computed } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
+import { useLogout } from '@/composables/useLogout'
 import {
   LayoutDashboard,
   FlaskConical,
@@ -34,10 +35,11 @@ watch(
   },
 )
 
+const logout = useLogout()
+
 async function handleLogout() {
-  await authStore.logout()
+  await logout()
   toast.success('Logout berhasil')
-  router.push({ name: 'login' })
 }
 
 function enterLab(slug: string) {
