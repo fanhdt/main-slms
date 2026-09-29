@@ -2,18 +2,19 @@
 import { onMounted, onUnmounted, watch } from 'vue'
 import { useAuthStore } from '@/features/auth/stores/useAuthStore'
 import { useNotifications } from '@/composables/useNotifications'
+import { useKioskIdleWatcher } from '@/composables/useKioskSession'
 import { Toaster } from '@/components/ui/sonner'
 
 const authStore = useAuthStore()
 const { subscribeRealtime, unsubscribeRealtime } = useNotifications()
 
+useKioskIdleWatcher()
 
 onMounted(() => {
   if (authStore.isAuthenticated) {
     subscribeRealtime()
   }
 })
-
 
 watch(
   () => authStore.isAuthenticated,
